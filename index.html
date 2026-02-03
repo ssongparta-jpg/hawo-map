@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>경기도화성오산교육지원청 학교 지도</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
@@ -10,43 +10,155 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
   
   <link rel="stylesheet" href="css/header.css" />
-  <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/map.css" />
-  <link rel="stylesheet" href="css/legend.css" />
-  <link rel="stylesheet" href="css/type.css" />
-  <link rel="stylesheet" href="css/tooltip.css" />
   
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+      .memo-save-btn { display: block !important; margin-top: 5px; width: 100%; cursor: pointer; border: none; padding: 5px; border-radius: 4px; color: white; }
+      .memo-save-btn:disabled { background-color: #ccc !important; cursor: not-allowed; }
+  </style>
 </head>
 <body>
   <div class="container"> 
-    <header>
-      <a href="https://www.goehs.kr" class="logo-link" target="_blank" rel="noopener noreferrer">
-        <img src="hwaologo.svg" alt="화성오산교육지원청 로고" class="logo-left" />
-      </a>
-      <span class="header_text" id="header-title">경기도화성오산교육지원청 학교 지도</span>
+    
+    <header class="header-banner-container">
+      <div class="header-shape">
+        <button class="help-button" id="helpBtn" title="도움말">?</button>
+        <a href="https://www.goehs.kr" target="_blank" class="logo-area">
+            <img src="hwaologo.svg" alt="로고" class="logo-img" />
+        </a>
+        <span class="header_text" id="header-title">로딩 중...</span>
+      </div>
     </header>
     
-    <button class="help-button">?</button>
-    
-    <div class="toggle-container">
-      <input type="checkbox" id="toggle-boundary" class="toggle-checkbox" checked />
-      <label for="toggle-boundary" class="toggle-label"></label>
+    <div id="auth-area">
+      <div id="login-form">
+        <input type="text" id="user-id" placeholder="ID">
+        <input type="password" id="user-pw" placeholder="PW">
+        <button onclick="AuthManager.login()" class="btn-login">로그인</button>
+        <button onclick="AuthManager.register()" class="btn-join">가입</button>
+      </div>
+      <div id="user-info" style="display:none;">
+        <span id="welcome-msg"></span>
+        <button id="change-pw-btn" onclick="AuthManager.changePw()" style="display:none;">PW변경</button>
+        <button id="admin-panel-btn" onclick="AdminManager.open()" class="btn-admin" style="display: none;">관리자</button>
+        <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
+      </div>
     </div>
-    <span class="toggle-text">행정동 표시</span>
+    
+    <div class="search-container">
+        <div class="search-wrapper">
+            <input type="text" id="schoolSearch" class="search-input-box" placeholder="학교명 검색 (예: 삼괴고)" autocomplete="off" />
+            <div id="searchResults" class="search-results"></div>
+        </div>
+        <button onclick="FilterManager.open()" class="advanced-search-btn" title="상세 검색 열기">
+            상세 검색
+        </button>
+    </div>
 
-    <div class="legend-bar">
-        <div id="legend" class="legend"></div>
+    <div id="legend" class="legend-floating-box"></div>
+
+    <div class="boundary-toggle-container">
+        <span class="switch-label">행정구역 켜기/끄기</span>
+        <label class="toggle-switch">
+            <input type="checkbox" id="toggle-boundary" checked>
+            <span class="slider"></span>
+        </label>
     </div>
 
     <div id="map"></div>
+
+    <div id="search-dashboard" class="dashboard-backdrop">
+        <div class="dashboard-window">
+            <div class="dash-header">
+                <div class="search-bar-wrap">
+                    <input type="text" id="adv-name-input" placeholder="상세 검색할 학교명을 입력하세요">
+                    <button class="dash-main-search-btn" onclick="FilterManager.execute()">조건 검색</button>
+                </div>
+                <button class="dash-close-btn" onclick="FilterManager.close()">✕</button>
+            </div>
+
+            <div class="dash-body">
+                <div class="filter-group">
+                    <h3>학교급 분류</h3>
+                    <div class="tag-container">
+                        <button type="button" class="filter-tag" data-type="유치원">유치원</button>
+                        <button type="button" class="filter-tag" data-type="초등학교">초등학교</button>
+                        <button type="button" class="filter-tag" data-type="중학교">중학교</button>
+                        <button type="button" class="filter-tag" data-type="고등학교">고등학교</button>
+                        <button type="button" class="filter-tag" data-type="특수학교">특수학교</button>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                  <h3>행정구역 선택</h3>
+                  <div class="tag-container" id="district-tag-container">
+                    <button type="button" class="dist-tag" data-dist="동탄구">동탄구</button>
+                    <button type="button" class="dist-tag" data-dist="병점구">병점구</button>
+                    <button type="button" class="dist-tag" data-dist="효행구">효행구</button>
+                    <button type="button" class="dist-tag" data-dist="만세구">만세구</button>
+                    <button type="button" class="dist-tag" data-dist="오산시">오산시</button>
+                  </div>
+                </div>
+
+                <section class="filter-group">
+                    <h3>수치 조건 (범위)</h3>
+                    <div class="range-grid">
+                        <div class="range-item">
+                            <label>학생 수</label>
+                            <div class="range-controls">
+                                <div class="range-box min"><span>▲</span><input type="number" id="min-s" placeholder="최소"></div>
+                                <div class="range-box max"><span>▼</span><input type="number" id="max-s" placeholder="최대"></div>
+                            </div>
+                        </div>
+                        <div class="range-item"><label>총 학급 수</label><div class="range-controls"><div class="range-box min"><span>▲</span><input type="number" id="min-c" placeholder="최소"></div><div class="range-box max"><span>▼</span><input type="number" id="max-c" placeholder="최대"></div></div></div>
+                        <div class="range-item"><label>학급당 학생 수</label><div class="range-controls"><div class="range-box min"><span>▲</span><input type="number" id="min-sc" placeholder="최소"></div><div class="range-box max"><span>▼</span><input type="number" id="max-sc" placeholder="최대"></div></div></div>
+                        <div class="range-item"><label>총 교사 수</label><div class="range-controls"><div class="range-box min"><span>▲</span><input type="number" id="min-t" placeholder="최소"></div><div class="range-box max"><span>▼</span><input type="number" id="max-t" placeholder="최대"></div></div></div>
+                        <div class="range-item"><label>교사 1인당 학생 수</label><div class="range-controls"><div class="range-box min"><span>▲</span><input type="number" id="min-st" placeholder="최소"></div><div class="range-box max"><span>▼</span><input type="number" id="max-st" placeholder="최대"></div></div></div>
+                    </div>
+                </section>
+            </div>
+            <div class="dash-footer">
+                <button class="reset-btn" onclick="FilterManager.reset()">🔄 조건 초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-modal" class="dashboard-backdrop">
+        <div class="dashboard-window">
+            <div class="dash-header" style="background: #e74c3c;">
+                <h3>관리자 패널</h3>
+                <button class="dash-close-btn" onclick="AdminManager.close()" style="margin-left: auto;">✕</button>
+            </div>
+            <div style="padding: 10px; display:flex; gap:10px; background:#f0f0f0;">
+                <button onclick="AdminManager.manageUsers()">회원 관리</button>
+                <button onclick="AdminManager.viewAllMemos()">전체 메모</button>
+                <button onclick="AdminManager.loadResetRequests()">PW 초기화 요청</button>
+            </div>
+            <div id="admin-content" class="dash-body"></div>
+        </div>
+    </div>
+
+    <div id="search-results-page" style="display:none;">
+        <div class="results-header">
+          <h2 id="results-count-title" style="margin:0; font-size:18px; color:white;">검색 결과</h2>
+          <button class="results-close-btn" onclick="ResultPageManager.close()" style="background: none; border:none; color:white; font-size: 24px; cursor:pointer;">✕</button>
+        </div>
+        <div id="results-list-container"></div>
+    </div>
+
+    <div id="helpModal" class="help-modal-overlay">
+        <div class="help-modal-content">
+            <span class="help-close-btn" onclick="document.getElementById('helpModal').style.display='none'">&times;</span>
+            <div id="helpContentInject"></div>
+        </div>
+    </div>
   </div>
-  
+
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
   <script src="script.js"></script>
 </body>
-</html> 
+</html>
