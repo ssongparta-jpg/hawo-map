@@ -1,3 +1,7 @@
+/* ==========================================
+   기존 코드 유지 (MapConfig, HelpManager)
+   ========================================== */
+
 const MapConfig = {
     SHEET_ID: '1xzpPpZh00DCC6zl0PhVx7uGab_6-9qkPhTHqcz5yuIE',
     GIDS: { HEADER: '1120810254', POINTS: '1290947643', LEGEND: '882261582' },
@@ -5,11 +9,89 @@ const MapConfig = {
     BOUNDS: [[36.886521, 126.557641], [37.403725, 127.272064]],
     DISTRICTS: {
         "화성시": { pos: [37.185, 126.915], color: "#4A90E2", fullName: "화성시 전체" },
-        "동탄구": { pos: [37.188, 127.138], color: "#d49400", fullName: "화성시 동탄구", keywords: ['동탄'] },
-        "병점구": { pos: [37.213, 127.032], color: "#2e6394", fullName: "화성시 병점구", keywords: ['병점', '진안', '화산', '반월'] },
-        "효행구": { pos: [37.214, 126.925], color: "#5696bd", fullName: "화성시 효행구", keywords: ['봉담', '정남', '비봉', '매송', '기배'] },
-        "만세구": { pos: [37.152, 126.832], color: "#a0bed5", fullName: "화성시 만세구", keywords: ['향남', '양감', '팔탄', '우정', '장안', '마도', '송산', '서신', '남양', '새솔'] },
-        "오산시": { pos: [37.16361, 127.07229], color: "#e65c2e", fullName: "오산시" }
+        "오산시": { pos: [37.16361, 127.06229], color: "#be522e", fullName: "오산시" },
+        "동탄구": { pos: [37.198, 127.09], color: "#d49400", fullName: "화성시 동탄구", keywords: ['동탄', '오산동'] },
+        "병점구": { pos: [37.223, 127.022], color: "#9933CC", fullName: "화성시 병점구", keywords: ['진안', '병점', '반월', '화산', '기배', '안녕', '송산동'] },
+        "효행구": { pos: [37.214, 126.925], color: "#3366FF", fullName: "화성시 효행구", keywords: ['봉담', '비봉', '매송', '정남'] },
+        "만세구": { pos: [37.152, 126.892], color: "#71a5ce", fullName: "화성시 만세구", keywords: ['향남', '우정', '팔탄', '장안', '양감', '마도', '송산면', '서신', '남양', '새솔'] }
+    }
+};
+
+const HelpManager = {
+    data: null,
+    init(rows) {
+        if (!rows || rows.length === 0) return;
+        let targetRow = rows.find(r => r.c && r.c[0]?.v !== 'header_text') || rows[0];
+        if (!targetRow || !targetRow.c) return;
+
+        const c = targetRow.c;
+        this.data = {
+            headerText: c[0]?.v || '경기도화성오산교육지원청 학교 지도',
+            updateDate: c[1]?.v || '-',
+            title: c[2]?.v || '사용 방법 안내',
+            subtitle: c[3]?.v || '도움말',
+            content: c[4]?.v || '내용 없음',
+            contact: c[5]?.v || '-'
+        };
+        const titleEl = document.getElementById('header-title');
+        if (titleEl) titleEl.innerText = this.data.headerText;
+        document.getElementById('helpBtn').addEventListener('click', () => this.showModal());
+    },
+    showModal() {
+        if (!this.data) return;
+        const modal = document.getElementById('helpModal');
+        const contentBox = document.getElementById('helpContentInject');
+        contentBox.innerHTML = `
+            <div class="popup-category">${this.data.subtitle}</div>
+            <div class="popup-title" style="font-size:22px; margin-bottom:15px;">${this.data.title}</div>
+            <div style="font-size:14px; line-height:1.6; color:#555; margin-bottom:25px; background:#f9f9f9; padding:15px; border-radius:8px;">${this.data.content.replace(/\n/g, '<br>')}</div>
+            <hr class="popup-hr">
+            <ul class="popup-info-list">
+                <li><span class="label">최근 업데이트</span> <span class="value">${this.data.updateDate}</span></li>
+                <li><span class="label">문의</span> <span class="value">${this.data.contact}</span></li>
+            </ul>
+        `;
+        modal.style.display = 'flex';
+    }
+};
+
+const SearchManager = {
+    init() {
+        const input = document.getElementById('schoolSearch');
+        const resultBox = document.getElementById('searchResults');
+        
+        input.addEventListener('keyup', (e) => {
+            const val = e.target.value.trim();
+            if (val.length < 1) { resultBox.style.display = 'none'; return; }
+            const matches = MapManager.markers.filter(m => m.properties.name.includes(val));
+            this.renderResults(matches, resultBox);
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-wrapper')) resultBox.style.display = 'none';
+        });
+    },
+    renderResults(matches, container) {
+        container.innerHTML = '';
+        if (matches.length === 0) { container.style.display = 'none'; return; }
+        matches.slice(0, 8).forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'search-item';
+            let typeColor = '#333';
+            if (m.properties.name.includes('초등학교')) typeColor = '#2ECC71';
+            else if (m.properties.name.includes('중학교')) typeColor = '#F1C40F';
+            else if (m.properties.name.includes('고등학교')) typeColor = '#E74C3C';
+            else if (m.properties.name.includes('유치원')) typeColor = '#4A90E2';
+
+            div.innerHTML = `<span>${m.properties.name}</span><span style="font-size:11px; color:${typeColor}; font-weight:bold;">${m.properties.type}</span>`;
+            div.onclick = () => {
+                MapManager.focusMarker(m);
+                container.style.display = 'none';
+                document.getElementById('schoolSearch').value = m.properties.name;
+            };
+            container.appendChild(div);
+        });
+        container.style.display = 'block';
     }
 };
 
@@ -18,270 +100,809 @@ const MapManager = {
     cluster: null,
     markers: [],
     boundaryGroup: L.layerGroup(),
-    tooltipLayers: [],
 
     init() {
-        this.map = L.map('map', { zoomControl: false, minZoom: 10, maxZoom: 18 });
+        this.map = L.map('map', { zoomControl: false, minZoom: 10, maxZoom: 18, attributionControl: false });
         this.map.setView(MapConfig.MAP_CENTER, 11);
         this.map.setMaxBounds(MapConfig.BOUNDS);
-
-        // 팝업이 가장 위에 오도록 전용 Pane 생성
-        const topPane = this.map.createPane('topPane');
-        topPane.style.zIndex = 1000; // 버튼(800)보다 높게 설정
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(this.map);
-
+        this.map.createPane('topPane').style.zIndex = 1000;
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
         this.boundaryGroup.addTo(this.map);
 
         this.cluster = L.markerClusterGroup({
             spiderfyOnMaxZoom: true,
-            maxClusterRadius: 80,
-            disableClusteringAtZoom: 14, 
-            singleMarkerMode: false, 
             showCoverageOnHover: false,
-            chunkedLoading: true,
-            zoomToBoundsOnClick: true
+            zoomToBoundsOnClick: true,
+            maxClusterRadius: 100,
+            disableClusteringAtZoom: 14,
+            singleMarkerMode: false,
+            iconCreateFunction: (cluster) => {
+                const count = cluster.getChildCount();
+                let cSize = count >= 50 ? 'red' : count >= 15 ? 'yellow' : 'small';
+                return L.divIcon({
+                    html: `<div><span>${count}</span></div>`,
+                    className: `marker-cluster marker-cluster-${cSize}`,
+                    iconSize: [40, 40]
+                });
+            }
         }).addTo(this.map);
 
         this.bindEvents();
     },
 
-    getMarkerIcon(p, zoom) {
-        if (zoom < 14) {
-            return L.divIcon({
-                className: 'marker-cluster marker-cluster-small',
-                html: `<div><span>1</span></div>`,
-                iconSize: [40, 40]
-            });
-        } else {
-            const isKinder = p.name.includes('유치원');
-            const html = `
-                <div class="custom-combined-marker ${isKinder ? 'is-kinder' : 'is-school'}">
-                    <div class="marker-label-box">${p.name}</div>
-                    <div class="marker-symbol" style="color:${p.color}">${p.shape}</div>
-                </div>`;
-            return L.divIcon({ className: 'marker-container-icon', html, iconSize: [0,0] });
+    getMarkerIcon(p, index, isColliding) {
+        let typeClass = 'is-spec';
+        let symbolChar = '◆';
+        if (p.name.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
+        else if (p.name.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
+        else if (p.name.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '●'; }
+        else if (p.name.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
+
+        let labelPosClass = (index % 2 === 0) ? 'label-up' : 'label-down';
+        if (isColliding) {
+            labelPosClass = 'label-pushed-way-down';
         }
+        
+        const safeName = p.name.replace(/'/g, "\\'");
+
+        const html = `
+            <div class="custom-combined-marker ${typeClass}"
+                 onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
+                
+                <div class="marker-label-box ${labelPosClass}" 
+                     onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
+                     ${p.name}
+                </div>
+                
+                <div class="marker-symbol" style="color:${p.color};">
+                    ${symbolChar}
+                </div>
+            </div>
+        `;
+        return L.divIcon({ className: 'marker-container-icon', html, iconSize: [0, 0] });
     },
 
     bindEvents() {
         this.map.on('zoomend', () => {
             const zoom = this.map.getZoom();
-            const isChecked = document.getElementById('toggle-boundary')?.checked;
-            this.tooltipLayers.forEach(l => l.setOpacity((zoom >= 14 && isChecked) ? 1 : 0));
-            document.querySelectorAll('.dist-stat-btn').forEach(btn => {
-                btn.className = `dist-stat-btn zoom-lv-${zoom}`;
+            document.querySelectorAll('.dist-stat-btn').forEach(btn => btn.className = `dist-stat-btn zoom-lv-${zoom}`);
+            
+            const mapContainer = this.map.getContainer();
+            if (zoom >= 15) mapContainer.classList.add('show-school-labels');
+            else mapContainer.classList.remove('show-school-labels');
+        });
+
+        const toggleBtn = document.getElementById('toggle-boundary');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('change', (e) => {
+                if (e.target.checked) this.map.addLayer(this.boundaryGroup);
+                else this.map.removeLayer(this.boundaryGroup);
             });
-            this.markers.forEach(m => {
-                m.setIcon(this.getMarkerIcon(m.properties, zoom));
-            });
+        }
+
+        // [수정: 메모 로딩 기능 추가] 팝업이 열릴 때 메모 데이터를 가져와서 채워넣음
+        this.map.on('popupopen', async (e) => {
+            const popupNode = e.popup.getElement();
+            const textarea = popupNode.querySelector('textarea[id^="memo-"]');
+            
+            if (textarea) {
+                const schoolName = textarea.id.replace('memo-', '');
+                
+                // 로그인 상태에 따라 초기 UI 설정
+                if (AuthManager.userId) {
+                    textarea.disabled = false;
+                    textarea.placeholder = "메모를 불러오는 중...";
+                    try {
+                        const res = await fetch(`/api/memo/${schoolName}`);
+                        const data = await res.json();
+                        textarea.value = data.content || "";
+                        textarea.placeholder = "여기에 메모를 작성하세요";
+                    } catch(err) {
+                        textarea.placeholder = "메모 로드 실패";
+                    }
+                } else {
+                    textarea.disabled = true;
+                    textarea.value = ""; // 로그아웃 상태면 비움
+                    textarea.placeholder = "로그인 후 이용 가능합니다";
+                }
+            }
         });
     },
 
-    createMarker(lat, lng, p) {
+    createMarker(lat, lng, p, index, isColliding) {
         const marker = L.marker([lat, lng], {
-            icon: this.getMarkerIcon(p, this.map.getZoom())
-        }).bindPopup(this.makePopupHtml(p), { 
+            icon: this.getMarkerIcon(p, index, isColliding) 
+        }).bindPopup(this.makePopupHtml(p), {
             className: 'custom-popup',
-            pane: 'topPane', // 학교 개별 팝업도 최상단 레이어 사용
-            autoPan: true,
+            pane: 'topPane',
             autoPanPadding: L.point(50, 50)
         });
         marker.properties = p;
         return marker;
     },
 
-    makePopupHtml(p) {
-    // 사진 2와 3을 참고하여 데이터 매칭
-    // p.type: 구분(유치원 등), p.name: 학교명, p.adrs: 주소
-    // p.stdnt_cnt: 학생 수, p.class_cnt: 학급 수, p.stdnt_per_cl: 학급당 학생 수
-    // p.tchr_cnt: 교사 수, p.stdnt_per_tchr: 교사 1인당 학생 수
+    triggerMarkerPopup(e, name) {
+        if (e) { e.stopPropagation(); }
+        const target = this.markers.find(m => m.properties.name === name);
+        if (target) { target.openPopup(); }
+    },
+
+    focusMarker(m) {
+        this.map.flyTo(m.getLatLng(), 16, { duration: 1.5 });
+        this.map.once('moveend', () => m.openPopup());
+    },
+
+    /* MapManager 객체 내부의 makePopupHtml 함수 수정 */
+makePopupHtml(p) {
+    const principal = p.principal || 'No Data';
+    const vicePrincipal = p.vice_principal || 'No Data';
+    const chiefofadministration = p.chief_of_administration || 'No Data';
+
+    const linkHtml = p.url 
+        ? `<a href="${p.url}" target="_blank" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>` 
+        : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
+
+    const isLoggedIn = AuthManager.userId !== null;
     
+    // [수정] 버튼 스타일: 로그인 시 파란색, 비로그인 시 회색(disabled)
+    const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
+    const btnDisabled = isLoggedIn ? '' : 'disabled';
+
     return `
-        <div class="popup-content">
-            <div class="popup-category" style="color: #00a0e9; font-size: 13px; margin-bottom: 4px;">${p.type || ''}</div>
-            <div class="popup-title" style="font-size: 18px; font-weight: bold; color: #000; margin-bottom: 4px;">${p.name || ''}</div>
-            <div class="popup-adrs" style="font-size: 12px; color: #666; margin-bottom: 10px;">${p.adrs || ''}</div>
-            <hr class="popup-hr" style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
-            <ul class="popup-info-list" style="list-style: none; padding: 0; margin: 0; font-size: 14px; color: #333; line-height: 1.8;">
-                <li><span class="label">• 학생 수</span> <span class="value">${Number(p.stdnt_cnt).toLocaleString()}</span></li>
-                <li><span class="label">• 학급 수</span> <span class="value">${p.class_cnt || 0}</span></li>
-                <li><span class="label">• 학급당 학생 수</span> <span class="value">${p.stdnt_per_cl || 0}</span></li>
-                <li><span class="label">• 교사 수</span> <span class="value">${p.tchr_cnt || 0}</span></li>
-                <li><span class="label">• 교사 1인당 학생 수</span> <span class="value">${p.stdnt_per_tchr || 0}</span></li>
+        <div class="popup-content compact-mode">
+            <div class="popup-header">
+                <div class="popup-category">${p.type || ''}</div>
+                ${linkHtml}
+            </div>
+
+            <div class="popup-title">${p.name || ''}</div>
+            <div class="popup-adrs">${p.adrs || ''}</div>
+            
+            <hr class="popup-hr">
+            
+            <div class="popup-admin-row">
+                <span>교장(원장) <strong>${principal}</strong></span>
+                <span class="divider">|</span>
+                <span>교감(원감) <strong>${vicePrincipal}</strong></span>
+                <span class="divider">|</span>
+                <span>행정실장 <strong>${chiefofadministration}</strong></span>
+            </div>
+            
+            <ul class="popup-info-list grid-list">
+                <li><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
+                <li><span class="label">교사 수</span> <span class="value"><strong>${p.tchr_cnt || 0}</strong>명</span></li>
+                <li><span class="label">학급 수</span> <span class="value"><strong>${p.class_cnt || 0}</strong>개</span></li>
+                <li><span class="label">학급당 학생 수</span> <span class="value"><strong>${p.stdnt_per_cl || 0}</strong>명</span></li>
+                <li><span class="label">교사 1인당 학생 수</span> <span class="value"><strong>${p.stdnt_per_tchr || 0}</strong>명</span></li>
             </ul>
-            ${p.url ? `<div class="popup-footer" style="text-align: right; margin-top: 10px;">
-                <a href="${p.url}" target="_blank" style="color: #666; text-decoration: none; font-size: 12px;">홈페이지 가기</a>
-            </div>` : ''}
-        </div>`;
+
+            <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
+                <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
+                <textarea id="memo-${p.name}" 
+                    style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
+                    placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
+                    disabled></textarea>
+                <button id="btn-save-${p.name}" class="memo-save-btn"
+                    onclick="AuthManager.saveMemo('${p.name}', event)" 
+                    style="background-color: ${btnBg};"
+                    ${btnDisabled}>
+                    메모 저장
+                </button>
+            </div>
+        </div>
+    `;
 },
+
+/* AuthManager 객체 내부의 toggleUI 함수 수정 */
+toggleUI(isLoggedIn) {
+    const form = document.getElementById('login-form');
+    const info = document.getElementById('user-info');
+    if (form) form.style.display = isLoggedIn ? 'none' : 'flex';
+    if (info) info.style.display = isLoggedIn ? 'flex' : 'none';
+
+    const changePwBtn = document.getElementById('change-pw-btn');
+    if (changePwBtn) changePwBtn.style.display = isLoggedIn ? 'inline-block' : 'none';
+
+    if (isLoggedIn) {
+        document.getElementById('welcome-msg').innerText = `${this.userId}님`;
+        const adminBtn = document.getElementById('admin-panel-btn');
+        if (this.userId === 'spring' && adminBtn) {
+            adminBtn.style.display = 'inline-block';
+        }
+    }
+
+    // [수정] 팝업이 열려있다면 즉시 상태 반영
+    const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
+    if (openPopupTextArea) {
+        openPopupTextArea.disabled = !isLoggedIn;
+        openPopupTextArea.placeholder = isLoggedIn ? "메모를 불러오는 중..." : "로그인 후 이용 가능합니다";
+        
+        if(isLoggedIn) {
+             const schoolName = openPopupTextArea.id.replace('memo-', '');
+             fetch(`/api/memo/${schoolName}`)
+                .then(res => res.json())
+                .then(data => {
+                    openPopupTextArea.value = data.content || "";
+                    openPopupTextArea.placeholder = "여기에 메모를 작성하세요";
+                });
+        } else {
+            openPopupTextArea.value = "";
+        }
+    }
+
+    // [수정] 저장 버튼 표시 제어 (display:none 대신 disabled 토글)
+    const saveBtns = document.querySelectorAll('button[id^="btn-save-"]');
+    saveBtns.forEach(btn => {
+        // isLoggedIn이 true면 disabled 제거(활성), false면 disabled 추가(비활성)
+        btn.disabled = !isLoggedIn;
+        btn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+        btn.style.display = 'block'; // 강제로 보이게 함
+    });
+},
+
+    async loadBoundaries() {
+        try {
+            const [dongRes, boundaryRes] = await Promise.all([
+                fetch('data/hwao.geojson'),
+                fetch('data/hwao_boundary.geojson')
+            ]);
+            if (!dongRes.ok || !boundaryRes.ok) throw new Error();
+            const dongData = await dongRes.json();
+            const boundaryData = await boundaryRes.json();
+
+            this.boundaryGroup.clearLayers();
+            
+            if (!this.map.getPane('boundaryPane')) {
+                this.map.createPane('boundaryPane');
+                this.map.getPane('boundaryPane').style.zIndex = 250; 
+                this.map.getPane('boundaryPane').style.pointerEvents = 'none';
+            }
+
+            L.geoJson(dongData, {
+                style: (feature) => {
+                    const admNm = feature.properties?.adm_nm || '';
+                    let fillColor = '#ccc';
+                    if (admNm.includes('오산시')) fillColor = MapConfig.DISTRICTS['오산시'].color;
+                    else {
+                        const guKey = Object.keys(MapConfig.DISTRICTS).find(k => MapConfig.DISTRICTS[k].keywords?.some(w => admNm.includes(w)));
+                        fillColor = guKey ? MapConfig.DISTRICTS[guKey].color : MapConfig.DISTRICTS['화성시'].color;
+                    }
+                    return { fillColor, fillOpacity: 0.35, color: '#ffffff', weight: 2.5, dashArray: '20,5,2,5', pane: 'boundaryPane' };
+                }
+            }).addTo(this.boundaryGroup);
+
+            L.geoJson(boundaryData, {
+                style: (f) => {
+                    const sgg = f.properties.sggnm;
+                    const col = sgg === '화성시' ? '#0047AB' : sgg === '오산시' ? '#e7733d' : 'transparent';
+                    return { fill: false, color: col, weight: 3, pane: 'boundaryPane' };
+                }
+            }).addTo(this.boundaryGroup);
+        } catch (e) { console.error('경계 로드 실패'); }
+    },
 
     addDistrictButtons() {
         Object.entries(MapConfig.DISTRICTS).forEach(([shortName, conf]) => {
             if (!conf.pos) return;
             const icon = L.divIcon({
                 className: 'district-stat-marker',
-                html: `<div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="border-left: 4px solid ${conf.color};">${shortName}</div>`,
+                html: `<div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="background-color:${conf.color}!important;color:#fff;">${shortName}</div>`,
                 iconSize: [80, 32]
             });
-            L.marker(conf.pos, { icon }) // 버튼은 기본 레이어 혹은 별도 pane 관리
-             .addTo(this.map)
-             .on('click', (e) => {
-                 L.DomEvent.stopPropagation(e);
-                 this.showDistrictStats(conf.fullName, conf.pos);
-             });
+            L.marker(conf.pos, { icon }).addTo(this.map).on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                this.showDistrictStats(conf.fullName || shortName, conf.pos);
+            });
         });
     },
 
     showDistrictStats(fullName, latlng) {
-    let targets;
-    if (fullName === "화성시 전체") {
-        targets = this.markers.filter(m => (m.properties.adrs || '').includes('화성시'));
-    } else if (fullName === "오산시") {
-        targets = this.markers.filter(m => (m.properties.adrs || '').includes('오산시'));
-    } else {
-        const distKey = fullName.replace('화성시 ', '');
-        const keywords = MapConfig.DISTRICTS[distKey]?.keywords || [];
-        targets = this.markers.filter(m => keywords.some(k => (m.properties.adrs || '').includes(k)));
+        let keyword = fullName.replace('화성시 ', '').replace(' 전체', '').trim();
+        const targets = this.markers.filter(m => {
+            const adrs = m.properties.adrs || '';
+            if (fullName === '화성시 전체') return adrs.includes('화성시');
+            if (fullName === '오산시') return adrs.includes('오산시');
+            return MapConfig.DISTRICTS[keyword]?.keywords?.some(k => adrs.includes(k));
+        });
+
+        const stats = targets.reduce((acc, m) => {
+            acc.s += parseInt(m.properties.stdnt_cnt) || 0;
+            acc.c += parseInt(m.properties.class_cnt) || 0;
+            acc.t += parseInt(m.properties.tchr_cnt) || 0;
+            return acc;
+        }, { s: 0, c: 0, t: 0 });
+
+        L.popup({ className: 'custom-popup stat-popup', pane: 'topPane' }).setLatLng(latlng).setContent(`
+            <div class="popup-content">
+                <div class="popup-title" style="color:#4A90E2;">${fullName}</div>
+                <hr class="popup-hr">
+                <ul class="popup-info-list">
+                    <li><span class="label">학교 수</span> <span class="value"><strong>${targets.length}</strong>개교</span></li>
+                    <li><span class="label">총 학생 수</span> <span class="value"><strong>${stats.s.toLocaleString()}</strong>명</span></li>
+                    <li><span class="label">총 학급 수</span> <span class="value"><strong>${stats.c.toLocaleString()}</strong>개</span></li>
+                    <li><span class="label">총 교사 수</span> <span class="value"><strong>${stats.t.toLocaleString()}</strong>명</span></li>
+                </ul>
+            </div>
+        `).openOn(this.map);
     }
+};
 
-    // 통계 데이터 합산 (학생 수, 교사 수, 학급 수)
-    const stats = targets.reduce((acc, m) => {
-        acc.s += (parseInt(m.properties.stdnt_cnt) || 0);
-        acc.t += (parseInt(m.properties.tchr_cnt) || 0);
-        acc.c += (parseInt(m.properties.class_cnt) || 0);
-        return acc;
-    }, { s: 0, t: 0, c: 0 });
+const AuthManager = {
+    userId: null,
 
-    L.popup({ 
-        className: 'custom-popup stat-popup',
-        pane: 'topPane',
-        autoPan: true,
-        closeButton: true
-    })
-    .setLatLng(latlng)
-    .setContent(`
-        <div class="popup-content">
-            <div class="popup-title" style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">${fullName} 통계</div>
-            <hr class="popup-hr" style="border: 0; border-top: 1px solid #eee; margin: 8px 0;">
-            <ul class="popup-info-list" style="list-style: none; padding: 0; margin: 0; font-size: 14px; line-height: 1.8;">
-                <li><span class="label">• 학교 수:</span> <span class="value"><strong>${targets.length}</strong>개교</span></li>
-                <li><span class="label">• 총 학생 수:</span> <span class="value"><strong>${stats.s.toLocaleString()}</strong>명</span></li>
-                <li><span class="label">• 총 학급 수:</span> <span class="value"><strong>${stats.c.toLocaleString()}</strong>학급</span></li>
-                <li><span class="label">• 총 교사 수:</span> <span class="value"><strong>${stats.t.toLocaleString()}</strong>명</span></li>
-            </ul>
-        </div>
-    `).openOn(this.map);
+    async checkAuth() {
+        try {
+            const res = await fetch('/api/check-auth');
+            if (res.ok) {
+                const data = await res.json();
+                this.userId = data.isLoggedIn ? data.userId : null;
+                this.toggleUI(data.isLoggedIn);
+            }
+        } catch (e) {
+            console.error("세션 확인 실패", e);
+            this.userId = null;
+            this.toggleUI(false);
+        }
+    },
+
+    async login() {
+        const id = document.getElementById('user-id').value;
+        const pw = document.getElementById('user-pw').value;
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, pw })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                this.userId = data.userId || id;
+                this.toggleUI(true);
+            } else {
+                const errorData = await res.json();
+                if (errorData.attempts >= 1) {
+                    this.showFailPopup(id);
+                } else {
+                    alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert("서버 연결 실패");
+        }
+    },
+
+    showFailPopup(id) {
+        const choice = confirm(
+            `비밀번호가 일치하지 않습니다.\n\n` +
+            `확인(OK): 관리자에게 PW 초기화 요청 메세지 보내기\n` +
+            `취소(Cancel): 직접 비밀번호 찾기(ID: ${id})`
+        );
+        if (choice) {
+            this.requestResetPw(id);
+        } else {
+            this.findPw(id);
+        }
+    },
+
+    async requestResetPw(id) {
+        try {
+            const res = await fetch('/api/request-reset-pw', {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id})
+            });
+            if (res.ok) {
+                alert(`관리자에게 ${id}님의 초기화 요청이 전달되었습니다.\n관리자 승인 후 비밀번호는 '1234'로 초기화됩니다.`);
+            }
+        } catch(e) {
+            alert("요청 전송 실패");
+        }
+    },
+
+    async findPw(targetId) {
+        const id = targetId || prompt("비밀번호를 찾을 아이디를 입력하세요.");
+        if (!id) return;
+        const inputID = prompt("본인 확인을 위해 아이디를 다시 입력해주세요.");
+        if (!inputID) return;
+        if (inputID.trim() !== id) return alert("입력하신 아이디가 일치하지 않습니다.");
+
+        try {
+            const res = await fetch('/api/find-pw', {
+                method: 'POST',
+                headers:{'Content-Type': 'application/json'},
+                body: JSON.stringify({id})
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`${id}님의 비밀번호는 [ ${data.pw} ] 입니다.`);
+            } else {
+                alert(data.message || "비밀번호를 찾을 수 없습니다.");
+            }
+        } catch (e) {
+            alert("서버 연결에 실패했습니다.")
+        }
+    },
+
+    async logout() {
+        try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
+        this.userId = null;
+        this.toggleUI(false);
+        location.reload();
+    },
+
+    async register() {
+        const id = document.getElementById('user-id').value;
+        const pw = document.getElementById('user-pw').value;
+        if (!id || !pw) return alert("아이디와 비밀번호를 입력해주세요.");
+
+        try {
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, pw })
+            });
+            const data = await res.json();
+            alert(data.message);
+        } catch (e) { console.error(e); }
+    },
+
+    async changePw() {
+        const newPw = prompt("새로운 비밀번호를 입력하세요.");
+        if (!newPw) return;
+
+        try {
+            const res = await fetch('/api/change-pw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newPw })
+            });
+            if (res.ok) alert("비밀번호 변경 완료!");
+            else alert("변경에 실패했습니다.");
+        } catch (e) { console.error(e); }
+    },
+
+    async saveMemo(schoolName, e) {
+        if (e) { e.stopPropagation(); e.preventDefault(); }
+        const textArea = document.getElementById(`memo-${schoolName}`);
+        if (!textArea) return;
+
+        try {
+            const res = await fetch('/api/memo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schoolName, content: textArea.value })
+            });
+            if (res.ok) alert('메모가 안전하게 저장되었습니다.');
+            else alert('저장에 실패했습니다.');
+        } catch (err) { alert('서버 연결에 실패했습니다.'); }
+    },
+
+    toggleUI(isLoggedIn) {
+        const form = document.getElementById('login-form');
+        const info = document.getElementById('user-info');
+        if (form) form.style.display = isLoggedIn ? 'none' : 'flex';
+        if (info) info.style.display = isLoggedIn ? 'flex' : 'none';
+
+        const changePwBtn = document.getElementById('change-pw-btn');
+        if (changePwBtn) changePwBtn.style.display = isLoggedIn ? 'inline-block' : 'none';
+
+        if (isLoggedIn) {
+            document.getElementById('welcome-msg').innerText = `${this.userId}님`;
+            const adminBtn = document.getElementById('admin-panel-btn');
+            if (this.userId === 'spring' && adminBtn) {
+                adminBtn.style.display = 'inline-block';
+            }
+        }
+
+        // [수정: 즉시 UI 반영] 
+        // 이미 팝업이 열려있다면, 해당 팝업의 메모장 상태와 버튼 상태를 갱신
+        const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
+        if (openPopupTextArea) {
+            openPopupTextArea.disabled = !isLoggedIn;
+            openPopupTextArea.placeholder = isLoggedIn ? "메모를 불러오는 중..." : "로그인 후 이용 가능합니다";
+            
+            // 로그인 직후라면 메모 로드 시도
+            if(isLoggedIn) {
+                 const schoolName = openPopupTextArea.id.replace('memo-', '');
+                 fetch(`/api/memo/${schoolName}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        openPopupTextArea.value = data.content || "";
+                        openPopupTextArea.placeholder = "여기에 메모를 작성하세요";
+                    });
+            } else {
+                openPopupTextArea.value = "";
+            }
+        }
+        // 저장 버튼 토글
+        const saveBtns = document.querySelectorAll('button[id^="btn-save-"]');
+        saveBtns.forEach(btn => btn.style.display = isLoggedIn ? 'block' : 'none');
+    }
+};
+
+const FilterManager = {
+    selectedTypes: new Set(),
+    selectedDistricts: new Set(),
+
+    init() {
+        document.querySelectorAll('.filter-tag').forEach(tag => {
+            tag.onclick = () => {
+                const type = tag.getAttribute('data-type');
+                tag.classList.toggle('active');
+                this.selectedTypes.has(type) ? this.selectedTypes.delete(type) : this.selectedTypes.add(type);
+            };
+        });
+
+        document.querySelectorAll('.dist-tag').forEach(tag => {
+            tag.onclick = () => {
+                const dist = tag.getAttribute('data-dist');
+                tag.classList.toggle('active');
+                this.selectedDistricts.has(dist) ? this.selectedDistricts.delete(dist) : this.selectedDistricts.add(dist);
+            };
+        });
+    },
+
+    open() { document.getElementById('search-dashboard').style.display = 'flex'; },
+    close() { document.getElementById('search-dashboard').style.display = 'none'; },
+    
+    reset() {
+        this.selectedTypes.clear();
+        this.selectedDistricts.clear();
+        document.querySelectorAll('.filter-tag, .dist-tag').forEach(tag => tag.classList.remove('active'));
+        document.getElementById('adv-name-input').value = '';
+        ['min-s', 'min-c', 'min-sc', 'min-t', 'min-st', 'max-s', 'max-c', 'max-sc', 'max-t', 'max-st'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.value = '';
+        });
+    },
+
+    execute() {
+        const nameQuery = document.getElementById('adv-name-input').value.trim();
+        const getVal = (id, def) => Number(document.getElementById(id)?.value) || def;
+        const ranges = {
+            s: [getVal('min-s', 0), getVal('max-s', Infinity)],
+            c: [getVal('min-c', 0), getVal('max-c', Infinity)],
+            sc: [getVal('min-sc', 0), getVal('max-sc', Infinity)],
+            t: [getVal('min-t', 0), getVal('max-t', Infinity)],
+            st: [getVal('min-st', 0), getVal('max-st', Infinity)]
+        };
+
+        const filtered = MapManager.markers.filter(m => {
+            const p = m.properties;
+            const matchName = !nameQuery || p.name.includes(nameQuery);
+            const matchType = this.selectedTypes.size === 0 || this.selectedTypes.has(p.type);
+            let matchDist = this.selectedDistricts.size === 0 || Array.from(this.selectedDistricts).some(distKey => {
+                if (distKey === "오산시") return p.adrs.includes("오산시");
+                return MapConfig.DISTRICTS[distKey]?.keywords?.some(k => p.adrs.includes(k));
+            });
+
+            const sVal = Number(p.stdnt_cnt) || 0;
+            const cVal = Number(p.class_cnt) || 0;
+            const scVal = Number(p.stdnt_per_cl) || 0;
+            const tVal = Number(p.tchr_cnt) || 0;
+            const stVal = Number(p.stdnt_per_tchr) || 0;
+
+            return matchName && matchType && matchDist &&
+                   (sVal >= ranges.s[0] && sVal <= ranges.s[1]) &&
+                   (cVal >= ranges.c[0] && cVal <= ranges.c[1]) &&
+                   (tVal >= ranges.t[0] && tVal <= ranges.t[1]) &&
+                   (scVal >= ranges.sc[0] && scVal <= ranges.sc[1]) &&
+                   (stVal >= ranges.st[0] && stVal <= ranges.st[1]);
+        });
+
+        this.close();
+        MapManager.cluster.clearLayers();
+
+        if (filtered.length === 0) {
+            alert("조건에 맞는 학교가 없습니다.");
+            MapManager.markers.forEach(m => MapManager.cluster.addLayer(m));
+        } else if (filtered.length === 1) {
+            const target = filtered[0];
+            MapManager.cluster.addLayer(target);
+            MapManager.map.setView(target.getLatLng(), 16);
+            setTimeout(() => target.openPopup(), 400);
+        } else {
+            filtered.forEach(m => MapManager.cluster.addLayer(m));
+            MapManager.map.fitBounds(L.featureGroup(filtered).getBounds().pad(0.2));
+            ResultPageManager.open(filtered);
+        }
+    }
+};
+
+const ResultPageManager = {
+    open(results) {
+        const container = document.getElementById('results-list-container');
+        const title = document.getElementById('results-count-title');
+        if (title) title.innerText = `검색 결과 (${results.length}개)`;
+        if (!container) return;
+
+        container.innerHTML = '';
+        [...results].sort((a, b) => a.properties.name.localeCompare(b.properties.name, 'ko')).forEach(m => {
+            const p = m.properties;
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            card.innerHTML = `
+                <div style="color:#f39c12; font-size:12px;">${p.type}</div>
+                <div style="font-size:18px; font-weight:bold;">${p.name}</div>
+                <div style="font-size:13px; color:#ccc;">${p.adrs}</div>`;
+            card.onclick = () => { this.close(); this.focusSchool(m); };
+            container.appendChild(card);
+        });
+        document.getElementById('search-results-page').style.display = 'flex';
+    },
+    close() { document.getElementById('search-results-page').style.display = 'none'; },
+    focusSchool(marker) {
+        MapManager.map.setView(marker.getLatLng(), 16);
+        setTimeout(() => marker.openPopup(), 400);
+    }
+};
+
+const AdminManager = {
+    async open() {
+        const password = prompt("관리자 보안 코드를 입력하세요.");
+        if (password !== "0327") return alert("인증 실패");
+        
+        // [수정: 시각화된 모달창 사용]
+        document.getElementById('admin-modal').style.display = 'flex';
+        this.loadResetRequests(); // 기본으로 요청 목록 로드
+    },
+
+    close() {
+        document.getElementById('admin-modal').style.display = 'none';
+    },
+
+    // 1. 유저 관리 UI
+    async manageUsers() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = '<p>데이터 로딩중...</p>';
+        const res = await fetch('/api/admin/users');
+        const data = await res.json();
+        
+        let html = `<h3>회원 관리</h3><table class="admin-table"><thead><tr><th>ID</th><th>Action</th></tr></thead><tbody>`;
+        data.users.forEach(u => {
+            html += `<tr>
+                <td>${u.id}</td>
+                <td><button onclick="AdminManager.deleteUser('${u.id}')" style="background:#e74c3c;color:white;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;">강제탈퇴</button></td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+        content.innerHTML = html;
+    },
+
+    async deleteUser(id) {
+        if(!confirm(`${id}님을 탈퇴시킬까요?`)) return;
+        await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+        this.manageUsers(); // 리프레시
+    },
+
+    // 2. 초기화 요청 승인 UI
+    async loadResetRequests() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = '<p>데이터 로딩중...</p>';
+        
+        const res = await fetch('/api/admin/reset-requests');
+        const data = await res.json();
+        
+        if (!data.requests || data.requests.length === 0) {
+             content.innerHTML = '<h3>비밀번호 초기화 요청</h3><p>대기 중인 요청이 없습니다.</p>';
+             return;
+        }
+
+        let html = `<h3>비밀번호 초기화 요청</h3><table class="admin-table"><thead><tr><th>ID</th><th>요청일시</th><th>승인</th></tr></thead><tbody>`;
+        data.requests.forEach(r => {
+            html += `<tr>
+                <td>${r.id}</td>
+                <td>${r.requestDate}</td>
+                <td><button onclick="AdminManager.approveOne('${r.id}')" style="background:#2ecc71;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">초기화 승인 (1234)</button></td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+        content.innerHTML = html;
+    },
+
+    async approveOne(id) {
+        const approveRes = await fetch('/api/admin/approve-reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, tempPw: '1234' })
+        });
+        if (approveRes.ok) {
+            alert(`${id}님 비밀번호가 '1234'로 초기화되었습니다.`);
+            this.loadResetRequests(); // 리프레시
+        }
+    },
+    
+    // 3. 전체 메모 열람 UI
+    async viewAllMemos() {
+        const content = document.getElementById('admin-content');
+        content.innerHTML = '<p>메모 로딩중...</p>';
+        const res = await fetch('/api/admin/memos');
+        const data = await res.json();
+        
+        let html = `<h3>전체 사용자 메모</h3><table class="admin-table"><thead><tr><th>ID</th><th>학교</th><th>내용</th></tr></thead><tbody>`;
+        data.memos.forEach(m => {
+            html += `<tr><td>${m.userId}</td><td>${m.schoolName}</td><td>${m.content}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        content.innerHTML = html;
     }
 };
 
 const App = {
     async init() {
+        await AuthManager.checkAuth();
+        FilterManager.init();
+
         MapManager.init();
-        UIManager.init();
         try {
-            const [pointRows, legendRows] = await Promise.all([
+            const [pRows, lRows, hRows] = await Promise.all([
                 this.fetchJson(MapConfig.GIDS.POINTS),
-                this.fetchJson(MapConfig.GIDS.LEGEND)
+                this.fetchJson(MapConfig.GIDS.LEGEND),
+                this.fetchJson(MapConfig.GIDS.HEADER)
             ]);
-            pointRows.forEach(row => {
+            if (hRows) HelpManager.init(hRows);
+
+            const processedPositions = [];
+            const collisionThreshold = 0.0005; 
+
+            pRows.forEach((row, index) => {
                 const c = row.c;
                 if (!c || !c[1]?.v) return;
                 const p = {
-                    type: c[3]?.v, 
-                    name: c[4]?.v, 
-                    adrs: c[5]?.v,
-                    stdnt_cnt: c[6]?.v, 
-                    stdnt_per_cl: c[7]?.v, // 사진 2의 H열(index 7) 추가
-                    tchr_cnt: c[8]?.v, 
-                    stdnt_per_tchr: c[9]?.v,
-                    shape: c[10]?.v || '⬤', 
-                    color: c[11]?.v || '#333', 
-                    url: c[13]?.v,
-                    class_cnt: c[14]?.v // 사진 2의 O열(index 14)
+                    type: c[3]?.v, name: c[4]?.v, adrs: c[5]?.v,
+                    stdnt_cnt: c[6]?.v, stdnt_per_cl: c[7]?.v, tchr_cnt: c[8]?.v, stdnt_per_tchr: c[9]?.v,
+                    shape: c[10]?.v || '●', color: c[11]?.v || '#333', url: c[13]?.v,
+                    class_cnt: c[14]?.v, principal: c[16]?.v, vice_principal: c[17]?.v, chief_of_administration: c[18]?.v
                 };
-                const marker = MapManager.createMarker(c[1].v, c[2].v, p);
-                MapManager.markers.push(marker);
-                MapManager.cluster.addLayer(marker);
+
+                const jitterRange = 0.00015;
+                let lat = parseFloat(c[1].v) + (Math.random() - 0.5) * jitterRange;
+                let lng = parseFloat(c[2].v) + (Math.random() - 0.5) * jitterRange;
+
+                let isColliding = false;
+                for (const pos of processedPositions) {
+                    const dist = Math.sqrt(Math.pow(lat - pos.lat, 2) + Math.pow(lng - pos.lng, 2));
+                    if (dist < collisionThreshold) {
+                        isColliding = true;
+                        break; 
+                    }
+                }
+                
+                processedPositions.push({lat, lng});
+
+                const m = MapManager.createMarker(lat, lng, p, index, isColliding);
+                MapManager.markers.push(m);
+                MapManager.cluster.addLayer(m);
             });
-            this.renderLegend(legendRows);
-            this.loadBoundaries();
+
+            this.renderLegend(lRows);
+            MapManager.loadBoundaries();
             MapManager.addDistrictButtons();
-        } catch (err) { console.error("초기화 실패:", err); }
+            SearchManager.init();
+        } catch (e) { console.error(e); }
     },
     async fetchJson(gid) {
-        const response = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`);
-        const text = await response.text();
-        return JSON.parse(text.substring(47).slice(0, -2)).table.rows;
+        const res = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`);
+        const txt = await res.text();
+        return JSON.parse(txt.substring(47).slice(0, -2)).table.rows;
     },
     renderLegend(rows) {
         const container = document.getElementById('legend');
-        container.innerHTML = '';
-        const allBtn = document.createElement('div');
-        allBtn.className = 'legend-item all-view-btn';
-        allBtn.innerHTML = `<span>⏪</span> 전체 보기`;
-        allBtn.onclick = () => {
-            MapManager.cluster.clearLayers();
-            MapManager.markers.forEach(m => MapManager.cluster.addLayer(m));
-        };
-        container.appendChild(allBtn);
+        container.innerHTML = '<div class="legend-item" onclick="location.reload()" style="cursor:pointer;font-weight:bold;margin-bottom:8px;color:#00427a;">⏪ 전체 보기</div>';
         rows.forEach(row => {
             const type = row.c[1]?.v;
             if (!type) return;
             const item = document.createElement('div');
             item.className = 'legend-item';
-            item.innerHTML = `<span style="color:${row.c[3]?.v}">${row.c[2]?.v}</span> ${type}`;
+            item.innerHTML = `<span style="color:${row.c[3]?.v || '#333'}">${row.c[2]?.v || '●'}</span>${type}`;
             item.onclick = () => {
                 MapManager.cluster.clearLayers();
                 MapManager.markers.filter(m => m.properties.type === type).forEach(m => MapManager.cluster.addLayer(m));
             };
             container.appendChild(item);
-        });
-    },
-    async loadBoundaries() {
-        const res = await fetch('data/hwao.geojson');
-        const data = await res.json();
-        const seenNames = new Set();
-        const filteredFeatures = data.features.filter(f => {
-            const name = f.properties.adm_nm;
-            if (seenNames.has(name)) return false;
-            seenNames.add(name);
-            return true;
-        });
-        data.features = filteredFeatures;
-
-        L.geoJSON(data, {
-            style: (f) => {
-                const nm = f.properties.adm_nm || '';
-                let color = MapConfig.DISTRICTS["오산시"].color;
-                for (const [key, val] of Object.entries(MapConfig.DISTRICTS)) {
-                    if (val.keywords?.some(k => nm.includes(k))) { color = val.color; break; }
-                }
-                return { fillColor: color, fillOpacity: 0.3, color: "#bbb", weight: 1 };
-            },
-            onEachFeature: (f, l) => {
-                const center = turf.pointOnFeature(f).geometry.coordinates;
-                const tooltip = L.tooltip({ permanent: true, className: 'boundary-label', direction: 'center', opacity: 0 })
-                                 .setContent(f.properties.adm_nm).setLatLng([center[1], center[0]]);
-                tooltip.addTo(MapManager.map);
-                MapManager.tooltipLayers.push(tooltip);
-            }
-        }).addTo(MapManager.boundaryGroup);
-    }
-};
-
-const UIManager = {
-    init() {
-        document.getElementById('toggle-boundary')?.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                MapManager.map.addLayer(MapManager.boundaryGroup);
-                if (MapManager.map.getZoom() >= 14) MapManager.tooltipLayers.forEach(l => l.setOpacity(1));
-            } else {
-                MapManager.map.removeLayer(MapManager.boundaryGroup);
-                MapManager.tooltipLayers.forEach(l => l.setOpacity(0));
-            }
         });
     }
 };
