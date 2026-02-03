@@ -1,100 +1,79 @@
-header {
-    position: relative;
-    margin: 0;
-    padding: 1rem;
-    background-color: #ffffff;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    box-shadow: 0px 2px 12px rgba(0,0,0,0.1);
-    z-index: 1200;
+/* 헤더 전체 컨테이너 */
+.header-banner-container {
+    position: absolute; top: 0; left: 0; width: 100%;
+    z-index: 1100; pointer-events: none;
+    display: flex; justify-content: center;
 }
 
-.logo-left {
-    position: absolute;
-    height: 22px;
-    left: 22px;
-    top: 15px;
+/* 파란색 쉐이프 (배경) */
+.header-shape {
+    background-color: #00427a;
+    color: #ffffff;
+    
+    /* 기존보다 padding 조정 */
+    padding: 10px 30px 12px 20px; 
+    border-bottom-left-radius: 25px;
+    border-bottom-right-radius: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    pointer-events: auto;
+    
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 10px; 
+    
+    position: relative; /* 도움말 버튼 위치 기준점 */
+    min-width: 280px;
+    max-width: 95%;
 }
 
-.logo-right {
-    position: absolute;
-    height: 28px;
-    right: 22px;
-    top: 12px;
+.logo-img { 
+    height: 28px; 
+    width: auto;
+    display: block; 
 }
 
-.header_text {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 16px;
-    font-weight: bold;
+.header_text { 
+    font-size: 18px; 
+    font-weight: 800; 
+    letter-spacing: -0.5px;
+    color: #ffffff;
+    white-space: nowrap;
+    line-height: 1; 
+    padding-top: 2px;
 }
 
-
-/* 행정동 경계 및 행정동명 토글 버튼 */
-.toggle-container {
-    display: flex;
-    align-items: center;
-    margin: 10px;
-    position: absolute;
-    top: 120px;
-    right: 10px;
-    z-index: 2000;
-    border: 2px solid white;
-    box-sizing: border-box; /* 테두리를 크기에 포함 */
-    border-radius: 20px;
-  }
-  
-  .toggle-checkbox {
-    display: none; /* 기본 체크박스 숨김 */
-  }
-  
-  .toggle-label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    background-color: #ccc;
-    border-radius: 20px;
-    width: 60px;
-    height: 30px;
-    position: relative;
-    transition: background-color 0.3s ease;
-  }
-  
-  .toggle-label::after {
-    content: '';
-    position: absolute;
-    width: 26px;
-    height: 26px;
-    background-color: white;
+/* 도움말 버튼 (파란 마커 안쪽 왼쪽 혹은 옆) */
+.help-button {
+    /* HTML 구조 변경으로 이제 header-shape 내부에 있음 */
+    /* 별도의 absolute position 대신 flex 흐름을 따르거나, 필요시 조정 */
+    width: 28px; height: 28px;
+    background: rgba(255, 255, 255, 0.2); /* 반투명 흰색 */
+    border: 1px solid rgba(255, 255, 255, 0.5);
     border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: transform 0.3s ease;
-  }
-  
-  .toggle-checkbox:checked + .toggle-label {
-    background-color: #007bff;
-  }
-  
-  .toggle-checkbox:checked + .toggle-label::after {
-    transform: translateX(30px);
-  }
-  
-  .toggle-text {
-    position: absolute;
-    background-color: white;
-    width: 64px;
-    text-align: center;
-    padding: 20px 4px 2px 4px;
-    border-radius: 6px;
-    top: 144px;
-    right: 20px;
-    margin-left: 10px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #333;
-    z-index: 1999;
-  }
+    color: #fff;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    margin-right: 5px; /* 로고와의 간격 */
+}
+
+.help-button:hover {
+    background: #fff;
+    color: #00427a;
+    transform: scale(1.1);
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+    .header-shape {
+        padding: 8px 20px 10px 15px;
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
+    }
+    .logo-img { height: 22px; }
+    .header_text { font-size: 15px; }
+    .help-button { width: 24px; height: 24px; font-size: 14px; }
+}
