@@ -1,7 +1,3 @@
-/* ==========================================
-   기존 코드 유지 (MapConfig, HelpManager)
-   ========================================== */
-
 const MapConfig = {
     SHEET_ID: '1xzpPpZh00DCC6zl0PhVx7uGab_6-9qkPhTHqcz5yuIE',
     GIDS: { HEADER: '1120810254', POINTS: '1290947643', LEGEND: '882261582' },
@@ -185,16 +181,30 @@ const MapManager = {
         this.map.on('popupopen', async (e) => {
             const popupNode = e.popup.getElement();
             const textarea = popupNode.querySelector('textarea[id^="memo-"]');
-            
-            if (textarea) {
+            const saveBtn = popupNode.querySelector('.memo-save-btn');
+            const favBtn = popupNode.querySelector('.fav-toggle-btn');
+
+            if (textarea && saveBtn) {
                 const schoolName = textarea.id.replace('memo-', '');
-                
+                const isLoggedIn = AuthManager.userId !== null;
+
+                if (isLoggedIn && favBtn) {
+                    try {
+                        const favRes = await fetch(`/api/favorite/${encodeURIComponent(schoolName)}`);
+                        const favData = await favRes.json();
+                        this.updateFavoriteUI(schoolName, favData.isFavorite);
+                    } catch(err) { console.error("즐겨찾기 로드 실패"); }
+                }
+
+                textarea.disabled = !isLoggedIn;
+                saveBtn.disabled = !isLoggedIn;
+                saveBtn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+
                 // 로그인 상태에 따라 초기 UI 설정
-                if (AuthManager.userId) {
-                    textarea.disabled = false;
+                if (isLoggedIn) {
                     textarea.placeholder = "메모를 불러오는 중...";
                     try {
-                        const res = await fetch(`/api/memo/${schoolName}`);
+                        const res = await fetch(`/api/memo/${encodeURIComponent(schoolName)}`);
                         const data = await res.json();
                         textarea.value = data.content || "";
                         textarea.placeholder = "여기에 메모를 작성하세요";
@@ -202,12 +212,83 @@ const MapManager = {
                         textarea.placeholder = "메모 로드 실패";
                     }
                 } else {
-                    textarea.disabled = true;
-                    textarea.value = ""; // 로그아웃 상태면 비움
+                    textarea.value = ""; 
                     textarea.placeholder = "로그인 후 이용 가능합니다";
                 }
             }
         });
+
+        const favOnlyBtn = document.getElementById('toggle-favorite-only');
+        if (favOnlyBtn) {
+            favOnlyBtn.addEventListener('change', (e) => {
+                this.filterFavorites(e.target.checked);
+            });
+        }
+    },
+
+    async filterFavorites(showOnlyFav) {
+        if (showOnlyFav && !AuthManager.userId) {
+            alert("로그인이 필요한 기능입니다.");
+            document.getElementById('toggle-favorite-only').checked = false;
+            return;
+        }
+
+        try {
+            let favoriteNames = [];
+            if (showOnlyFav) {
+                const res = await fetch('/api/my-favorites');
+                const data = await res.json();
+                favoriteNames = data.favorites || [];
+            }
+
+            this.cluster.clearLayers();
+
+            this.markers.forEach(marker => {
+                if (!showOnlyFav) {
+                    this.cluster.addLayer(marker);
+                } else {
+                    if (favoriteNames.includes(marker.properties.name)) {
+                        this.cluster.addLayer(marker);
+                    }
+                }
+            });
+        } catch(err) {
+            console.error("필터링 중 오류:", err);
+            alert("목록을 불러오는데 실패했습니다.");
+        }
+    },
+
+    async toggleFavorite(schoolName, event) {
+        if (event) event.stopPropagation();
+
+        if (AuthManager.userId === null) {
+            alert("로그인 후 이용 가능합니다.");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/favorite/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({schoolName})
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.updateFavoriteUI(schoolName, data.isFavorite);
+            } else {
+                throw new Error("처리 실패");
+            }
+        } catch(err) {
+            alert("즐겨찾기 변경 실패");
+        }
+    },
+
+    updateFavoriteUI(schoolName, isFavorite) {
+        const favBtn = document.getElementById(`fav-btn-${schoolName}`);
+        if (favBtn) {
+            favBtn.innerText = isFavorite ? "★": "☆";
+            favBtn.style.color = isFavorite ? "gold": "#ccc";
+        }
     },
 
     createMarker(lat, lng, p, index, isColliding) {
@@ -234,112 +315,56 @@ const MapManager = {
     },
 
     /* MapManager 객체 내부의 makePopupHtml 함수 수정 */
-makePopupHtml(p) {
-    const principal = p.principal || 'No Data';
-    const vicePrincipal = p.vice_principal || 'No Data';
-    const chiefofadministration = p.chief_of_administration || 'No Data';
+    makePopupHtml(p) {
+        const principal = p.principal || 'No Data';
+        const vicePrincipal = p.vice_principal || 'No Data';
+        const chiefofadministration = p.chief_of_administration || 'No Data';
 
-    const linkHtml = p.url 
-        ? `<a href="${p.url}" target="_blank" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>` 
-        : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
+        const linkHtml = p.url 
+            ? `<a href="${p.url}" target="_blank" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>` 
+            : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
 
-    const isLoggedIn = AuthManager.userId !== null;
-    
-    // [수정] 버튼 스타일: 로그인 시 파란색, 비로그인 시 회색(disabled)
-    const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
-    const btnDisabled = isLoggedIn ? '' : 'disabled';
-
-    return `
-        <div class="popup-content compact-mode">
-            <div class="popup-header">
-                <div class="popup-category">${p.type || ''}</div>
-                ${linkHtml}
-            </div>
-
-            <div class="popup-title">${p.name || ''}</div>
-            <div class="popup-adrs">${p.adrs || ''}</div>
-            
-            <hr class="popup-hr">
-            
-            <div class="popup-admin-row">
-                <span>교장(원장) <strong>${principal}</strong></span>
-                <span class="divider">|</span>
-                <span>교감(원감) <strong>${vicePrincipal}</strong></span>
-                <span class="divider">|</span>
-                <span>행정실장 <strong>${chiefofadministration}</strong></span>
-            </div>
-            
-            <ul class="popup-info-list grid-list">
-                <li><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
-                <li><span class="label">교사 수</span> <span class="value"><strong>${p.tchr_cnt || 0}</strong>명</span></li>
-                <li><span class="label">학급 수</span> <span class="value"><strong>${p.class_cnt || 0}</strong>개</span></li>
-                <li><span class="label">학급당 학생 수</span> <span class="value"><strong>${p.stdnt_per_cl || 0}</strong>명</span></li>
-                <li><span class="label">교사 1인당 학생 수</span> <span class="value"><strong>${p.stdnt_per_tchr || 0}</strong>명</span></li>
-            </ul>
-
-            <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
-                <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
-                <textarea id="memo-${p.name}" 
-                    style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
-                    placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
-                    disabled></textarea>
-                <button id="btn-save-${p.name}" class="memo-save-btn"
-                    onclick="AuthManager.saveMemo('${p.name}', event)" 
-                    style="background-color: ${btnBg};"
-                    ${btnDisabled}>
-                    메모 저장
-                </button>
-            </div>
-        </div>
-    `;
-},
-
-/* AuthManager 객체 내부의 toggleUI 함수 수정 */
-toggleUI(isLoggedIn) {
-    const form = document.getElementById('login-form');
-    const info = document.getElementById('user-info');
-    if (form) form.style.display = isLoggedIn ? 'none' : 'flex';
-    if (info) info.style.display = isLoggedIn ? 'flex' : 'none';
-
-    const changePwBtn = document.getElementById('change-pw-btn');
-    if (changePwBtn) changePwBtn.style.display = isLoggedIn ? 'inline-block' : 'none';
-
-    if (isLoggedIn) {
-        document.getElementById('welcome-msg').innerText = `${this.userId}님`;
-        const adminBtn = document.getElementById('admin-panel-btn');
-        if (this.userId === 'spring' && adminBtn) {
-            adminBtn.style.display = 'inline-block';
-        }
-    }
-
-    // [수정] 팝업이 열려있다면 즉시 상태 반영
-    const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
-    if (openPopupTextArea) {
-        openPopupTextArea.disabled = !isLoggedIn;
-        openPopupTextArea.placeholder = isLoggedIn ? "메모를 불러오는 중..." : "로그인 후 이용 가능합니다";
+        const isLoggedIn = AuthManager.userId !== null;
         
-        if(isLoggedIn) {
-             const schoolName = openPopupTextArea.id.replace('memo-', '');
-             fetch(`/api/memo/${schoolName}`)
-                .then(res => res.json())
-                .then(data => {
-                    openPopupTextArea.value = data.content || "";
-                    openPopupTextArea.placeholder = "여기에 메모를 작성하세요";
-                });
-        } else {
-            openPopupTextArea.value = "";
-        }
-    }
+        // [수정] 버튼 스타일: 로그인 시 파란색, 비로그인 시 회색(disabled)
+        const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
+        const btnDisabled = isLoggedIn ? '' : 'disabled';
 
-    // [수정] 저장 버튼 표시 제어 (display:none 대신 disabled 토글)
-    const saveBtns = document.querySelectorAll('button[id^="btn-save-"]');
-    saveBtns.forEach(btn => {
-        // isLoggedIn이 true면 disabled 제거(활성), false면 disabled 추가(비활성)
-        btn.disabled = !isLoggedIn;
-        btn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
-        btn.style.display = 'block'; // 강제로 보이게 함
-    });
-},
+        return `
+            <div class="popup-content compact-mode">
+                <div class="popup-header">
+                    <div class="popup-category">${p.type || ''}</div>
+                    ${linkHtml}
+                </div>
+
+                <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div class="popup-title" style="margin: 0;">${p.name || ''}</div>
+                    <button id="fav-btn-${p.name}" class="fav-toggle-btn" 
+                            onclick="MapManager.toggleFavorite('${p.name}', event)"
+                            style="background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc;">
+                        ☆
+                    </button>
+                </div>
+                
+                <div class="popup-adrs">${p.adrs || ''}</div>
+                
+                <hr class="popup-hr">
+                <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
+                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
+                    <textarea id="memo-${p.name}" 
+                        style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
+                        placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
+                        disabled></textarea>
+                    <button id="btn-save-${p.name}" class="memo-save-btn"
+                        onclick="AuthManager.saveMemo('${p.name}', event)" 
+                        style="background-color: ${btnBg};"
+                        ${btnDisabled}>
+                        메모 저장
+                    </button>
+                </div>
+            </div>
+        `;
+    },
 
     async loadBoundaries() {
         try {
@@ -479,13 +504,11 @@ const AuthManager = {
         const choice = confirm(
             `비밀번호가 일치하지 않습니다.\n\n` +
             `확인(OK): 관리자에게 PW 초기화 요청 메세지 보내기\n` +
-            `취소(Cancel): 직접 비밀번호 찾기(ID: ${id})`
+            `취소(Cancel): 닫기`
         );
         if (choice) {
             this.requestResetPw(id);
-        } else {
-            this.findPw(id);
-        }
+        } 
     },
 
     async requestResetPw(id) {
@@ -504,27 +527,7 @@ const AuthManager = {
     },
 
     async findPw(targetId) {
-        const id = targetId || prompt("비밀번호를 찾을 아이디를 입력하세요.");
-        if (!id) return;
-        const inputID = prompt("본인 확인을 위해 아이디를 다시 입력해주세요.");
-        if (!inputID) return;
-        if (inputID.trim() !== id) return alert("입력하신 아이디가 일치하지 않습니다.");
-
-        try {
-            const res = await fetch('/api/find-pw', {
-                method: 'POST',
-                headers:{'Content-Type': 'application/json'},
-                body: JSON.stringify({id})
-            });
-            const data = await res.json();
-            if (res.ok) {
-                alert(`${id}님의 비밀번호는 [ ${data.pw} ] 입니다.`);
-            } else {
-                alert(data.message || "비밀번호를 찾을 수 없습니다.");
-            }
-        } catch (e) {
-            alert("서버 연결에 실패했습니다.")
-        }
+        alert("보안을 위해 비밀번호는 암호화되어 저장됩니다. 관리자도 원래 비밀번호를 알 수 없습니다.\n\n[초기화 요청 버튼을 눌러 임시 비밀번호를 발급받으세요.");
     },
 
     async logout() {
@@ -598,17 +601,15 @@ const AuthManager = {
             }
         }
 
-        // [수정: 즉시 UI 반영] 
-        // 이미 팝업이 열려있다면, 해당 팝업의 메모장 상태와 버튼 상태를 갱신
+        // [수정] 팝업이 열려있다면 즉시 상태 반영
         const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
         if (openPopupTextArea) {
             openPopupTextArea.disabled = !isLoggedIn;
             openPopupTextArea.placeholder = isLoggedIn ? "메모를 불러오는 중..." : "로그인 후 이용 가능합니다";
             
-            // 로그인 직후라면 메모 로드 시도
             if(isLoggedIn) {
-                 const schoolName = openPopupTextArea.id.replace('memo-', '');
-                 fetch(`/api/memo/${schoolName}`)
+                const schoolName = openPopupTextArea.id.replace('memo-', '');
+                fetch(`/api/memo/${schoolName}`)
                     .then(res => res.json())
                     .then(data => {
                         openPopupTextArea.value = data.content || "";
@@ -618,9 +619,15 @@ const AuthManager = {
                 openPopupTextArea.value = "";
             }
         }
-        // 저장 버튼 토글
+
+        // [수정] 저장 버튼 표시 제어 (display:none 대신 disabled 토글)
         const saveBtns = document.querySelectorAll('button[id^="btn-save-"]');
-        saveBtns.forEach(btn => btn.style.display = isLoggedIn ? 'block' : 'none');
+        saveBtns.forEach(btn => {
+            // isLoggedIn이 true면 disabled 제거(활성), false면 disabled 추가(비활성)
+            btn.disabled = !isLoggedIn;
+            btn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+            btn.style.display = 'block'; // 강제로 보이게 함
+        });
     }
 };
 
@@ -743,39 +750,45 @@ const ResultPageManager = {
 const AdminManager = {
     async open() {
         const password = prompt("관리자 보안 코드를 입력하세요.");
+        // 보안 코드는 예시입니다. 실제 배포 시에는 서버 세션으로만 검증하세요.
         if (password !== "0327") return alert("인증 실패");
         
-        // [수정: 시각화된 모달창 사용]
-        document.getElementById('admin-modal').style.display = 'flex';
-        this.loadResetRequests(); // 기본으로 요청 목록 로드
+        const modal = document.getElementById('admin-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            this.loadResetRequests(); // 기본으로 요청 목록 로드
+        }
     },
 
     close() {
-        document.getElementById('admin-modal').style.display = 'none';
+        const modal = document.getElementById('admin-modal');
+        if (modal) modal.style.display = 'none';
     },
 
     // 1. 유저 관리 UI
     async manageUsers() {
         const content = document.getElementById('admin-content');
         content.innerHTML = '<p>데이터 로딩중...</p>';
-        const res = await fetch('/api/admin/users');
-        const data = await res.json();
-        
-        let html = `<h3>회원 관리</h3><table class="admin-table"><thead><tr><th>ID</th><th>Action</th></tr></thead><tbody>`;
-        data.users.forEach(u => {
-            html += `<tr>
-                <td>${u.id}</td>
-                <td><button onclick="AdminManager.deleteUser('${u.id}')" style="background:#e74c3c;color:white;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;">강제탈퇴</button></td>
-            </tr>`;
-        });
-        html += `</tbody></table>`;
-        content.innerHTML = html;
+        try {
+            const res = await fetch('/api/admin/users');
+            const data = await res.json();
+            
+            let html = `<h3>회원 관리</h3><table class="admin-table"><thead><tr><th>ID</th><th>Action</th></tr></thead><tbody>`;
+            data.users.forEach(u => {
+                html += `<tr>
+                    <td>${u.id}</td>
+                    <td><button onclick="AdminManager.deleteUser('${u.id}')" class="admin-btn-delete">강제탈퇴</button></td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            content.innerHTML = html;
+        } catch (e) { content.innerHTML = '<p>로딩 실패</p>'; }
     },
 
     async deleteUser(id) {
         if(!confirm(`${id}님을 탈퇴시킬까요?`)) return;
         await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-        this.manageUsers(); // 리프레시
+        this.manageUsers();
     },
 
     // 2. 초기화 요청 승인 UI
@@ -783,74 +796,94 @@ const AdminManager = {
         const content = document.getElementById('admin-content');
         content.innerHTML = '<p>데이터 로딩중...</p>';
         
-        const res = await fetch('/api/admin/reset-requests');
-        const data = await res.json();
-        
-        if (!data.requests || data.requests.length === 0) {
-             content.innerHTML = '<h3>비밀번호 초기화 요청</h3><p>대기 중인 요청이 없습니다.</p>';
-             return;
-        }
+        try {
+            const res = await fetch('/api/admin/reset-requests');
+            const data = await res.json();
+            
+            if (!data.requests || data.requests.length === 0) {
+                 content.innerHTML = '<h3>비밀번호 초기화 요청</h3><p>대기 중인 요청이 없습니다.</p>';
+                 return;
+            }
 
-        let html = `<h3>비밀번호 초기화 요청</h3><table class="admin-table"><thead><tr><th>ID</th><th>요청일시</th><th>승인</th></tr></thead><tbody>`;
-        data.requests.forEach(r => {
-            html += `<tr>
-                <td>${r.id}</td>
-                <td>${r.requestDate}</td>
-                <td><button onclick="AdminManager.approveOne('${r.id}')" style="background:#2ecc71;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">초기화 승인 (1234)</button></td>
-            </tr>`;
-        });
-        html += `</tbody></table>`;
-        content.innerHTML = html;
+            let html = `<h3>비밀번호 초기화 요청</h3><table class="admin-table"><thead><tr><th>ID</th><th>요청일시</th><th>승인</th></tr></thead><tbody>`;
+            data.requests.forEach(r => {
+                html += `<tr>
+                    <td>${r.id}</td>
+                    <td>${new Date(r.requestDate).toLocaleString()}</td>
+                    <td><button onclick="AdminManager.approveOne('${r.id}')" class="admin-btn-approve">초기화 승인 (1234)</button></td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            content.innerHTML = html;
+        } catch (e) { content.innerHTML = '<p>데이터 로드 오류</p>'; }
     },
 
     async approveOne(id) {
-        const approveRes = await fetch('/api/admin/approve-reset', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, tempPw: '1234' })
-        });
-        if (approveRes.ok) {
-            alert(`${id}님 비밀번호가 '1234'로 초기화되었습니다.`);
-            this.loadResetRequests(); // 리프레시
-        }
+        if(!confirm(`${id}님의 비밀번호를 '1234'로 초기화하시겠습니까?`)) return;
+
+        try {
+            const res = await fetch('/api/admin/approve-reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, tempPw: '1234' }) 
+            });
+            if (res.ok) {
+                alert(`${id}님의 비밀번호가 1234로 초기화되었습니다.`);
+                this.loadResetRequests();
+            }
+        } catch (e) { alert("승인 처리 실패"); }
     },
     
     // 3. 전체 메모 열람 UI
     async viewAllMemos() {
         const content = document.getElementById('admin-content');
         content.innerHTML = '<p>메모 로딩중...</p>';
-        const res = await fetch('/api/admin/memos');
-        const data = await res.json();
-        
-        let html = `<h3>전체 사용자 메모</h3><table class="admin-table"><thead><tr><th>ID</th><th>학교</th><th>내용</th></tr></thead><tbody>`;
-        data.memos.forEach(m => {
-            html += `<tr><td>${m.userId}</td><td>${m.schoolName}</td><td>${m.content}</td></tr>`;
-        });
-        html += `</tbody></table>`;
-        content.innerHTML = html;
+        try {
+            const res = await fetch('/api/admin/memos');
+            const data = await res.json();
+            
+            let html = `<h3>전체 사용자 메모</h3><table class="admin-table"><thead><tr><th>ID</th><th>학교</th><th>내용</th></tr></thead><tbody>`;
+            data.memos.forEach(m => {
+                html += `<tr><td>${m.userId}</td><td>${m.schoolName}</td><td>${m.content}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+            content.innerHTML = html;
+        } catch (e) { content.innerHTML = '<p>로드 실패</p>'; }
     }
 };
 
 const App = {
     async init() {
-        await AuthManager.checkAuth();
-        FilterManager.init();
-
+        console.log("앱 초기화 시작...");
+        
+        // 1. 기초 UI 및 지도 초기 설정
         MapManager.init();
+        FilterManager.init();
+        SearchManager.init(); // 중복 호출 방지를 위해 여기서 한 번만 실행
+
+        // 2. 로그인 세션 확인 (비동기)
+        await AuthManager.checkAuth();
+
         try {
+            // 3. 구글 시트 데이터 로드
             const [pRows, lRows, hRows] = await Promise.all([
                 this.fetchJson(MapConfig.GIDS.POINTS),
                 this.fetchJson(MapConfig.GIDS.LEGEND),
                 this.fetchJson(MapConfig.GIDS.HEADER)
             ]);
-            if (hRows) HelpManager.init(hRows);
 
+            // 도움말 및 범례 생성
+            if (hRows) HelpManager.init(hRows);
+            if (lRows) this.renderLegend(lRows);
+
+            // 4. 학교 마커 생성 및 클러스터 추가
             const processedPositions = [];
             const collisionThreshold = 0.0005; 
 
             pRows.forEach((row, index) => {
                 const c = row.c;
                 if (!c || !c[1]?.v) return;
+
                 const p = {
                     type: c[3]?.v, name: c[4]?.v, adrs: c[5]?.v,
                     stdnt_cnt: c[6]?.v, stdnt_per_cl: c[7]?.v, tchr_cnt: c[8]?.v, stdnt_per_tchr: c[9]?.v,
@@ -870,7 +903,6 @@ const App = {
                         break; 
                     }
                 }
-                
                 processedPositions.push({lat, lng});
 
                 const m = MapManager.createMarker(lat, lng, p, index, isColliding);
@@ -878,20 +910,28 @@ const App = {
                 MapManager.cluster.addLayer(m);
             });
 
-            this.renderLegend(lRows);
-            MapManager.loadBoundaries();
+            // 5. 부가 레이어 로드
+            await MapManager.loadBoundaries();
             MapManager.addDistrictButtons();
-            SearchManager.init();
-        } catch (e) { console.error(e); }
+
+            console.log("앱 초기화 완료.");
+        } catch (e) { 
+            console.error("데이터 로드 중 오류 발생:", e); 
+        }
     },
+
     async fetchJson(gid) {
         const res = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`);
         const txt = await res.text();
+        // 구글 시트 JSON 콜백 데이터 파싱
         return JSON.parse(txt.substring(47).slice(0, -2)).table.rows;
     },
+
     renderLegend(rows) {
         const container = document.getElementById('legend');
+        if (!container) return;
         container.innerHTML = '<div class="legend-item" onclick="location.reload()" style="cursor:pointer;font-weight:bold;margin-bottom:8px;color:#00427a;">⏪ 전체 보기</div>';
+        
         rows.forEach(row => {
             const type = row.c[1]?.v;
             if (!type) return;
@@ -907,4 +947,4 @@ const App = {
     }
 };
 
-window.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => App.init());
