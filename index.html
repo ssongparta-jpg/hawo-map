@@ -11,7 +11,6 @@
   
   <link rel="stylesheet" href="css/header.css" />
   <link rel="stylesheet" href="css/map.css" />
-  <link rel="stylesheet" href="css/layout.css" />
   
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   
@@ -33,33 +32,29 @@
       </div>
     </header>
     
-    <div class="pc-ui-control-panel">
-        
-        <div class="search-container">
-            <div class="search-wrapper">
-                <input type="text" id="schoolSearch" class="search-input-box" placeholder="학교명 검색 (예: 삼괴고)" autocomplete="off" />
-                <div id="searchResults" class="search-results"></div>
-            </div>
-            <button onclick="FilterManager.open()" class="advanced-search-btn" title="상세 검색 열기">
-                상세 검색
-            </button>
+    <div id="auth-area">
+      <div id="login-form">
+        <input type="text" id="user-id" placeholder="ID">
+        <input type="password" id="user-pw" placeholder="PW">
+        <button onclick="AuthManager.login()" class="btn-login">로그인</button>
+        <button onclick="AuthManager.register()" class="btn-join">가입</button>
+      </div>
+      <div id="user-info" style="display:none;">
+        <span id="welcome-msg"></span>
+        <button id="change-pw-btn" onclick="AuthManager.changePw()" style="display:none;">PW변경</button>
+        <button id="admin-panel-btn" onclick="AdminManager.open()" class="btn-admin" style="display: none;">관리자</button>
+        <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
+      </div>
+    </div>
+    
+    <div class="search-container">
+        <div class="search-wrapper">
+            <input type="text" id="schoolSearch" class="search-input-box" placeholder="학교명 검색 (예: 삼괴고)" autocomplete="off" />
+            <div id="searchResults" class="search-results"></div>
         </div>
-
-        <div id="auth-area">
-            <div id="login-form">
-                <input type="text" id="user-id" placeholder="ID">
-                <input type="password" id="user-pw" placeholder="PW">
-                <button onclick="AuthManager.login()" class="btn-login">로그인</button>
-                <button onclick="AuthManager.register()" class="btn-join">가입</button>
-            </div>
-            <div id="user-info" style="display:none;">
-                <span id="welcome-msg"></span>
-                <button id="change-pw-btn" onclick="AuthManager.changePw()" style="display:none;">PW변경</button>
-                <button id="admin-panel-btn" onclick="AdminManager.open()" class="btn-admin" style="display: none;">관리자</button>
-                <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
-            </div>
-        </div>
-
+        <button onclick="FilterManager.open()" class="advanced-search-btn" title="상세 검색 열기">
+            상세 검색
+        </button>
     </div>
 
     <div id="legend" class="legend-floating-box"></div>
@@ -80,9 +75,7 @@
                 <span class="slider"></span>
             </label>
         </div>
-    </div>
-
-    <div id="map"></div>
+    </div><div id="map"></div>
 
     <div id="search-dashboard" class="dashboard-backdrop">
         <div class="dashboard-window">
