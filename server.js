@@ -11,6 +11,7 @@ const SALT_ROUNDS = 10;
 
 // --- 환경 설정 ---
 const PORT = 3000;
+const HOST = '0.0.0.0'; // localhost 대신 0.0.0.0 사용
 const ADMIN_ID = 'spring';
 const ADMIN_PW = '0327';
 
@@ -208,11 +209,11 @@ app.post('/api/admin/approve-reset', isAdmin, async (req, res) => {
 });
 
 // --- 서버 실행 ---
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
     console.log(`
     =========================================
     서버가 정상적으로 시작되었습니다.
-    주소: http://localhost:${PORT}
+    주소: http://내 아이피:${PORT}
     관리자 ID: ${ADMIN_ID}
     =========================================
     `);
