@@ -60,21 +60,29 @@
     <div id="legend" class="legend-floating-box"></div>
 
     <div class="boundary-toggle-container">
-        <span class="switch-label">행정구역 켜기/끄기</span>
-        <label class="toggle-switch">
-            <input type="checkbox" id="toggle-boundary" checked>
-            <span class="slider"></span>
-        </label>
-    </div>
+        <div class="control-row">
+            <span class="switch-label">행정구역 켜기/끄기</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-boundary" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
 
-    <div id="map"></div>
+        <div class="control-row fav-filter-row">
+            <span class="switch-label">즐겨찾기만</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-favorite-only">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div><div id="map"></div>
 
     <div id="search-dashboard" class="dashboard-backdrop">
         <div class="dashboard-window">
             <div class="dash-header">
                 <div class="search-bar-wrap">
                     <input type="text" id="adv-name-input" placeholder="상세 검색할 학교명을 입력하세요">
-                    <button class="dash-main-search-btn" onclick="FilterManager.execute()">조건 검색</button>
+                    <button class="dash-main-search-btn" onclick="FilterManager.execute()">검색</button>
                 </div>
                 <button class="dash-close-btn" onclick="FilterManager.close()">✕</button>
             </div>
