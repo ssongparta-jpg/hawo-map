@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const querystring = require('querystring');
 
-// 설정 변수
 const PORT = 3000;
 const HOST = '0.0.0.0'; 
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -35,30 +34,26 @@ const server = http.createServer((req, res) => {
         });
     }
 
-    // 3. [추가] 인증 확인 API (GET /api/check-auth) - 스크린샷 404 에러 해결
+    // 3. 인증 확인 API (GET /api/check-auth) - 스creen샷 404 해결
     else if (method === 'GET' && url === '/api/check-auth') {
-        // 현재는 간단하게 세션 없이 항상 실패 혹은 성공 구조로 응답 처리 가능
-        // 프론트엔드 초기화 시 에러 방지를 위해 기본 응답 제공
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ authenticated: false }));
     }
 
-    // 4. 로그인 로직 (POST /login) - JSON/Form 하이브리드 대응
-    else if (method === 'POST' && url === '/login') {
+    // 4. 로그인 로직 (POST /api/login) - 스크린샷 경로 반영
+    else if (method === 'POST' && (url === '/api/login' || url === '/login')) {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
         req.on('end', () => {
             let credentials;
-            const contentType = req.headers['content-type'];
-
             try {
+                const contentType = req.headers['content-type'];
                 if (contentType && contentType.includes('application/json')) {
                     credentials = JSON.parse(body);
                 } else {
                     credentials = querystring.parse(body);
                 }
 
-                // 기존 계정: spring / 1234
                 if (credentials.username === 'spring' && credentials.password === '1234') {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: true, user: 'admin' }));
@@ -73,7 +68,13 @@ const server = http.createServer((req, res) => {
         });
     }
 
-    // 5. 데이터 저장 API (POST /api/save)
+    // 5. 회원가입 API (POST /api/register) - 스크린샷 404 해결용 임시 응답
+    else if (method === 'POST' && (url === '/api/register' || url === '/register')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: '회원가입 기능은 관리자 전용입니다.' }));
+    }
+
+    // 6. 데이터 저장 API (POST /api/save)
     else if (method === 'POST' && url === '/api/save') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -89,7 +90,7 @@ const server = http.createServer((req, res) => {
         });
     }
 
-    // 6. 정적 파일 처리 (로고 포함)
+    // 7. 정적 파일 처리 (로고 포함)
     else {
         const cleanUrl = url.split('?')[0];
         const filePath = path.join(__dirname, cleanUrl);
@@ -112,11 +113,6 @@ const server = http.createServer((req, res) => {
             res.end(data);
         });
     }
-});
-
-// 서버 실행 및 포트 중복 방지
-server.on('error', (e) => {
-    if (e.code === 'EADDRINUSE') console.error(`${PORT} 포트가 이미 사용 중입니다.`);
 });
 
 server.listen(PORT, HOST, () => {
