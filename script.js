@@ -101,8 +101,6 @@ const MapManager = {
         this.map = L.map('map', { zoomControl: false, minZoom: 10, maxZoom: 18, attributionControl: false });
         this.map.setView(MapConfig.MAP_CENTER, 11);
         this.map.setMaxBounds(MapConfig.BOUNDS);
-        
-        // Z-Index 패널 설정: Popup이 마커 위에, 통계 버튼이 그 사이에 오도록
         this.map.createPane('topPane').style.zIndex = 1000;
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
@@ -114,6 +112,7 @@ const MapManager = {
             zoomToBoundsOnClick: true,
             maxClusterRadius: 100,
             disableClusteringAtZoom: 14,
+            singleMarkerMode: false,
             iconCreateFunction: (cluster) => {
                 const count = cluster.getChildCount();
                 let cSize = count >= 50 ? 'red' : count >= 15 ? 'yellow' : 'small';
@@ -160,7 +159,7 @@ const MapManager = {
         return L.divIcon({ className: 'marker-container-icon', html, iconSize: [0, 0] });
     },
 
-bindEvents() {
+    bindEvents() {
         this.map.on('zoomend', () => {
             const zoom = this.map.getZoom();
             document.querySelectorAll('.dist-stat-btn').forEach(btn => btn.className = `dist-stat-btn zoom-lv-${zoom}`);
@@ -178,20 +177,30 @@ bindEvents() {
             });
         }
 
+        // [수정: 메모 로딩 기능 추가] 팝업이 열릴 때 메모 데이터를 가져와서 채워넣음
         this.map.on('popupopen', async (e) => {
             const popupNode = e.popup.getElement();
             const textarea = popupNode.querySelector('textarea[id^="memo-"]');
-            
-            // 모바일에서 팝업이 화면에 잘 보이도록 위치 미세 조정 (옵션)
-            if (window.innerWidth <= 768) {
-                // Leaflet이 자동으로 위치를 잡지만, 필요시 panTo 등을 호출할 수 있음
-            }
+            const saveBtn = popupNode.querySelector('.memo-save-btn');
+            const favBtn = popupNode.querySelector('.fav-toggle-btn');
 
-            if (textarea) {
+            if (textarea && saveBtn) {
                 const schoolName = textarea.id.replace('memo-', '');
                 const isLoggedIn = AuthManager.userId !== null;
-                const favBtn = popupNode.querySelector('.fav-toggle-btn'); // html 내 favBtn 추가 필요시
 
+                if (isLoggedIn && favBtn) {
+                    try {
+                        const favRes = await fetch(`/api/favorite/${encodeURIComponent(schoolName)}`);
+                        const favData = await favRes.json();
+                        this.updateFavoriteUI(schoolName, favData.isFavorite);
+                    } catch(err) { console.error("즐겨찾기 로드 실패"); }
+                }
+
+                textarea.disabled = !isLoggedIn;
+                saveBtn.disabled = !isLoggedIn;
+                saveBtn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+
+                // 로그인 상태에 따라 초기 UI 설정
                 if (isLoggedIn) {
                     textarea.placeholder = "메모를 불러오는 중...";
                     try {
@@ -199,8 +208,11 @@ bindEvents() {
                         const data = await res.json();
                         textarea.value = data.content || "";
                         textarea.placeholder = "여기에 메모를 작성하세요";
-                    } catch(err) { textarea.placeholder = "메모 로드 실패"; }
+                    } catch(err) {
+                        textarea.placeholder = "메모 로드 실패";
+                    }
                 } else {
+                    textarea.value = ""; 
                     textarea.placeholder = "로그인 후 이용 가능합니다";
                 }
             }
@@ -208,10 +220,12 @@ bindEvents() {
 
         const favOnlyBtn = document.getElementById('toggle-favorite-only');
         if (favOnlyBtn) {
-            favOnlyBtn.addEventListener('change', (e) => this.filterFavorites(e.target.checked));
+            favOnlyBtn.addEventListener('change', (e) => {
+                this.filterFavorites(e.target.checked);
+            });
         }
     },
-    
+
     async filterFavorites(showOnlyFav) {
         if (showOnlyFav && !AuthManager.userId) {
             alert("로그인이 필요한 기능입니다.");
@@ -277,13 +291,13 @@ bindEvents() {
         }
     },
 
-createMarker(lat, lng, p, index, isColliding) {
+    createMarker(lat, lng, p, index, isColliding) {
         const marker = L.marker([lat, lng], {
             icon: this.getMarkerIcon(p, index, isColliding) 
         }).bindPopup(this.makePopupHtml(p), {
             className: 'custom-popup',
             pane: 'topPane',
-            autoPanPadding: L.point(10, 10) // 모바일 패딩 축소
+            autoPanPadding: L.point(50, 50)
         });
         marker.properties = p;
         return marker;
@@ -401,7 +415,7 @@ createMarker(lat, lng, p, index, isColliding) {
         } catch (e) { console.error('경계 로드 실패'); }
     },
 
-addDistrictButtons() {
+    addDistrictButtons() {
         Object.entries(MapConfig.DISTRICTS).forEach(([shortName, conf]) => {
             if (!conf.pos) return;
             const icon = L.divIcon({
@@ -409,7 +423,6 @@ addDistrictButtons() {
                 html: `<div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="background-color:${conf.color}!important;color:#fff;">${shortName}</div>`,
                 iconSize: [80, 32]
             });
-            // pane을 지정하지 않아도 CSS z-index !important로 최상위 보장
             L.marker(conf.pos, { icon }).addTo(this.map).on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 this.showDistrictStats(conf.fullName || shortName, conf.pos);
