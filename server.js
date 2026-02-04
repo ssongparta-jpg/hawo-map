@@ -27,7 +27,6 @@ const server = http.createServer((req, res) => {
     else if (method === 'GET' && url === '/api/schools') {
         fs.readFile(DATA_FILE, 'utf8', (err, data) => {
             if (err) {
-                // 파일이 없을 경우 빈 배열 반환 (커밋 버전 로직 반영)
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 return res.end(JSON.stringify([])); 
             }
@@ -36,7 +35,15 @@ const server = http.createServer((req, res) => {
         });
     }
 
-    // 3. 로그인 로직 (통신 실패 해결을 위한 하이브리드 파싱 적용)
+    // 3. [추가] 인증 확인 API (GET /api/check-auth) - 스크린샷 404 에러 해결
+    else if (method === 'GET' && url === '/api/check-auth') {
+        // 현재는 간단하게 세션 없이 항상 실패 혹은 성공 구조로 응답 처리 가능
+        // 프론트엔드 초기화 시 에러 방지를 위해 기본 응답 제공
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ authenticated: false }));
+    }
+
+    // 4. 로그인 로직 (POST /login) - JSON/Form 하이브리드 대응
     else if (method === 'POST' && url === '/login') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -45,14 +52,13 @@ const server = http.createServer((req, res) => {
             const contentType = req.headers['content-type'];
 
             try {
-                // 클라이언트 전송 방식(JSON vs Form)에 모두 대응하여 통신 실패 방지
                 if (contentType && contentType.includes('application/json')) {
                     credentials = JSON.parse(body);
                 } else {
                     credentials = querystring.parse(body);
                 }
 
-                // 커밋 버전의 인증 정보 유지 (spring / 1234)
+                // 기존 계정: spring / 1234
                 if (credentials.username === 'spring' && credentials.password === '1234') {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: true, user: 'admin' }));
@@ -62,17 +68,16 @@ const server = http.createServer((req, res) => {
                 }
             } catch (e) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, message: '데이터 형식이 올바르지 않습니다.' }));
+                res.end(JSON.stringify({ success: false, message: '잘못된 요청' }));
             }
         });
     }
 
-    // 4. 데이터 저장 API (POST /api/save)
+    // 5. 데이터 저장 API (POST /api/save)
     else if (method === 'POST' && url === '/api/save') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
         req.on('end', () => {
-            // 커밋 버전처럼 원본 데이터를 그대로 파일에 기록
             fs.writeFile(DATA_FILE, body, (err) => {
                 if (err) {
                     res.writeHead(500);
@@ -84,9 +89,8 @@ const server = http.createServer((req, res) => {
         });
     }
 
-    // 5. 정적 파일 및 이미지 처리 (헤더 로고 해결 및 쿼리스트링 대응)
+    // 6. 정적 파일 처리 (로고 포함)
     else {
-        // URL에서 쿼리스트링(?v=...) 제거하여 순수 파일 경로 추출
         const cleanUrl = url.split('?')[0];
         const filePath = path.join(__dirname, cleanUrl);
         
@@ -110,20 +114,11 @@ const server = http.createServer((req, res) => {
     }
 });
 
-// 6. 서버 실행 및 포트 충돌 방지
+// 서버 실행 및 포트 중복 방지
 server.on('error', (e) => {
-    if (e.code === 'EADDRINUSE') {
-        console.error(`[경고] ${PORT}번 포트가 이미 사용 중입니다. 기존 프로세스를 종료하세요.`);
-    }
+    if (e.code === 'EADDRINUSE') console.error(`${PORT} 포트가 이미 사용 중입니다.`);
 });
 
 server.listen(PORT, HOST, () => {
-    console.log(`
-    =========================================
-    서버가 활성화되었습니다. (Port: ${PORT})
-    기존 커밋 기능 복구 및 통신 최적화 완료
-    =========================================
-    `);
+    console.log(`서버 실행 중: http://${HOST}:${PORT}`);
 });
-
-process.on('uncaughtException', (err) => { console.error('예외 발생:', err); });
