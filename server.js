@@ -2,10 +2,12 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const bcrypt = require('bcrypt');
 const path = require('path');
 
 const app = express();
 const db = new sqlite3.Database('./database.db');
+const SALT_ROUNDS = 10;
 
 // --- 환경 설정 ---
 const PORT = 3000;
@@ -36,11 +38,13 @@ function isAdmin(req, res, next) {
 }
 
 // --- DB 초기화 ---
-db.serialize(() => {
+db.serialize(async () => {
     db.run("CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, pw TEXT)");
     db.run("CREATE TABLE IF NOT EXISTS memos (userId TEXT, schoolName TEXT, content TEXT, PRIMARY KEY(userId, schoolName))");
     db.run("CREATE TABLE IF NOT EXISTS reset_requests (id TEXT PRIMARY KEY, requestDate DATETIME DEFAULT CURRENT_TIMESTAMP)");
-    db.run("INSERT OR IGNORE INTO users (id, pw) VALUES (?, ?)", [ADMIN_ID, ADMIN_PW]);
+    db.run("CREATE TABLE IF NOT EXISTS favorites (userId TEXT, schoolName TEXT, PRIMARY KEY(userId, schoolName))");
+    const hashedAdminPw = await bcrypt.hash(ADMIN_PW, SALT_ROUNDS);
+    db.run("INSERT OR IGNORE INTO users (id, pw) VALUES (?, ?)", [ADMIN_ID, hashedAdminPw]);
 });
 
 const loginAttempts = {};
@@ -49,8 +53,8 @@ const loginAttempts = {};
 
 app.post('/api/login', (req, res) => {
     const { id, pw } = req.body;
-    db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
-        if (row && row.pw === pw) {
+    db.get("SELECT * FROM users WHERE id = ?", [id], async (err, row) => {
+        if (row && await bcrypt.compare(pw, row.pw)) {
             delete loginAttempts[id];
             req.session.userId = id;
             req.session.save(() => res.json({ success: true, userId: id }));
@@ -69,21 +73,31 @@ app.get('/api/check-auth', (req, res) => {
     res.json(req.session.userId ? { isLoggedIn: true, userId: req.session.userId } : { isLoggedIn: false });
 });
 
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
     const { id, pw } = req.body;
     if (!id || !pw) return res.status(400).json({ success: false, message: "정보를 모두 입력하세요." });
 
-    db.run("INSERT INTO users (id, pw) VALUES (?, ?)", [id, pw], (err) => {
-        if (err) return res.status(409).json({ success: false, message: "이미 존재하는 아이디입니다." });
-        res.json({ success: true, message: "회원가입 완료" });
-    });
+    try {
+        const hashedPassword = await bcrypt.hash(pw, SALT_ROUNDS);
+        db.run("INSERT INTO users (id, pw) VALUES (?, ?)", [id, hashedPassword], (err) => {
+            if (err) return res.status(409).json({success: false, message: "이미 존재하는 아이디입니다."});
+            res.json({success: true, message: "회원가입 완료"});
+        });
+    } catch (err) {
+        res.status(500).json({success: false, message: "서버 오류"});
+    }
 });
 
-app.post('/api/change-pw', isLoggedIn, (req, res) => {
+app.post('/api/change-pw', isLoggedIn, async (req, res) => {
     const { newPw } = req.body;
-    db.run("UPDATE users SET pw = ? WHERE id = ?", [newPw, req.session.userId], (err) => {
+    try {
+        const hashedNewPw = await bcrypt.hash(newPw, SALT_ROUNDS);
+        db.run("UPDATE users SET pw = ? WHERE id = ?", [hashedNewPw, req.session.userId], (err) => {
         res.json({ success: !err, message: err ? "변경 실패" : "비밀번호가 변경되었습니다." });
-    });
+        });
+    } catch (err) {
+        res.status(500).json({success: false})
+    }
 });
 
 // --- 메모 API ---
@@ -100,6 +114,40 @@ app.post('/api/memo', isLoggedIn, (req, res) => {
     const { schoolName, content } = req.body;
     db.run("INSERT OR REPLACE INTO memos (userId, schoolName, content) VALUES (?, ?, ?)", 
         [req.session.userId, schoolName, content], (err) => res.json({ success: !err }));
+});
+
+// --- 즐겨찾기 API --- 
+// 1. 특정 학교 즐겨찾기 상태 확인
+app.get('/api/favorite/:schoolName', isLoggedIn, (req, res) => {
+    db.get("SELECT * FROM favorites WHERE userId = ? AND schoolName = ?",
+        [req.session.userId, req.params.schoolName], (err, row) => {
+            res.json({ isFavorite: !!row });
+        });
+});
+
+// 2. 즐겨찾기 토글 (추가/삭제)
+app.post('/api/favorite/toggle', isLoggedIn, (req, res) => {
+    const { schoolName } = req.body;
+    const userId = req.session.userId;
+
+    db.get("SELECT * FROM favorites WHERE userId = ? AND schoolName = ?", [userId, schoolName], (err, row) => {
+        if (row) {
+            db.run("DELETE FROM favorites WHERE userId = ? AND schoolName = ?", [userId, schoolName], () => {
+                res.json({success: true, isFavorite: false});
+            });
+        } else {
+            db.run("INSERT INTO favorites (userId, schoolName) VALUES (?, ?)", [userId, schoolName], () => {
+                res.json({success: true, isFavorite: true});
+            });
+        }
+    });
+});
+
+// 3. 내 즐겨찾기 목록 전체 가져오기
+app.get('/api/my-favorites', isLoggedIn, (req, res) => {
+    db.all("SELECT schoolName FROM favorites WHERE userId = ?", [req.session.userId], (err, rows) => {
+        res.json({ favorites: rows ? rows.map(r => r.schoolName) : [] });
+    });
 });
 
 // --- 비밀번호 찾기 및 요청 ---
@@ -148,10 +196,11 @@ app.get('/api/admin/reset-requests', isAdmin, (req, res) => {
     });
 });
 
-app.post('/api/admin/approve-reset', isAdmin, (req, res) => {
+app.post('/api/admin/approve-reset', isAdmin, async (req, res) => {
     const { id, tempPw } = req.body;
+    const hashedTempPw = await bcrypt.hash(tempPw, SALT_ROUNDS);
     db.serialize(() => {
-        db.run("UPDATE users SET pw = ? WHERE id = ?", [tempPw, id]);
+        db.run("UPDATE users SET pw = ? WHERE id = ?", [hashedTempPw, id]);
         db.run("DELETE FROM reset_requests WHERE id = ?", [id], () => {
             res.json({ success: true, message: "초기화 성공" });
         });
