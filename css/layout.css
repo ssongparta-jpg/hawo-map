@@ -332,3 +332,46 @@ input[type="number"] { -moz-appearance: textfield; width: 100%; border: none; ba
 .dist-tag:hover {
     background-color: #e9ecef;
 }
+
+/* 1. Leaflet 팝업 레이어의 '판' 자체를 무조건 최상위로 격상 */
+.leaflet-popup-pane {
+    z-index: 99999 !important;
+}
+
+/* 2. 팝업이 떴을 때 검색창과 로그인 UI가 가린다면, 
+      그 요소들의 z-index를 팝업보다 낮게 강제 조정합니다. */
+
+/* 검색창 컨테이너 */
+.search-container {
+    z-index: 10 !important; /* 기존 1200에서 10으로 하향 */
+}
+
+/* 상세 검색 버튼 */
+.advanced-search-btn {
+    z-index: 9 !important; 
+}
+
+/* 상단 로그인/사용자 정보 영역 */
+#auth-area {
+    z-index: 8 !important; /* 기존 3000에서 8로 하향 */
+}
+
+/* 3. 만약 위 방법으로도 안 된다면 (구조적 문제일 때), 
+      팝업이 열려 있는 동안만 검색창을 살짝 투명하게 만들어 내용을 보이게 합니다. */
+.leaflet-popup-open ~ .search-container,
+.leaflet-popup-open ~ #auth-area {
+    opacity: 0.3; /* 팝업과 겹치면 흐릿하게 만듦 */
+    pointer-events: none; /* 클릭도 안 되게 함 */
+}
+
+.distance-label {
+    z-index: 10001 !important;
+    pointer-events: none;
+}
+
+.distance-label div {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    color: #FF3366;
+}
