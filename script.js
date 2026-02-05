@@ -103,6 +103,9 @@ const MapManager = {
         this.map.setMaxBounds(MapConfig.BOUNDS);
         this.map.createPane('topPane').style.zIndex = 1000;
         
+        const popupPane = this.map.createPane('ultraTopPane');
+        popupPane.style.zIndex = 99999;
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
         this.boundaryGroup.addTo(this.map);
 
@@ -296,7 +299,7 @@ const MapManager = {
             icon: this.getMarkerIcon(p, index, isColliding) 
         }).bindPopup(this.makePopupHtml(p), {
             className: 'custom-popup',
-            pane: 'topPane',
+            pane: 'ultraTopPane',
             autoPanPadding: L.point(50, 50)
         });
         marker.properties = p;
@@ -330,14 +333,22 @@ const MapManager = {
         const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
         const btnDisabled = isLoggedIn ? '' : 'disabled';
 
-        return `
+       return `
             <div class="popup-content compact-mode">
                 <div class="popup-header">
                     <div class="popup-category">${p.type || ''}</div>
                     ${linkHtml}
                 </div>
 
-                <div class="popup-title">${p.name || ''}</div>
+                <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div class="popup-title" style="margin: 0;">${p.name || ''}</div>
+                    <button id="fav-btn-${p.name}" class="fav-toggle-btn" 
+                            onclick="MapManager.toggleFavorite('${p.name}', event)"
+                            style="background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc;">
+                        ☆
+                    </button>
+                </div>
+                
                 <div class="popup-adrs">${p.adrs || ''}</div>
                 
                 <hr class="popup-hr">
@@ -357,6 +368,7 @@ const MapManager = {
                     <li><span class="label">학급당 학생 수</span> <span class="value"><strong>${p.stdnt_per_cl || 0}</strong>명</span></li>
                     <li><span class="label">교사 1인당 학생 수</span> <span class="value"><strong>${p.stdnt_per_tchr || 0}</strong>명</span></li>
                 </ul>
+
                 <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
                     <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
                     <textarea id="memo-${p.name}" 
