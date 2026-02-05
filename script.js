@@ -302,6 +302,14 @@ const MapManager = {
             pane: 'ultraTopPane',
             autoPanPadding: L.point(50, 50)
         });
+
+        marker.on('click', (e) => {
+            if (typeof DistanceManager !== 'undefined' && DistanceManager.active) {
+                L.DomEvent.stopPropagation(e);
+                DistanceManager.handleMarkerClick(marker);
+            }
+        });
+
         marker.properties = p;
         return marker;
     },
@@ -872,6 +880,131 @@ const AdminManager = {
     }
 };
 
+const DistanceManager = {
+    active: false,
+    points: [],
+    line: null,
+    label: null,
+
+    toggleMode() {
+        const switchEl = document.getElementById('toggle-distance-mode');   
+        this.active = switchEl ? switchEl.checked : !this.active;
+        
+        this.reset(); 
+
+        const mapContainer = MapManager.map.getContainer();
+        if (this.active) {
+            mapContainer.style.cursor = 'crosshair'; 
+        } else {
+            mapContainer.style.cursor = '';
+        }
+    },
+
+    handleMarkerClick(marker) {
+        if (!this.active) return;
+        if (this.points.includes(marker)) return;
+
+        this.points.push(marker);
+
+        marker.openPopup();
+
+        if (marker.getElement()) {
+            marker.getElement().style.filter = "brightness(1.5) drop-shadow(0 0 8px #FF3366)";
+            marker.getElement().style.zIndex = "1000";
+        }
+
+        if (this.points.length === 2) {
+            this.calculate();
+        } else if (this.points.length > 2) {
+            this.resetWithPreservation(marker);
+        }
+    },
+
+    calculate() {
+        const p1 = this.points[0].getLatLng();
+        const p2 = this.points[1].getLatLng();
+
+        const distance = MapManager.map.distance(p1, p2);
+        const distanceStr = distance > 1000
+            ? (distance / 1000).toFixed(2) + 'km'
+            : Math.round(distance) + 'm';
+            
+        this.line = L.polyline([p1, p2], {
+            color: '#FF3366',
+            weight: 5,
+            dashArray: '10, 10',
+            opacity: 0.9,
+            pane: 'popupPane'
+        }).addTo(MapManager.map);
+
+        const midPoint = [(p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2];
+        this.label = L.marker(midPoint, {
+            icon: L.divIcon({
+                className: 'distance-label-clean',
+                html: `
+                    <div style="
+                        display: flex; 
+                        flex-direction: column; 
+                        align-items: center; 
+                        transform: translate(-50%, -50%);
+                    ">
+                        <div style="
+                            color: #FF3366; 
+                            font-size: 26px; 
+                            font-weight: 900; 
+                            text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0 2px 5px rgba(0,0,0,0.3);
+                            white-space: nowrap;
+                            line-height: 1;
+                        ">
+                            ${distanceStr}
+                        </div>
+                        <div style="
+                            color: #555; 
+                            font-size: 10px; 
+                            font-weight: 400; 
+                            background: rgba(255, 255, 255, 0.9);
+                            padding: 1px 5px;
+                            border-radius: 3px;
+                            margin-top: 4px;
+                            white-space: nowrap;
+                            border: 0.5px solid #ddd;
+                            line-height: 1.2;
+                        ">
+                            ※ 실제 이동거리는 약 1.2~1.5배 차이날 수 있음
+                        </div>
+                    </div>`,
+                iconSize: null,
+                iconAnchor: [0, 0]
+            }),
+            pane: 'popupPane'
+        }).addTo(MapManager.map);
+    },
+
+    reset() {
+        if (this.line) MapManager.map.removeLayer(this.line);
+        if (this.label) MapManager.map.removeLayer(this.label);
+        
+        if (Array.isArray(this.points)) {
+            this.points.forEach(m => {
+                if (m.getElement()) m.getElement().style.filter = "";
+                m.closePopup();
+            });
+        }
+        
+        this.points = [];
+        this.line = null;
+        this.label = null;
+    },
+
+    resetWithPreservation(newFirstMarker) {
+        this.reset();
+        this.points = [newFirstMarker];
+        if (newFirstMarker.getElement()) {
+            newFirstMarker.getElement().style.filter = "brightness(1.5) drop-shadow(0 0 8px #FF3366)";
+        }
+    }
+};
+
 const App = {
     async init() {
         console.log("앱 초기화 시작...");
@@ -926,6 +1059,13 @@ const App = {
                 processedPositions.push({lat, lng});
 
                 const m = MapManager.createMarker(lat, lng, p, index, isColliding);
+
+                m.on('mousedown', (e) => {
+                    if (typeof DistanceManager !== 'undefined' && DistanceManager.active) {
+                        DistanceManager.handleMarkerClick(m);
+                    }
+                });
+
                 MapManager.markers.push(m);
                 MapManager.cluster.addLayer(m);
             });
