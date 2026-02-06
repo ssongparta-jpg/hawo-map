@@ -293,6 +293,7 @@ bindEvents() {
             const popupNode = e.popup.getElement();
             const textarea = popupNode.querySelector('textarea[id^="memo-"]');
             const saveBtn = popupNode.querySelector('.memo-save-btn');
+            const delBtn = popupNode.querySelector('.memo-del-btn');
             const favBtn = popupNode.querySelector('.fav-toggle-btn');
 
             if (textarea && saveBtn) {
@@ -303,6 +304,12 @@ bindEvents() {
                 textarea.disabled = !isLoggedIn;
                 saveBtn.disabled = !isLoggedIn;
                 saveBtn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+
+                // [추가] 삭제 버튼 상태 제어
+                if (delBtn) {
+                    delBtn.disabled = !isLoggedIn;
+                    delBtn.style.backgroundColor = isLoggedIn ? '#e74c3c' : '#ccc'; // 활성 시 빨간색
+                }
 
                 if (isLoggedIn) {
                     // [수정 포인트 2] 즐겨찾기는 "백그라운드"에서 실행 (메모 로딩을 방해하지 않음)
@@ -502,6 +509,14 @@ bindEvents() {
                         disabled></textarea>
                     <button id="btn-save-${p.name}" class="memo-save-btn"
                         onclick="AuthManager.saveMemo('${p.name}', event)" style="background-color: ${btnBg};" ${btnDisabled}>메모 저장</button>
+                    </button>
+                    <button id="btn-del-${p.name}" class="memo-del-btn"
+                        onclick="AuthManager.deleteMemo('${p.name}', event)" 
+                        style="flex: 1; background-color: ${isLoggedIn ? '#e74c3c' : '#ccc'}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
+                        ${btnDisabled}>
+                        삭제
+                    </button>
+                </div>
                 </div>
             </div>`;
     },
@@ -682,18 +697,51 @@ const AuthManager = {
             else alert('저장에 실패했습니다.');
         } catch (err) { alert('서버 연결에 실패했습니다.'); }
     },
-    toggleUI(isLoggedIn) {
+    async deleteMemo(schoolName, e) {
+        if (e) { e.stopPropagation(); e.preventDefault(); }
+        
+        // 실수로 삭제하는 것 방지
+        if (!confirm("정말 이 메모를 완전히 삭제하시겠습니까?")) return;
+
+        const textArea = document.getElementById(`memo-${schoolName}`);
+        
+        try {
+            // [중요] 서버 API가 DELETE 메서드를 지원해야 합니다.
+            // 만약 지원하지 않는다면 method: 'POST'로 하고 body에 { action: 'delete' } 등을 보내야 할 수도 있습니다.
+            const res = await fetch('/api/memo', {
+                method: 'DELETE', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schoolName })
+            });
+
+            if (res.ok) {
+                alert('메모가 삭제되었습니다.');
+                if (textArea) textArea.value = ""; // 입력창 비우기
+            } else {
+                alert('삭제에 실패했습니다.');
+            }
+        } catch (err) { 
+            console.error(err);
+            alert('서버 연결 오류'); 
+        }
+        },
+    
+toggleUI(isLoggedIn) {
         const form = document.getElementById('login-form');
         const info = document.getElementById('user-info');
         if (form) form.style.display = isLoggedIn ? 'none' : 'flex';
         if (info) info.style.display = isLoggedIn ? 'flex' : 'none';
+        
         const changePwBtn = document.getElementById('change-pw-btn');
         if (changePwBtn) changePwBtn.style.display = isLoggedIn ? 'inline-block' : 'none';
+        
         if (isLoggedIn) {
             document.getElementById('welcome-msg').innerText = `${this.userId}님`;
             const adminBtn = document.getElementById('admin-panel-btn');
             if (this.userId === 'spring' && adminBtn) adminBtn.style.display = 'inline-block';
         }
+        
+        // 팝업이 이미 열려있다면 즉시 반영
         const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
         if (openPopupTextArea) {
             openPopupTextArea.disabled = !isLoggedIn;
@@ -708,11 +756,17 @@ const AuthManager = {
                 openPopupTextArea.value = "";
             }
         }
-        const saveBtns = document.querySelectorAll('button[id^="btn-save-"]');
-        saveBtns.forEach(btn => {
+        
+        // 저장 및 삭제 버튼들 일괄 제어
+        const memoBtns = document.querySelectorAll('button[id^="btn-save-"], button[id^="btn-del-"]');
+        memoBtns.forEach(btn => {
             btn.disabled = !isLoggedIn;
-            btn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
-            btn.style.display = 'block'; 
+            if (isLoggedIn) {
+                if (btn.id.includes('btn-save-')) btn.style.backgroundColor = '#4A90E2';
+                if (btn.id.includes('btn-del-')) btn.style.backgroundColor = '#e74c3c';
+            } else {
+                btn.style.backgroundColor = '#ccc';
+            }
         });
     }
 };
