@@ -116,6 +116,23 @@ app.post('/api/memo', isLoggedIn, (req, res) => {
         [req.session.userId, schoolName, content], (err) => res.json({ success: !err }));
 });
 
+app.delete('/api/memo', isLoggedIn, (req, res) => {
+    const { schoolName } = req.body;
+    const userId = req.session.userId;
+    
+    db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", 
+        [userId, schoolName], 
+        (err) => {
+            if (err) {
+                console.error(err);
+                res.status(500).json({ success: false, message: "DB 오류" });
+            } else {
+                res.json({ success: true });
+            }
+        }
+    );
+});
+
 // --- 즐겨찾기 API --- 
 // 1. 특정 학교 즐겨찾기 상태 확인
 app.get('/api/favorite/:schoolName', isLoggedIn, (req, res) => {
