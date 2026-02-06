@@ -1,6 +1,3 @@
-/* ============================================================
-   [원본 보존] 1. 기존 map.css의 모든 스타일 유지
-   ============================================================ */
 html, body { 
     width: 100%; height: 100%; margin: 0; padding: 0; 
     overflow: hidden; background-color: #e0e0e0; 
@@ -13,360 +10,205 @@ html, body {
 #map { width: 100%; height: 100%; background: #fdfdfd; }
 .leaflet-tile { filter: grayscale(100%) brightness(105%); }
 
-/* --- 기존 검색창 스타일 (아래에서 재정의됨) --- */
+.cursor-crosshair { cursor: crosshair !important; }
+
+/* 거리 재기 버튼 */
+#btn-measure {
+    position: absolute; bottom: 30px; right: 20px; z-index: 1000;
+    background: white; color: #333; border: 1px solid #ccc; padding: 10px 15px;
+    border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: all 0.2s;
+    display: flex; align-items: center; gap: 5px;
+}
+#btn-measure:hover { background: #f0f0f0; }
+
+/* 상단 검색 및 인증 영역 */
 .search-container {
-    position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
-    z-index: 1200; width: 380px; transition: top 0.3s ease, width 0.3s ease;
+    position: absolute; z-index: 1200; display: flex; align-items: center; gap: 8px;
+    top: 16px; left: 20px; width: 380px;
 }
+.search-wrapper { position: relative; display: flex; flex: 1; }
 .search-input-box {
-    width: 100%; padding: 12px 50px 12px 20px; border-radius: 25px; 
-    border: 1px solid rgba(0,0,0,0.1); background-color: rgba(255, 255, 255, 0.95);
-    background-repeat: no-repeat; background-position: right 15px center; background-size: 20px; 
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1); outline: none; 
-    font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 500; box-sizing: border-box; 
+    width: 100%; height: 38px; padding: 0 15px; 
+    border-radius: 19px; border: 1px solid #ccc; 
+    background-color: #fff; outline: none; 
+    font-family: 'Noto Sans KR', sans-serif; font-size: 14px;
 }
-.search-results {
-    background: white; margin-top: 8px; border-radius: 12px; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 300px; overflow-y: auto; display: none;
+.advanced-search-btn {
+    height: 38px; padding: 0 15px;
+    background: #00427a; color: white; border: none; border-radius: 19px;
+    cursor: pointer; font-size: 13px; font-weight: bold; white-space: nowrap;
+}
+.search-results-list { 
+    position: absolute; top: 45px; left: 0; width: 100%;
+    background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+    max-height: 300px; overflow-y: auto; display: none; z-index: 5000; 
 }
 .search-item {
-    padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #f1f1f1; 
-    font-size: 14px; color: #333; display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1; 
+    font-size: 13px; color: #333; display: flex; justify-content: space-between; align-items: center;
 }
 .search-item:hover { background: #f0f7ff; color: #00427a; font-weight: bold; }
 
-/* --- 기존 행정구역 토글 --- */
+/* 로그인 UI */
+#auth-area {
+    position: absolute; z-index: 1200; display: flex; align-items: center; gap: 6px;
+    top: 18px; right: 20px;
+}
+#login-form, #user-info { display: flex; align-items: center; gap: 5px; }
+#auth-area input {
+    width: 100px; padding: 0 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
+    height: 34px; line-height: 34px;
+}
+#auth-area button {
+    padding: 0 12px; height: 34px; border: none; border-radius: 4px; 
+    font-size: 13px; cursor: pointer; color: white; font-weight: bold;
+}
+.btn-login { background-color: #4A90E2; }
+.btn-join { background-color: #28a745; }
+.btn-logout { background-color: #666; }
+.btn-admin { background-color: #e74c3c; }
+
+/* 하단 토글 스위치 */
 .boundary-toggle-container {
-    position: absolute; bottom: 20px; left: 20px; z-index: 1000;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(255,255,255,0.9); padding: 8px 15px; border-radius: 25px; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 13px; font-weight: 700; color: #444; 
-    backdrop-filter: blur(2px); width: max-content; height: auto; max-height: 40px; 
+    position: absolute; bottom: 30px; left: 20px; z-index: 1000;
+    display: flex; align-items: center; background: rgba(255, 255, 255, 0.9);
+    padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    backdrop-filter: blur(2px);
 }
-.switch-label { margin-right: 8px; cursor: pointer; white-space: nowrap; }
-.toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+.control-row { display: flex; align-items: center; }
+
+/* 토글 스위치 공통 */
+.toggle-switch { position: relative; display: inline-block; width: 34px; height: 20px; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
-.slider {
-    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #ccc; transition: .4s; border-radius: 20px;
-}
-.slider:before {
-    position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
-    background-color: white; transition: .4s; border-radius: 50%;
-}
-input:checked + .slider { background-color: #4A90E2; }
-input:checked + .slider:before { transform: translateX(16px); }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; transition: .4s; border-radius: 20px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background: #4A90E2; }
+input:checked + .slider:before { transform: translateX(14px); }
+.switch-label { font-size: 12px; font-weight: bold; margin-right: 5px; }
 
+/* 반응형 처리 */
 @media (max-width: 768px) {
-    .boundary-toggle-container {
-        top: auto; bottom: 25px !important; left: 15px; right: auto;
-        transform: none; font-size: 12px; padding: 6px 12px; z-index: 1100;
-    }
-    .legend-floating-box {
-        top: 150px; left: 15px; transform: scale(0.9); transform-origin: top left;
-    }
+    .pc-wing-gap { display: none; }
+    .search-container { top: 90px; width: 94%; left: 50%; transform: translateX(-50%); }
+    .search-input-box { height: 46px; border-radius: 8px; font-size: 15px; }
+    .advanced-search-btn { height: 46px; border-radius: 8px; font-size: 14px; }
+    #auth-area { position: fixed; bottom: 0; left: 0; width: 100%; top: auto; height: 60px; background: #fff; justify-content: center; z-index: 3000; padding: 0 10px; border-top: 1px solid #eee; }
+    #auth-area input { width: 30vw; max-width: 100px; }
+    .boundary-toggle-container { bottom: 80px; left: 15px; }
+    #btn-measure { bottom: 80px; right: 15px; }
 }
 
-/* --- 기존 마커/클러스터 디자인 (절대 삭제 금지) --- */
+/* 검색 결과 창 및 그리드 (수정 핵심) */
+.results-window {
+    width: 95%; max-width: 1100px; height: 85vh;
+    display: flex; flex-direction: column;
+}
+#results-list-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 기본 3열 */
+    gap: 15px; padding: 20px; overflow-y: auto; background: #f5f6f7;
+    flex: 1;
+}
+
+/* 미디어 쿼리를 통한 그리드 열 조정 */
+@media (max-width: 992px) {
+    #results-list-container { grid-template-columns: repeat(2, 1fr); } /* 2열 */
+}
+@media (max-width: 600px) {
+    #results-list-container { grid-template-columns: 1fr; } /* 1열 */
+}
+
+.result-card {
+    background: white; padding: 16px; border-radius: 10px; border: 1px solid #eee;
+    cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 4px;
+}
+.result-card:hover { border-color: #4A90E2; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.res-name { font-size: 16px; font-weight: bold; color: #222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res-addr { font-size: 12px; color: #777; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 학교급별 색상 */
+.res-type { font-size: 11px; font-weight: bold; margin-bottom: 2px; }
+.res-type.type-kinder { color: #4A90E2; }
+.res-type.type-elem { color: #2ECC71; }
+.res-type.type-mid { color: #F1C40F; }
+.res-type.type-high { color: #E74C3C; }
+.res-type.type-spec { color: #9B59B6; }
+.results-header-title { font-size: 16px; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; }
+.results-count-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: normal; }
+
+/* 기존 마커 및 팝업 스타일 유지 */
 .marker-container-icon { overflow: visible !important; }
-.custom-combined-marker { 
-    display: flex; align-items: center; justify-content: center; 
-    position: relative; pointer-events: auto; cursor: pointer;
-}
-.custom-combined-marker:hover { z-index: 9999 !important; }
-.marker-symbol { 
-    font-size: 18px; line-height: 1; z-index: 5; position: relative;
-    text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 2px 4px rgba(0,0,0,0.3);
-    transition: transform 0.2s;
-}
-.custom-combined-marker:hover .marker-symbol { transform: scale(1.2); }
-.marker-label-box {
-    position: absolute; background: rgba(255, 255, 255, 0.95); color: #222;
-    font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 4px; border: 1px solid #ccc;
-    white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    border-left-width: 4px; border-left-style: solid;
-    z-index: 20; opacity: 0; transition: opacity 0.4s ease, transform 0.4s ease;
-    pointer-events: auto; cursor: pointer;
-}
-.marker-label-box.label-up { bottom: 40px; transform: translateY(5px); }
-.marker-label-box.label-down { top: 45px; transform: translateY(-5px); z-index: 21; }
-.marker-label-box.label-pushed-way-down { top: 70px; transform: translateY(-5px); z-index: 19; opacity: 0.9; }
-.show-school-labels .marker-label-box { opacity: 1; transform: translateY(0); }
+.custom-combined-marker { display: flex; align-items: center; justify-content: center; position: relative; pointer-events: auto; cursor: pointer; width: 0; height: 0; }
+.marker-symbol { font-size: 16px; line-height: 0; z-index: 10; position: absolute; top: 0; left: 0; transform: translate(-50%, -50%); text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 2px 4px rgba(0,0,0,0.3); transition: left 0.3s ease, top 0.3s ease; }
+.marker-label-box { position: absolute; background: rgba(255, 255, 255, 0.75); color: #222; font-size: 10.5px; font-weight: 800; padding: 2px 5px; border-radius: 4px; border: 1px solid #ccc; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left-width: 3px; border-left-style: solid; z-index: 300; bottom: 18px; left: 50%; opacity: 0; visibility: hidden; transform: translateX(-50%) translateY(5px); transition: opacity 0.4s ease-out, transform 0.4s ease-out, visibility 0.4s; pointer-events: auto; cursor: pointer; }
+.marker-label-box.label-bottom { bottom: auto; top: 28px; transform: translateX(-50%) translateY(-5px); }
+.view-labels-mode .marker-label-box { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+.shift-left .marker-symbol { left: -26px; }
+.shift-right .marker-symbol { left: 26px; }
+.shift-left .marker-label-box.label-bottom { left: -26px; }
+.shift-right .marker-label-box.label-bottom { left: 26px; }
 .is-kinder .marker-label-box { border-left-color: #4A90E2; }
 .is-elem .marker-label-box { border-left-color: #2ECC71; }
 .is-mid .marker-label-box { border-left-color: #F1C40F; }
 .is-high .marker-label-box { border-left-color: #E74C3C; }
 .is-spec .marker-label-box { border-left-color: #9B59B6; }
-
-.marker-cluster div {
-    width: 30px; height: 30px; margin-left: 5px; margin-top: 5px;
-    text-align: center; border-radius: 15px; font-weight: 900;
-    color: #fff !important; display: flex; align-items: center; justify-content: center;
-}
+.is-edu .marker-label-box { border-left-color: #0d47a1; }
+.marker-cluster div { width: 30px; height: 30px; margin-left: 5px; margin-top: 5px; text-align: center; border-radius: 15px; font-weight: 900; color: #fff !important; display: flex; align-items: center; justify-content: center; }
 .marker-cluster-small { background-color: rgba(160, 200, 120, 0.4) !important; }
 .marker-cluster-small div { background-color: rgba(120, 170, 80, 0.7) !important; }
 .marker-cluster-yellow { background-color: rgba(241, 211, 87, 0.4) !important; }
 .marker-cluster-yellow div { background-color: rgba(240, 194, 12, 0.7) !important; }
 .marker-cluster-red { background-color: rgba(233, 92, 46, 0.4) !important; }
 .marker-cluster-red div { background-color: rgba(214, 40, 40, 0.7) !important; }
-
-.dist-stat-btn {
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 800; padding: 6px 12px; border-radius: 4px;
-    text-align: center; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    cursor: pointer; border: none; font-size: 13px;
-    position: relative; z-index: 100 !important; 
-}
+.dist-stat-btn { display: flex; align-items: center; justify-content: center; font-weight: 800; padding: 6px 12px; border-radius: 4px; text-align: center; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; border: none; font-size: 13px; position: relative; z-index: 500 !important; }
 .zoom-lv-10 { display: none !important; }
 .zoom-lv-11 { transform: scale(0.85); opacity: 0.6; }
 .zoom-lv-12 { transform: scale(0.95); opacity: 0.8; }
 .zoom-lv-13, .zoom-lv-14, .zoom-lv-15, .zoom-lv-16, .zoom-lv-17, .zoom-lv-18 { transform: scale(1.1); opacity: 1; }
-
-.custom-popup .leaflet-popup-content-wrapper {
-    background: rgba(255, 255, 255, 0.98); border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 0; overflow: visible !important;
-}
-.custom-popup .leaflet-popup-close-button {
-    z-index: 1000 !important; color: #999 !important; font-size: 18px !important;
-    top: 10px !important; right: 10px !important;
-}
-.custom-popup .leaflet-popup-content { width: 380px !important; margin: 0; }
-.popup-content { padding: 18px 20px; }
-.popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.popup-category { font-size: 11px; color: #4A90E2; font-weight: 700; }
-.popup-title { font-size: 18px; font-weight: 800; color: #222; margin-bottom: 4px; }
-.popup-adrs { 
-    font-size: 13px; color: #666; margin-bottom: 12px; line-height: 1.4; white-space: normal; word-break: keep-all; 
-}
-.popup-hr { border: 0; height: 1px; background: #eee; margin: 10px 0; }
-.popup-admin-row {
-    display: flex; justify-content: space-between; align-items: center;
-    white-space: nowrap; font-size: 12px; color: #444; background: #f8f9fa; padding: 8px 12px; border-radius: 6px; margin-bottom: 15px;
-}
+.custom-popup { z-index: 20000 !important; } 
+.custom-popup .leaflet-popup-content-wrapper { background: rgba(255, 255, 255, 0.98); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.25); padding: 0; overflow: visible !important; }
+.custom-popup .leaflet-popup-close-button { z-index: 20100 !important; color: #999 !important; font-size: 18px !important; top: 10px !important; right: 10px !important; }
+.custom-popup .leaflet-popup-content { width: 310px !important; margin: 0; }
+.popup-content { padding: 15px 16px; }
+.popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; padding-right: 30px; }
+.popup-category { font-size: 11px; color: #4A90E2; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+.badge-est { font-size: 10px; color: #666; background: #eee; padding: 1px 5px; border-radius: 4px; font-weight: normal; }
+.popup-title { font-size: 17px; font-weight: 800; color: #222; margin-bottom: 4px; }
+.popup-adrs { font-size: 12px; color: #666; margin-bottom: 10px; line-height: 1.4; white-space: normal; word-break: keep-all; }
+.popup-hr { border: 0; height: 1px; background: #eee; margin: 8px 0; }
+.popup-admin-row { display: flex; justify-content: space-between; align-items: center; white-space: nowrap; font-size: 11px; color: #444; background: #f8f9fa; padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; }
 .popup-info-list { list-style: none; padding: 0; margin: 0; }
-.popup-info-list li { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #444; }
-.popup-content.compact-mode .grid-list {
-    display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 20px; row-gap: 6px; padding-left: 0;
-}
-.popup-link-top {
-    font-size: 11px; color: #4A90E2; text-decoration: none; font-weight: 700; padding: 3px 8px; background: #f0f7ff; border-radius: 4px;
-}
-.legend-floating-box {
-    position: absolute; top: 150px; left: 20px; z-index: 1000;
-    background: rgba(255, 255, 255, 0.9); padding: 12px 15px; border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; backdrop-filter: blur(2px);
-}
+.popup-info-list li { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #444; margin-bottom: 3px; }
+.popup-content.compact-mode .grid-list { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 15px; row-gap: 4px; padding-left: 0; }
+.popup-link-top { font-size: 11px; color: #4A90E2; text-decoration: none; font-weight: 700; padding: 3px 8px; background: #f0f7ff; border-radius: 4px; white-space: nowrap; }
+.popup-link-none { font-size: 11px; color: #999; padding: 3px 8px; background: #eee; border-radius: 4px; white-space: nowrap; }
+.legend-floating-box { position: absolute; top: 150px; left: 20px; z-index: 1000; background: rgba(255, 255, 255, 0.9); padding: 12px 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; backdrop-filter: blur(2px); }
 .legend-item { font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #555; }
-.help-modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6); z-index: 9999; display: none;
-    justify-content: center; align-items: center; backdrop-filter: blur(3px);
-}
-.help-modal-content {
-    background: white; width: 90%; max-width: 420px; padding: 30px;
-    border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); position: relative;
-}
-.help-close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #ccc; }
-
-
-/* ============================================================
-   [필수 추가] 2. 로그인 UI & 검색창 레이아웃 수정
-   ============================================================ */
-
-/* 2-1. 로그인(인증) UI */
-#auth-area {
-    z-index: 3000;
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(4px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    transition: all 0.3s ease;
-}
-#login-form, #user-info { display: flex; align-items: center; gap: 6px; }
-#auth-area input {
-    width: 110px; padding: 0 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
-    height: 34px; line-height: 34px; box-sizing: border-box;
-}
-#auth-area button {
-    padding: 0 12px; height: 34px;
-    border: none; border-radius: 4px; font-size: 13px; cursor: pointer;
-    color: white; font-weight: bold; white-space: nowrap;
-    display: flex; align-items: center; justify-content: center;
-}
-.btn-login { background-color: #4A90E2; }
-.btn-join { background-color: #28a745; }
-.btn-logout { background-color: #666; }
-.btn-admin { background-color: #e74c3c; }
-#auth-area button:hover { opacity: 0.9; }
-
-@media (min-width: 769px) {
-    #auth-area {
-        position: absolute; top: 20px; right: 20px; 
-        padding: 8px 15px; border-radius: 8px;
-    }
-}
-@media (max-width: 768px) {
-    #auth-area {
-        position: fixed; bottom: 0; left: 0; width: 100%; height: 60px;
-        padding: 0 10px; border-radius: 15px 15px 0 0; border-top: 1px solid #eee;
-        justify-content: center; box-sizing: border-box;
-    }
-    #auth-area input { width: 30vw; max-width: 100px; } 
-    .boundary-toggle-container { bottom: 75px !important; left: 50% !important; transform: translateX(-50%); }
-}
-
-/* 2-2. 검색창 UI */
-.search-container {
-    position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
-    z-index: 1200; 
-    display: flex; align-items: center; justify-content: center; gap: 8px; 
-    width: auto; max-width: 600px; transition: top 0.3s ease;
-}
-.search-wrapper { position: relative; display: flex; flex: 1; }
-.search-input-box {
-    width: 320px; height: 46px; padding: 0 15px; 
-    border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); 
-    background-color: rgba(255, 255, 255, 0.95); background-image: none !important;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1); outline: none; 
-    font-family: 'Noto Sans KR', sans-serif; font-size: 15px; box-sizing: border-box; 
-}
-.advanced-search-btn {
-    height: 46px; padding: 0 18px;
-    background: #00427a; color: white; border: none; border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer;
-    font-size: 14px; font-weight: bold; white-space: nowrap; box-sizing: border-box;
-    display: flex; align-items: center; 
-}
-.search-results { top: 50px; z-index: 2500; }
-
-@media (max-width: 768px) {
-    .search-container { top: 85px; width: 94%; justify-content: space-between; }
-    .search-input-box { width: 100%; font-size: 14px; }
-    .advanced-search-btn { padding: 0 12px; font-size: 13px; flex-shrink: 0; }
-}
-
-/* ============================================================
-   [복구] 3. 상세검색 대시보드 (Glassmorphism Modal)
-   ============================================================ */
-.dashboard-backdrop {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.6); z-index: 5000;
-    display: none; align-items: center; justify-content: center;
-    backdrop-filter: blur(5px);
-}
-.dashboard-window {
-    background: rgba(255, 255, 255, 0.95);
-    width: 90%; max-width: 500px; max-height: 90vh;
-    border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-    display: flex; flex-direction: column; overflow: hidden;
-}
-.dash-header {
-    padding: 20px; background: #00427a; color: white;
-    display: flex; align-items: center; gap: 10px;
-}
+.dashboard-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+.dashboard-window { background: rgba(255, 255, 255, 0.95); width: 95%; max-width: 1000px; max-height: 90vh; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; }
+.dash-header { padding: 20px; background: #00427a; color: white; display: flex; align-items: center; gap: 10px; }
 .search-bar-wrap { flex: 1; display: flex; gap: 5px; }
-.search-bar-wrap input {
-    flex: 1; padding: 10px; border-radius: 5px; border: none; outline: none;
-}
-.dash-main-search-btn {
-    background: #f1c40f; border: none; padding: 0 15px; font-weight: bold; border-radius: 5px; cursor: pointer; color: #333;
-}
-.dash-close-btn {
-    background: none; border: none; color: white; font-size: 20px; cursor: pointer;
-}
-.dash-body {
-    padding: 20px; overflow-y: auto; flex: 1;
-}
+.search-bar-wrap input { flex: 1; padding: 10px; border-radius: 5px; border: none; outline: none; }
+.dash-main-search-btn { background: #f1c40f; border: none; padding: 0 15px; font-weight: bold; border-radius: 5px; cursor: pointer; color: #333; }
+.dash-close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+.dash-body { padding: 20px; overflow-y: auto; flex: 1; }
 .filter-group { margin-bottom: 25px; }
-.filter-group h3 {
-    font-size: 14px; color: #555; margin-bottom: 10px; border-left: 4px solid #00427a; padding-left: 8px;
-}
+.filter-group h3 { font-size: 14px; color: #555; margin-bottom: 10px; border-left: 4px solid #00427a; padding-left: 8px; }
 .tag-container { display: flex; flex-wrap: wrap; gap: 8px; }
-.filter-tag, .dist-tag {
-    padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd; background: white;
-    font-size: 13px; color: #666; cursor: pointer; transition: 0.2s;
-}
-.filter-tag.active, .dist-tag.active {
-    background: #00427a; color: white; border-color: #00427a;
-}
-.range-grid {
-    display: grid; grid-template-columns: 1fr; gap: 10px;
-}
-.range-item {
-    display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; border-radius: 8px;
-}
+.filter-tag, .dist-tag, .est-tag { padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd; background: white; font-size: 13px; color: #666; cursor: pointer; transition: 0.2s; }
+.filter-tag.active, .dist-tag.active, .est-tag.active { background: #00427a; color: white; border-color: #00427a; }
+.range-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+@media (max-width: 768px) { .range-grid { grid-template-columns: 1fr; } }
+.range-item { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; border-radius: 8px; }
 .range-controls { display: flex; gap: 5px; }
 .range-box { display: flex; align-items: center; gap: 3px; }
 .range-box input { width: 50px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: center; }
-.dash-footer {
-    padding: 15px; border-top: 1px solid #eee; text-align: center; background: white;
-}
-.reset-btn {
-    background: #95a5a6; color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer;
-}
-
-/* ============================================================
-   [추가] 4. 검색결과 리스트 & 관리자 테이블
-   ============================================================ */
-#search-results-page {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); z-index: 6000;
-    display: none; flex-direction: column;
-}
-.results-header {
-    height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px;
-    background: #333; color: white;
-}
-#results-list-container {
-    flex: 1; overflow-y: auto; padding: 20px; background: #f0f0f0; display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; align-content: start;
-}
-.result-card {
-    background: white; padding: 15px; border-radius: 10px; cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s;
-}
-.result-card:hover { transform: translateY(-3px); }
-
-/* 관리자 테이블 스타일 */
-.admin-table {
-    width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;
-}
-.admin-table th, .admin-table td {
-    padding: 8px; border: 1px solid #ddd; text-align: center;
-}
+.dash-footer { padding: 15px; border-top: 1px solid #eee; text-align: center; background: white; }
+.reset-btn { background: #95a5a6; color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; }
+.admin-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+.admin-table th, .admin-table td { padding: 8px; border: 1px solid #ddd; text-align: center; }
 .admin-table th { background: #f2f2f2; color: #333; }
-
-/* ============================================================
-   [핵심 수정] 상세 정보 팝업을 모든 UI보다 위에 배치
-   ============================================================ */
-
-/* 1. Leaflet의 팝업 레이어 판(Pane) 자체를 최상위로 격상 */
-.leaflet-popup-pane {
-    /* 상세검색 대시보드(5000)보다 높게 설정하여 무조건 위로 올림 */
-    z-index: 7000 !important; 
-}
-
-/* 2. 팝업 요소 자체의 z-index 보강 */
-.leaflet-popup {
-    z-index: 7001 !important;
-}
-
-/* 3. 팝업이 떴을 때 배경 마커들이나 검색창이 가려지도록 강조 (선택 사항) */
-.custom-popup .leaflet-popup-content-wrapper {
-    z-index: 7002 !important;
-    border: 1px solid #4A90E2; /* 테두리 강조로 시인성 확보 */
-    box-shadow: 0 15px 45px rgba(0,0,0,0.4) !important; /* 그림자 강화 */
-}
-
-/* 4. 모바일 환경에서 팝업이 UI에 가려지지 않도록 패딩 확보 */
-@media (max-width: 768px) {
-    .leaflet-popup {
-        /* 하단 로그인 바(3000) 등에 가리지 않도록 위치 보정 */
-        margin-bottom: 70px; 
-    }
-}
-
-/* 5. 팝업 내부의 클릭 이벤트가 UI 레이어에 막히지 않게 처리 */
-.leaflet-popup-content {
-    pointer-events: auto !important;
-}
+.help-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+.help-modal-content { background: white; width: 90%; max-width: 420px; padding: 30px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); position: relative; }
+.help-close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #ccc; }
