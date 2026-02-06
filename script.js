@@ -260,43 +260,74 @@ const MapManager = {
         return L.divIcon({ className: 'marker-container-icon', html, iconSize: [0, 0] });
     },
 
-    bindEvents() {
+bindEvents() {
+        // 1. 줌 레벨 변경 이벤트
         this.map.on('zoomend', () => {
-            // ... (기존 줌 관련 코드 유지) ...
             const zoom = this.map.getZoom();
             document.querySelectorAll('.dist-stat-btn').forEach(btn => btn.className = `dist-stat-btn zoom-lv-${zoom}`);
-            if (zoom >= 15) this.map.getContainer().classList.add('view-labels-mode');
-            else this.map.getContainer().classList.remove('view-labels-mode');
+            
+            const mapContainer = this.map.getContainer();
+            if (zoom >= 15) mapContainer.classList.add('view-labels-mode');
+            else mapContainer.classList.remove('view-labels-mode');
         });
 
-        // ▼▼▼ [여기부터가 빠지면 안 되는 핵심 코드입니다] ▼▼▼
-
-        // 1. 행정구역 경계 켜기/끄기 (색깔 나오는 부분 토글)
+        // 2. 행정구역 경계 토글
         const toggleBtn = document.getElementById('toggle-boundary');
         if (toggleBtn) {
             toggleBtn.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    this.map.addLayer(this.boundaryGroup); // 체크되면 색깔 켜기
-                } else {
-                    this.map.removeLayer(this.boundaryGroup); // 체크 풀면 색깔 끄기
-                }
+                if (e.target.checked) this.map.addLayer(this.boundaryGroup);
+                else this.map.removeLayer(this.boundaryGroup);
             });
         }
 
-        // 2. 즐겨찾기만 보기 (로그인 시 내 학교만 필터링)
+        // 3. 즐겨찾기 필터 토글
         const favOnlyBtn = document.getElementById('toggle-favorite-only');
         if (favOnlyBtn) {
             favOnlyBtn.addEventListener('change', (e) => {
-                // 체크 여부를 filterFavorites 함수로 전달하여 실행
-                this.filterFavorites(e.target.checked); 
+                this.filterFavorites(e.target.checked);
             });
         }
-        
-        // ▲▲▲ [여기까지 확인 필수] ▲▲▲
 
-        // ... (기존 popupopen 이벤트 등 유지) ...
+        // 4. [핵심 수정] 팝업 열림 이벤트 (메모 로딩 순서 최적화)
         this.map.on('popupopen', async (e) => {
-            // ... 기존 코드 ...
+            const popupNode = e.popup.getElement();
+            const textarea = popupNode.querySelector('textarea[id^="memo-"]');
+            const saveBtn = popupNode.querySelector('.memo-save-btn');
+            const favBtn = popupNode.querySelector('.fav-toggle-btn');
+
+            if (textarea && saveBtn) {
+                const schoolName = textarea.id.replace('memo-', '');
+                const isLoggedIn = AuthManager.userId !== null;
+
+                // [수정 포인트 1] 서버 응답을 기다리지 않고, UI부터 즉시 활성화/비활성화 처리
+                textarea.disabled = !isLoggedIn;
+                saveBtn.disabled = !isLoggedIn;
+                saveBtn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+
+                if (isLoggedIn) {
+                    // [수정 포인트 2] 즐겨찾기는 "백그라운드"에서 실행 (메모 로딩을 방해하지 않음)
+                    if (favBtn) {
+                        fetch(`/api/favorite/${encodeURIComponent(schoolName)}`)
+                            .then(res => res.json())
+                            .then(data => this.updateFavoriteUI(schoolName, data.isFavorite))
+                            .catch(err => console.log("즐겨찾기 확인 실패"));
+                    }
+
+                    // [수정 포인트 3] 메모 로딩 시작
+                    textarea.placeholder = "메모를 불러오는 중...";
+                    try {
+                        const res = await fetch(`/api/memo/${encodeURIComponent(schoolName)}`);
+                        const data = await res.json();
+                        textarea.value = data.content || "";
+                        textarea.placeholder = "여기에 메모를 작성하세요";
+                    } catch(err) { 
+                        textarea.placeholder = "메모 로드 실패"; 
+                    }
+                } else {
+                    textarea.value = ""; 
+                    textarea.placeholder = "로그인 후 이용 가능합니다";
+                }
+            }
         });
     },
 
