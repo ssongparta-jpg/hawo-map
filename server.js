@@ -53,36 +53,15 @@ const loginAttempts = {};
 
 app.post('/api/login', (req, res) => {
     const { id, pw } = req.body;
-
-    // 1. 먼저 DB에서 해당 ID가 있는지 조회합니다.
     db.get("SELECT * FROM users WHERE id = ?", [id], async (err, row) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: "서버 오류가 발생했습니다." });
-        }
-
-        // 2. ID가 존재하지 않는 경우
-        if (!row) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "존재하지 않는 ID입니다." 
-            });
-        }
-
-        // 3. ID는 존재하지만 비밀번호가 틀린 경우
-        const isMatch = await bcrypt.compare(pw, row.pw);
-        if (!isMatch) {
+        if (row && await bcrypt.compare(pw, row.pw)) {
+            delete loginAttempts[id];
+            req.session.userId = id;
+            req.session.save(() => res.json({ success: true, userId: id }));
+        } else {
             loginAttempts[id] = (loginAttempts[id] || 0) + 1;
-            return res.status(401).json({ 
-                success: false, 
-                message: "비밀번호가 일치하지 않습니다.", 
-                attempts: loginAttempts[id] 
-            });
+            res.status(401).json({ success: false, message: "ID/PW가 일치하지 않습니다.", attempts: loginAttempts[id] });
         }
-
-        // 4. 로그인 성공
-        delete loginAttempts[id];
-        req.session.userId = id;
-        req.session.save(() => res.json({ success: true, userId: id }));
     });
 });
 
@@ -135,6 +114,23 @@ app.post('/api/memo', isLoggedIn, (req, res) => {
     const { schoolName, content } = req.body;
     db.run("INSERT OR REPLACE INTO memos (userId, schoolName, content) VALUES (?, ?, ?)", 
         [req.session.userId, schoolName, content], (err) => res.json({ success: !err }));
+});
+
+app.delete('/api/memo', isLoggedIn, (req, res) => {
+    const { schoolName } = req.body;
+    const userId = req.session.userId;
+    
+    db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", 
+        [userId, schoolName], 
+        (err) => {
+            if (err) {
+                console.error(err);
+                res.status(500).json({ success: false, message: "DB 오류" });
+            } else {
+                res.json({ success: true });
+            }
+        }
+    );
 });
 
 // --- 즐겨찾기 API --- 
