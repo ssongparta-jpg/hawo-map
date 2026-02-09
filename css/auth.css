@@ -1,7 +1,13 @@
 #auth-area {
-    position: absolute; z-index: 30000; display: flex; align-items: center; gap: 6px;
-    top: 18px; right: 20px;
+    position: absolute; 
+    z-index: 99999 !important; /* 지도 레이어 20000보다 높게 설정 */
+    display: flex; 
+    align-items: center; 
+    gap: 6px;
+    top: 18px; 
+    right: 20px;
 }
+
 #login-form, #user-info { display: flex; align-items: center; gap: 5px; }
 #auth-area input {
     width: 100px; padding: 0 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;

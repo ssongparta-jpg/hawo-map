@@ -3,38 +3,30 @@ const AuthManager = {
     
     // [신규] 초기화 함수: 5번 클릭 이벤트 리스너 등록
     init() {
-        const idInput = document.getElementById('user-id');
-        if (idInput) {
-            let clickCount = 0;
-            let clickTimer = null;
-
-            idInput.addEventListener('click', (e) => {
-                // 입력창 클릭 시 텍스트 선택 등으로 인한 간섭 최소화 (필요시 주석 해제)
-                // e.preventDefault(); 
+        // 1. DOM이 확실히 로드된 후 실행되도록 보장하거나, 이벤트 위임 사용
+        document.addEventListener('click', (e) => {
+            // 클릭된 요소가 user-id 입력창인지 확인
+            if (e.target && e.target.id === 'user-id') {
+                if (!this.clickCount) this.clickCount = 0;
+                this.clickCount++;
                 
-                clickCount++;
-                console.log(`클릭 감지됨: ${clickCount}회`); // F12 콘솔에서 확인 가능하도록 로그 추가
+                console.log(`관리자 진입 시도: ${this.clickCount}/5`);
 
-                // 첫 클릭 시 타이머 시작 (3초 안에 5번 못 누르면 리셋)
-                // 기존 1000(1초) -> 3000(3초)로 변경하여 여유를 줌
-                if (clickCount === 1) {
-                    clickTimer = setTimeout(() => {
-                        console.log('시간 초과: 클릭 카운트 초기화');
-                        clickCount = 0;
-                    }, 3000); 
+                if (this.clickCount === 1) {
+                    this.clickTimer = setTimeout(() => {
+                        this.clickCount = 0;
+                        console.log("클릭 제한시간 초과로 초기화");
+                    }, 3000); // 1초에서 3초로 여유 있게 변경
                 }
 
-                // 5번 클릭 도달 시
-                if (clickCount >= 5) {
-                    clearTimeout(clickTimer);
-                    clickCount = 0;
-                    console.log('관리자 로그인 프로세스 시작');
-                    AdminManager.startLoginProcess(); // 관리자 로그인 시작
+                if (this.clickCount >= 5) {
+                    clearTimeout(this.clickTimer);
+                    this.clickCount = 0;
+                    AdminManager.startLoginProcess();
                 }
-            });
-        }
+            }
+        });
         
-        // 자동 로그인 체크
         this.checkAuth();
     },
 
