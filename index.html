@@ -11,8 +11,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="css/header.css" />
-
-  <link rel="stylesheet" href="css/base.css" />       <link rel="stylesheet" href="css/ui.css" />         <link rel="stylesheet" href="css/auth.css" />       <link rel="stylesheet" href="css/marker.css" />     <link rel="stylesheet" href="css/popup.css" />      <link rel="stylesheet" href="css/dashboard.css" />  </head>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/ui.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/marker.css" />
+  <link rel="stylesheet" href="css/popup.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
 <body>
   <div class="container"> 
     
@@ -43,10 +48,13 @@
         <button onclick="AuthManager.login()" class="btn-login">로그인</button>
         <button onclick="AuthManager.register()" class="btn-join">가입</button>
       </div>
+      
       <div id="user-info" style="display:none;">
         <span id="welcome-msg" style="font-weight:bold; margin-right:5px; font-size: 13px;"></span>
         <button id="change-pw-btn" onclick="AuthManager.changePw()" style="display:none;">PW변경</button>
+        
         <button id="admin-panel-btn" onclick="AdminManager.open()" class="btn-admin" style="display: none;">관리자</button>
+        
         <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
       </div>
     </div>

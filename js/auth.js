@@ -1,13 +1,43 @@
 const AuthManager = {
     userId: null,
     
+    // [신규] 초기화 함수: 5번 클릭 이벤트 리스너 등록
+    init() {
+        const idInput = document.getElementById('user-id');
+        if (idInput) {
+            let clickCount = 0;
+            let clickTimer = null;
+
+            idInput.addEventListener('click', () => {
+                clickCount++;
+                
+                // 첫 클릭 시 타이머 시작 (1초 안에 5번 못 누르면 리셋)
+                if (clickCount === 1) {
+                    clickTimer = setTimeout(() => {
+                        clickCount = 0;
+                    }, 1000);
+                }
+
+                // 5번 클릭 도달 시
+                if (clickCount >= 5) {
+                    clearTimeout(clickTimer);
+                    clickCount = 0;
+                    AdminManager.startLoginProcess(); // 관리자 로그인 시작
+                }
+            });
+        }
+        
+        // 자동 로그인 체크
+        this.checkAuth();
+    },
+
     async checkAuth() {
         try {
             const res = await fetch('/api/check-auth');
             if (res.ok) {
                 const data = await res.json();
                 this.userId = data.isLoggedIn ? data.userId : null;
-                this.toggleUI(data.isLoggedIn);
+                this.toggleUI(data.isLoggedIn, data.isAdmin);
             }
         } catch (e) { this.userId = null; this.toggleUI(false); }
     },
@@ -28,7 +58,7 @@ const AuthManager = {
             } else {
                 const errorData = await res.json();
                 if (errorData.attempts >= 1) this.showFailPopup(id);
-                else alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+                else alert(errorData.message);
             }
         } catch (e) { alert("서버 연결 실패"); }
     },
@@ -95,15 +125,14 @@ const AuthManager = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ schoolName, content: textArea.value })
             });
-            if (res.ok) alert('메모가 안전하게 저장되었습니다.');
+            if (res.ok) alert('메모가 저장되었습니다.');
             else alert('저장에 실패했습니다.');
-        } catch (err) { alert('서버 연결에 실패했습니다.'); }
+        } catch (err) { alert('서버 오류'); }
     },
 
     async deleteMemo(schoolName, e) {
         if (e) { e.stopPropagation(); e.preventDefault(); }
-        if (!confirm("정말 이 메모를 완전히 삭제하시겠습니까?")) return;
-
+        if (!confirm("메모를 삭제하시겠습니까?")) return;
         const textArea = document.getElementById(`memo-${schoolName}`);
         try {
             const res = await fetch('/api/memo', {
@@ -111,20 +140,14 @@ const AuthManager = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ schoolName })
             });
-
             if (res.ok) {
-                alert('메모가 삭제되었습니다.');
+                alert('메모 삭제 완료');
                 if (textArea) textArea.value = "";
-            } else {
-                alert('삭제에 실패했습니다. (서버 미지원 가능성)');
-            }
-        } catch (err) { 
-            console.error(err);
-            alert('서버 연결 오류'); 
-        }
+            } else { alert('삭제 실패'); }
+        } catch (err) { alert('서버 오류'); }
     },
 
-    toggleUI(isLoggedIn) {
+    toggleUI(isLoggedIn, isAdmin = false) {
         const form = document.getElementById('login-form');
         const info = document.getElementById('user-info');
         if (form) form.style.display = isLoggedIn ? 'none' : 'flex';
@@ -136,7 +159,7 @@ const AuthManager = {
         if (isLoggedIn) {
             document.getElementById('welcome-msg').innerText = `${this.userId}님`;
             const adminBtn = document.getElementById('admin-panel-btn');
-            if (this.userId === 'spring' && adminBtn) adminBtn.style.display = 'inline-block';
+            if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
         }
         
         const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
@@ -168,19 +191,68 @@ const AuthManager = {
 };
 
 const AdminManager = {
+    // 5번 클릭 시 호출되는 함수
+    async startLoginProcess() {
+        const adminId = prompt("관리자 ID를 입력하세요.");
+        if (!adminId) return;
+
+        if (!confirm(`'${adminId}' 계정의 인증 코드를 이메일로 발송하시겠습니까?`)) return;
+        
+        try {
+            const res = await fetch('/api/admin/send-code', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: adminId }) 
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                const code = prompt(`${data.message}\n이메일로 전송된 6자리 코드를 입력하세요.`);
+                if (code) {
+                    this.verifyCode(code);
+                }
+            } else {
+                alert(data.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("서버 통신 오류");
+        }
+    },
+
+    async verifyCode(code) {
+        try {
+            const res = await fetch('/api/admin/verify-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                alert(`관리자(${data.userId}) 로그인 성공!`);
+                location.reload(); 
+            } else {
+                alert(data.message);
+            }
+        } catch (e) {
+            alert("인증 실패");
+        }
+    },
+
     async open() {
-        const password = prompt("관리자 보안 코드를 입력하세요.");
-        if (password !== "0327") return alert("인증 실패");
         const modal = document.getElementById('admin-modal');
         if (modal) {
             modal.style.display = 'flex';
             this.loadResetRequests();
         }
     },
+    
     close() {
         const modal = document.getElementById('admin-modal');
         if (modal) modal.style.display = 'none';
     },
+
     async manageUsers() {
         const content = document.getElementById('admin-content');
         content.innerHTML = '<p>데이터 로딩중...</p>';
@@ -195,11 +267,13 @@ const AdminManager = {
             content.innerHTML = html;
         } catch (e) { content.innerHTML = '<p>로딩 실패</p>'; }
     },
+
     async deleteUser(id) {
         if(!confirm(`${id}님을 탈퇴시킬까요?`)) return;
         await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
         this.manageUsers();
     },
+
     async loadResetRequests() {
         const content = document.getElementById('admin-content');
         content.innerHTML = '<p>데이터 로딩중...</p>';
@@ -218,6 +292,7 @@ const AdminManager = {
             content.innerHTML = html;
         } catch (e) { content.innerHTML = '<p>데이터 로드 오류</p>'; }
     },
+
     async approveOne(id) {
         if(!confirm(`${id}님의 비밀번호를 '1234'로 초기화하시겠습니까?`)) return;
         try {
@@ -232,6 +307,7 @@ const AdminManager = {
             }
         } catch (e) { alert("승인 처리 실패"); }
     },
+
     async viewAllMemos() {
         const content = document.getElementById('admin-content');
         content.innerHTML = '<p>메모 로딩중...</p>';
@@ -247,3 +323,8 @@ const AdminManager = {
         } catch (e) { content.innerHTML = '<p>로드 실패</p>'; }
     }
 };
+
+// [중요] 문서 로드 후 초기화 실행 (5연타 감지 시작)
+document.addEventListener('DOMContentLoaded', () => {
+    AuthManager.init();
+});
