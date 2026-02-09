@@ -119,20 +119,22 @@ app.post('/api/memo', isLoggedIn, (req, res) => {
 app.delete('/api/memo', isLoggedIn, (req, res) => {
     const { schoolName } = req.body;
     const userId = req.session.userId;
-    
+
+    if (!schoolName) return res.status(400).json({ success: false, message: "학교명이 누락되었습니다." });
+
     db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", 
         [userId, schoolName], 
-        (err) => {
+        function(err) { // 화살표 함수 대신 일반 함수를 써야 this.changes 확인 가능
             if (err) {
-                console.error(err);
                 res.status(500).json({ success: false, message: "DB 오류" });
+            } else if (this.changes === 0) {
+                res.status(404).json({ success: false, message: "삭제할 메모가 없습니다." });
             } else {
                 res.json({ success: true });
             }
         }
     );
 });
-
 // --- 즐겨찾기 API --- 
 // 1. 특정 학교 즐겨찾기 상태 확인
 app.get('/api/favorite/:schoolName', isLoggedIn, (req, res) => {
@@ -161,8 +163,11 @@ app.post('/api/favorite/toggle', isLoggedIn, (req, res) => {
 });
 
 // 3. 내 즐겨찾기 목록 전체 가져오기
-app.get('/api/my-favorites', isLoggedIn, (req, res) => {
+app.get('/api/my-favorites', (req, res) => {
+    if (!req.session.userId) return res.json({ favorites: [] }); // 에러 대신 빈 배열 반환
+    
     db.all("SELECT schoolName FROM favorites WHERE userId = ?", [req.session.userId], (err, rows) => {
+        if (err) return res.status(500).json({ favorites: [] });
         res.json({ favorites: rows ? rows.map(r => r.schoolName) : [] });
     });
 });

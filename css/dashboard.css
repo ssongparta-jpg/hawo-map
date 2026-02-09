@@ -1,0 +1,59 @@
+.dashboard-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+.dashboard-window { background: rgba(255, 255, 255, 0.95); width: 95%; max-width: 1000px; max-height: 90vh; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; }
+.dash-header { padding: 20px; background: #00427a; color: white; display: flex; align-items: center; gap: 10px; }
+.search-bar-wrap { flex: 1; display: flex; gap: 5px; }
+.search-bar-wrap input { flex: 1; padding: 10px; border-radius: 5px; border: none; outline: none; }
+.dash-main-search-btn { background: #f1c40f; border: none; padding: 0 15px; font-weight: bold; border-radius: 5px; cursor: pointer; color: #333; }
+.dash-close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+.dash-body { padding: 20px; overflow-y: auto; flex: 1; }
+.filter-group { margin-bottom: 25px; }
+.filter-group h3 { font-size: 14px; color: #555; margin-bottom: 10px; border-left: 4px solid #00427a; padding-left: 8px; }
+.tag-container { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter-tag, .dist-tag, .est-tag { padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd; background: white; font-size: 13px; color: #666; cursor: pointer; transition: 0.2s; }
+.filter-tag.active, .dist-tag.active, .est-tag.active { background: #00427a; color: white; border-color: #00427a; }
+.range-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.range-item { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; border-radius: 8px; }
+.range-controls { display: flex; gap: 5px; }
+.range-box { display: flex; align-items: center; gap: 3px; }
+.range-box input { width: 50px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: center; }
+.dash-footer { padding: 15px; border-top: 1px solid #eee; text-align: center; background: white; }
+.reset-btn { background: #95a5a6; color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; }
+
+/* 검색 결과 창 및 그리드 */
+.results-window {
+    width: 95%; max-width: 1100px; height: 85vh;
+    display: flex; flex-direction: column;
+}
+#results-list-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 15px; padding: 20px; overflow-y: auto; background: #f5f6f7;
+    flex: 1;
+}
+.result-card {
+    background: white; padding: 16px; border-radius: 10px; border: 1px solid #eee;
+    cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 4px;
+}
+.result-card:hover { border-color: #4A90E2; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.res-name { font-size: 16px; font-weight: bold; color: #222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.res-addr { font-size: 12px; color: #777; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 학교급별 색상 */
+.res-type { font-size: 11px; font-weight: bold; margin-bottom: 2px; }
+.res-type.type-kinder { color: #4A90E2; }
+.res-type.type-elem { color: #2ECC71; }
+.res-type.type-mid { color: #F1C40F; }
+.res-type.type-high { color: #E74C3C; }
+.res-type.type-spec { color: #9B59B6; }
+.results-header-title { font-size: 16px; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; }
+.results-count-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: normal; }
+
+@media (max-width: 992px) {
+    #results-list-container { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) { 
+    .range-grid { grid-template-columns: 1fr; } 
+}
+@media (max-width: 600px) {
+    #results-list-container { grid-template-columns: 1fr; }
+}
