@@ -1,31 +1,52 @@
 const AuthManager = {
     userId: null,
     
-    // [신규] 초기화 함수: 5번 클릭 이벤트 리스너 등록
     init() {
-        // 1. DOM이 확실히 로드된 후 실행되도록 보장하거나, 이벤트 위임 사용
-        document.addEventListener('click', (e) => {
-            // 클릭된 요소가 user-id 입력창인지 확인
-            if (e.target && e.target.id === 'user-id') {
-                if (!this.clickCount) this.clickCount = 0;
-                this.clickCount++;
+        const idInput = document.getElementById('user-id');
+        
+        if (idInput) {
+            let clickCount = 0;
+            let clickTimer = null;
+
+            // [수정] 'click' 대신 'mousedown' 이벤트 사용 (반응성 향상)
+            idInput.addEventListener('mousedown', (e) => {
+                clickCount++;
+                console.log(`[DEBUG] 클릭 감지됨: ${clickCount}/5`); 
+
+                // [시각적 피드백] 클릭이 먹혔는지 확인하기 위해 테두리를 순간적으로 빨간색으로 변경
+                idInput.style.border = '2px solid red';
+                idInput.style.backgroundColor = '#ffecec';
                 
-                console.log(`관리자 진입 시도: ${this.clickCount}/5`);
+                // 0.2초 뒤에 원래 색으로 복구
+                setTimeout(() => {
+                    idInput.style.border = '1px solid #ccc';
+                    idInput.style.backgroundColor = 'white';
+                }, 200);
 
-                if (this.clickCount === 1) {
-                    this.clickTimer = setTimeout(() => {
-                        this.clickCount = 0;
-                        console.log("클릭 제한시간 초과로 초기화");
-                    }, 3000); // 1초에서 3초로 여유 있게 변경
+                // 타이머 설정 (3초 내에 연속 클릭)
+                if (clickCount === 1) {
+                    clickTimer = setTimeout(() => {
+                        console.log('시간 초과: 카운트 초기화');
+                        clickCount = 0;
+                    }, 3000); 
                 }
 
-                if (this.clickCount >= 5) {
-                    clearTimeout(this.clickTimer);
-                    this.clickCount = 0;
-                    AdminManager.startLoginProcess();
+                // 5번 도달 시
+                if (clickCount >= 5) {
+                    clearTimeout(clickTimer);
+                    clickCount = 0;
+                    
+                    // 마지막 클릭 효과를 보여준 뒤 0.1초 후에 실행
+                    setTimeout(() => {
+                        console.log('관리자 로직 실행');
+                        alert("관리자 모드 진입을 시도합니다."); // [확인용 알림] 이게 뜨면 성공입니다.
+                        AdminManager.startLoginProcess(); 
+                    }, 100);
                 }
-            }
-        });
+            });
+        } else {
+            console.error("ID 입력창(#user-id)을 찾을 수 없습니다.");
+        }
         
         this.checkAuth();
     },
