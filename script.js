@@ -293,6 +293,7 @@ bindEvents() {
             const popupNode = e.popup.getElement();
             const textarea = popupNode.querySelector('textarea[id^="memo-"]');
             const saveBtn = popupNode.querySelector('.memo-save-btn');
+            const delBtn = popupNode.querySelector('.memo-del-btn');
             const favBtn = popupNode.querySelector('.fav-toggle-btn');
 
             if (textarea && saveBtn) {
@@ -303,6 +304,12 @@ bindEvents() {
                 textarea.disabled = !isLoggedIn;
                 saveBtn.disabled = !isLoggedIn;
                 saveBtn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+
+                // [추가] 삭제 버튼 상태 제어
+                if (delBtn) {
+                    delBtn.disabled = !isLoggedIn;
+                    delBtn.style.backgroundColor = isLoggedIn ? '#e74c3c' : '#ccc'; // 활성 시 빨간색
+                }
 
                 if (isLoggedIn) {
                     // [수정 포인트 2] 즐겨찾기는 "백그라운드"에서 실행 (메모 로딩을 방해하지 않음)
@@ -441,12 +448,18 @@ bindEvents() {
         const isEduOffice = (p.type && p.type.includes('교육')) || p.name.includes('교육지원청');
         let principalName = p.principal;
         if (!principalName || principalName === 'No Data' || principalName.trim() === '') principalName = '정보 없음'; 
+        
         const linkHtml = p.url 
             ? `<a href="${p.url}" target="_blank" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>` 
             : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
+            
         const isLoggedIn = AuthManager.userId !== null;
+        
+        // 버튼 색상 및 활성 상태 설정
         const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
+        const delBtnBg = isLoggedIn ? '#e74c3c' : '#ccc';
         const btnDisabled = isLoggedIn ? '' : 'disabled';
+        
         const estBadge = p.establish ? `<span class="badge-est">${p.establish}</span>` : '';
         
         let bodyContent = '';
@@ -500,10 +513,101 @@ bindEvents() {
                         style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
                         placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
                         disabled></textarea>
-                    <button id="btn-save-${p.name}" class="memo-save-btn"
-                        onclick="AuthManager.saveMemo('${p.name}', event)" style="background-color: ${btnBg};" ${btnDisabled}>메모 저장</button>
+                    
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button id="btn-save-${p.name}" class="memo-save-btn"
+                            onclick="AuthManager.saveMemo('${p.name}', event)" 
+                            style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
+                            ${btnDisabled}>
+                            저장
+                        </button>
+                        <button id="btn-del-${p.name}" class="memo-del-btn"
+                            onclick="AuthManager.deleteMemo('${p.name}', event)" 
+                            style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
+                            ${btnDisabled}>
+                            삭제
+                        </button>
+                    </div>
                 </div>
             </div>`;
+    },
+
+    // [수정 2] 이벤트 연결 함수 (토글 기능, 메모 UI 즉시 활성화 포함)
+    bindEvents() {
+        // 1. 줌 레벨 변경 이벤트
+        this.map.on('zoomend', () => {
+            const zoom = this.map.getZoom();
+            document.querySelectorAll('.dist-stat-btn').forEach(btn => btn.className = `dist-stat-btn zoom-lv-${zoom}`);
+            
+            const mapContainer = this.map.getContainer();
+            if (zoom >= 15) mapContainer.classList.add('view-labels-mode');
+            else mapContainer.classList.remove('view-labels-mode');
+        });
+
+        // 2. 행정구역 경계 토글
+        const toggleBtn = document.getElementById('toggle-boundary');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('change', (e) => {
+                if (e.target.checked) this.map.addLayer(this.boundaryGroup);
+                else this.map.removeLayer(this.boundaryGroup);
+            });
+        }
+
+        // 3. 즐겨찾기 필터 토글
+        const favOnlyBtn = document.getElementById('toggle-favorite-only');
+        if (favOnlyBtn) {
+            favOnlyBtn.addEventListener('change', (e) => {
+                this.filterFavorites(e.target.checked);
+            });
+        }
+
+        // 4. 팝업 열림 이벤트 (메모 로딩 순서 최적화 + 삭제 버튼 처리)
+        this.map.on('popupopen', async (e) => {
+            const popupNode = e.popup.getElement();
+            const textarea = popupNode.querySelector('textarea[id^="memo-"]');
+            const saveBtn = popupNode.querySelector('.memo-save-btn');
+            const delBtn = popupNode.querySelector('.memo-del-btn');
+            const favBtn = popupNode.querySelector('.fav-toggle-btn');
+
+            if (textarea && saveBtn) {
+                const schoolName = textarea.id.replace('memo-', '');
+                const isLoggedIn = AuthManager.userId !== null;
+
+                // [중요] UI부터 즉시 활성화/비활성화 (서버 대기 없음)
+                textarea.disabled = !isLoggedIn;
+                saveBtn.disabled = !isLoggedIn;
+                saveBtn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
+                
+                if (delBtn) {
+                    delBtn.disabled = !isLoggedIn;
+                    delBtn.style.backgroundColor = isLoggedIn ? '#e74c3c' : '#ccc';
+                }
+
+                if (isLoggedIn) {
+                    // 즐겨찾기는 백그라운드에서 확인
+                    if (favBtn) {
+                        fetch(`/api/favorite/${encodeURIComponent(schoolName)}`)
+                            .then(res => res.json())
+                            .then(data => this.updateFavoriteUI(schoolName, data.isFavorite))
+                            .catch(err => console.log("즐겨찾기 확인 실패"));
+                    }
+
+                    // 메모 로딩 시작
+                    textarea.placeholder = "메모를 불러오는 중...";
+                    try {
+                        const res = await fetch(`/api/memo/${encodeURIComponent(schoolName)}`);
+                        const data = await res.json();
+                        textarea.value = data.content || "";
+                        textarea.placeholder = "여기에 메모를 작성하세요";
+                    } catch(err) { 
+                        textarea.placeholder = "메모 로드 실패"; 
+                    }
+                } else {
+                    textarea.value = ""; 
+                    textarea.placeholder = "로그인 후 이용 가능합니다";
+                }
+            }
+        });
     },
 
     async loadBoundaries() {
@@ -579,7 +683,7 @@ bindEvents() {
                 <div class="popup-title" style="color:#4A90E2;">${fullName}</div>
                 <hr class="popup-hr">
                 <ul class="popup-info-list">
-                    <li><span class="label">학교 수</span> <span class="value"><strong>${targets.length - 1}</strong>개교</span></li>
+                    <li><span class="label">학교 수</span> <span class="value"><strong>${targets.length}</strong>개교</span></li>
                     <li><span class="label">총 학생 수</span> <span class="value"><strong>${stats.s.toLocaleString()}</strong>명</span></li>
                     <li><span class="label">총 학급 수</span> <span class="value"><strong>${stats.c.toLocaleString()}</strong>개</span></li>
                     <li><span class="label">총 교사 수</span> <span class="value"><strong>${stats.t.toLocaleString()}</strong>명</span></li>
@@ -591,6 +695,7 @@ bindEvents() {
 
 const AuthManager = {
     userId: null,
+    
     async checkAuth() {
         try {
             const res = await fetch('/api/check-auth');
@@ -601,6 +706,7 @@ const AuthManager = {
             }
         } catch (e) { this.userId = null; this.toggleUI(false); }
     },
+    
     async login() {
         const id = document.getElementById('user-id').value;
         const pw = document.getElementById('user-pw').value;
@@ -621,10 +727,12 @@ const AuthManager = {
             }
         } catch (e) { alert("서버 연결 실패"); }
     },
+    
     showFailPopup(id) {
         const choice = confirm(`비밀번호가 일치하지 않습니다.\n\n확인(OK): 관리자에게 PW 초기화 요청\n취소(Cancel): 닫기`);
         if (choice) this.requestResetPw(id);
     },
+    
     async requestResetPw(id) {
         try {
             const res = await fetch('/api/request-reset-pw', {
@@ -635,12 +743,14 @@ const AuthManager = {
             if (res.ok) alert(`관리자에게 ${id}님의 초기화 요청이 전달되었습니다.`);
         } catch(e) { alert("요청 전송 실패"); }
     },
+    
     async logout() {
         try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
         this.userId = null;
         this.toggleUI(false);
         location.reload();
     },
+    
     async register() {
         const id = document.getElementById('user-id').value;
         const pw = document.getElementById('user-pw').value;
@@ -655,6 +765,7 @@ const AuthManager = {
             alert(data.message);
         } catch (e) { console.error(e); }
     },
+    
     async changePw() {
         const newPw = prompt("새로운 비밀번호를 입력하세요.");
         if (!newPw) return;
@@ -668,6 +779,7 @@ const AuthManager = {
             else alert("변경에 실패했습니다.");
         } catch (e) {}
     },
+    
     async saveMemo(schoolName, e) {
         if (e) { e.stopPropagation(); e.preventDefault(); }
         const textArea = document.getElementById(`memo-${schoolName}`);
@@ -682,18 +794,49 @@ const AuthManager = {
             else alert('저장에 실패했습니다.');
         } catch (err) { alert('서버 연결에 실패했습니다.'); }
     },
+
+    // [신규] 메모 삭제 기능
+    async deleteMemo(schoolName, e) {
+        if (e) { e.stopPropagation(); e.preventDefault(); }
+        if (!confirm("정말 이 메모를 완전히 삭제하시겠습니까?")) return;
+
+        const textArea = document.getElementById(`memo-${schoolName}`);
+        try {
+            const res = await fetch('/api/memo', {
+                method: 'DELETE', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schoolName })
+            });
+
+            if (res.ok) {
+                alert('메모가 삭제되었습니다.');
+                if (textArea) textArea.value = "";
+            } else {
+                alert('삭제에 실패했습니다. (서버 미지원 가능성)');
+            }
+        } catch (err) { 
+            console.error(err);
+            alert('서버 연결 오류'); 
+        }
+    },
+
+    // [수정] UI 토글 (저장/삭제 버튼 모두 제어)
     toggleUI(isLoggedIn) {
         const form = document.getElementById('login-form');
         const info = document.getElementById('user-info');
         if (form) form.style.display = isLoggedIn ? 'none' : 'flex';
         if (info) info.style.display = isLoggedIn ? 'flex' : 'none';
+        
         const changePwBtn = document.getElementById('change-pw-btn');
         if (changePwBtn) changePwBtn.style.display = isLoggedIn ? 'inline-block' : 'none';
+        
         if (isLoggedIn) {
             document.getElementById('welcome-msg').innerText = `${this.userId}님`;
             const adminBtn = document.getElementById('admin-panel-btn');
             if (this.userId === 'spring' && adminBtn) adminBtn.style.display = 'inline-block';
         }
+        
+        // 팝업이 이미 열려있다면 즉시 반영
         const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
         if (openPopupTextArea) {
             openPopupTextArea.disabled = !isLoggedIn;
@@ -708,11 +851,17 @@ const AuthManager = {
                 openPopupTextArea.value = "";
             }
         }
-        const saveBtns = document.querySelectorAll('button[id^="btn-save-"]');
-        saveBtns.forEach(btn => {
+        
+        // 저장 및 삭제 버튼들 일괄 제어
+        const memoBtns = document.querySelectorAll('button[id^="btn-save-"], button[id^="btn-del-"]');
+        memoBtns.forEach(btn => {
             btn.disabled = !isLoggedIn;
-            btn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
-            btn.style.display = 'block'; 
+            if (isLoggedIn) {
+                if (btn.id.includes('btn-save-')) btn.style.backgroundColor = '#4A90E2';
+                if (btn.id.includes('btn-del-')) btn.style.backgroundColor = '#e74c3c';
+            } else {
+                btn.style.backgroundColor = '#ccc';
+            }
         });
     }
 };
