@@ -685,7 +685,6 @@ bindEvents() {
                 <ul class="popup-info-list">
                     <li><span class="label">학교 수</span> <span class="value"><strong>${targets.length - 1}</strong>개교</span></li>
                     <li><span class="label">총 학생 수</span> <span class="value"><strong>${stats.s.toLocaleString()}</strong>명</span></li>
-                    <li><span class="label">총 학급 수</span> <span class="value"><strong>${stats.c.toLocaleString()}</strong>개</span></li>
                     <li><span class="label">총 교사 수</span> <span class="value"><strong>${stats.t.toLocaleString()}</strong>명</span></li>
                 </ul>
             </div>
