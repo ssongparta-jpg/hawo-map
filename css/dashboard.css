@@ -1,59 +1,354 @@
-.dashboard-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-.dashboard-window { background: rgba(255, 255, 255, 0.95); width: 95%; max-width: 1000px; max-height: 90vh; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; }
-.dash-header { padding: 20px; background: #00427a; color: white; display: flex; align-items: center; gap: 10px; }
-.search-bar-wrap { flex: 1; display: flex; gap: 5px; }
-.search-bar-wrap input { flex: 1; padding: 10px; border-radius: 5px; border: none; outline: none; }
-.dash-main-search-btn { background: #f1c40f; border: none; padding: 0 15px; font-weight: bold; border-radius: 5px; cursor: pointer; color: #333; }
-.dash-close-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
-.dash-body { padding: 20px; overflow-y: auto; flex: 1; }
-.filter-group { margin-bottom: 25px; }
-.filter-group h3 { font-size: 14px; color: #555; margin-bottom: 10px; border-left: 4px solid #00427a; padding-left: 8px; }
-.tag-container { display: flex; flex-wrap: wrap; gap: 8px; }
-.filter-tag, .dist-tag, .est-tag { padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd; background: white; font-size: 13px; color: #666; cursor: pointer; transition: 0.2s; }
-.filter-tag.active, .dist-tag.active, .est-tag.active { background: #00427a; color: white; border-color: #00427a; }
-.range-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
-.range-item { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 10px; border-radius: 8px; }
-.range-controls { display: flex; gap: 5px; }
-.range-box { display: flex; align-items: center; gap: 3px; }
-.range-box input { width: 50px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: center; }
-.dash-footer { padding: 15px; border-top: 1px solid #eee; text-align: center; background: white; }
-.reset-btn { background: #95a5a6; color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; }
+/* -----------------------------------------------------------
+   대시보드 (상세검색 및 결과창) 공통 레이아웃
+----------------------------------------------------------- */
 
-/* 검색 결과 창 및 그리드 */
-.results-window {
-    width: 95%; max-width: 1100px; height: 85vh;
-    display: flex; flex-direction: column;
+/* 배경 오버레이 (검은색 반투명 + 블러) */
+.dashboard-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 5000; /* 지도(z-index: 20000)보다 아래, 일반 UI보다 위 */
+    display: none; /* JS에서 flex로 변경하여 표시 */
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
 }
-#results-list-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); 
-    gap: 15px; padding: 20px; overflow-y: auto; background: #f5f6f7;
+
+/* 팝업 윈도우 창 */
+.dashboard-window {
+    background: rgba(255, 255, 255, 0.98);
+    width: 95%;
+    max-width: 1000px;
+    max-height: 90vh; /* 화면 높이의 90%까지만 */
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 내부 스크롤을 위해 overflow 제어 */
+}
+
+/* -----------------------------------------------------------
+   헤더 영역 (검색창 포함)
+----------------------------------------------------------- */
+.dash-header {
+    padding: 20px;
+    background: #00427a; /* 교육청 메인 컬러 */
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0; /* 스크롤 시 헤더 고정 */
+}
+
+.search-bar-wrap {
+    flex: 1;
+    display: flex;
+    gap: 5px;
+}
+
+.search-bar-wrap input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    font-size: 15px;
+}
+
+.dash-main-search-btn {
+    background: #f1c40f; /* 포인트 컬러 (노랑) */
+    border: none;
+    padding: 0 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #333;
+    font-size: 14px;
+}
+
+.dash-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: 0.2s;
+}
+
+.dash-close-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* -----------------------------------------------------------
+   바디 영역 (필터 태그 등)
+----------------------------------------------------------- */
+.dash-body {
+    padding: 25px;
+    overflow-y: auto; /* 내용이 많으면 스크롤 */
     flex: 1;
 }
+
+.filter-group {
+    margin-bottom: 30px;
+}
+
+.filter-group h3 {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 12px;
+    font-weight: 700;
+    border-left: 4px solid #00427a;
+    padding-left: 10px;
+}
+
+/* 태그 버튼 스타일 */
+.tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-tag, .dist-tag, .est-tag {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: white;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-tag:hover, .dist-tag:hover, .est-tag:hover {
+    background: #f0f7ff;
+    border-color: #00427a;
+}
+
+.filter-tag.active, .dist-tag.active, .est-tag.active {
+    background: #00427a;
+    color: white;
+    border-color: #00427a;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,66,122,0.3);
+}
+
+/* 범위 입력 그리드 (학생수 등) */
+.range-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.range-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
+.range-item label {
+    font-size: 13px;
+    font-weight: bold;
+    color: #555;
+}
+
+.range-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.range-box {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.range-box span {
+    font-size: 10px;
+    color: #999;
+}
+
+.range-box input {
+    width: 60px;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 13px;
+}
+
+/* 하단 버튼 영역 */
+.dash-footer {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    background: white;
+}
+
+.reset-btn {
+    background: #95a5a6;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* -----------------------------------------------------------
+   [핵심 수정] 검색 결과 창 및 그리드 레이아웃
+----------------------------------------------------------- */
+
+/* 결과창 윈도우 */
+.results-window {
+    width: 95%;
+    max-width: 1100px;
+    height: 85vh; /* 화면 높이의 85% 고정 */
+    display: flex;
+    flex-direction: column;
+}
+
+/* 결과 목록 컨테이너 (Grid) */
+#results-list-container {
+    display: grid;
+    
+    /* [가로 분배] 카드의 최소 너비(280px)를 보장하며 화면 크기에 맞춰 열 개수 자동 조절 */
+    /* 화면이 넓으면 4열, 좁으면 2열 등으로 자동 변환됨 */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+    
+    /* [세로 높이] 내용물에 맞는 높이만 차지하도록 설정 (늘어짐 방지) */
+    grid-auto-rows: max-content;
+    
+    /* [세로 정렬] 결과가 적을 때 위쪽부터 차곡차곡 쌓임 (전체 화면으로 퍼짐 방지) */
+    align-content: start; 
+    
+    gap: 15px; /* 카드 사이 간격 */
+    padding: 20px;
+    overflow-y: auto; /* 세로 스크롤 허용 */
+    background: #f5f6f7; /* 회색 배경 */
+    flex: 1;
+}
+
+/* 결과 카드 디자인 */
 .result-card {
-    background: white; padding: 16px; border-radius: 10px; border: 1px solid #eee;
-    cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 4px;
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    /* 내부 요소 정렬을 위한 Flexbox */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    
+    /* 높이 설정 */
+    height: 100%;       /* Grid 셀 높이에 맞춤 */
+    min-height: 140px;  /* 최소 높이 확보 */
+    box-sizing: border-box;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
-.result-card:hover { border-color: #4A90E2; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-.res-name { font-size: 16px; font-weight: bold; color: #222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.res-addr { font-size: 12px; color: #777; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* 학교급별 색상 */
-.res-type { font-size: 11px; font-weight: bold; margin-bottom: 2px; }
+.result-card:hover {
+    border-color: #4A90E2;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+/* 학교급 (타입) */
+.res-type {
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: inline-block;
+}
+
 .res-type.type-kinder { color: #4A90E2; }
-.res-type.type-elem { color: #2ECC71; }
-.res-type.type-mid { color: #F1C40F; }
-.res-type.type-high { color: #E74C3C; }
-.res-type.type-spec { color: #9B59B6; }
-.results-header-title { font-size: 16px; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; }
-.results-count-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: normal; }
+.res-type.type-elem   { color: #2ECC71; }
+.res-type.type-mid    { color: #F1C40F; }
+.res-type.type-high   { color: #E74C3C; }
+.res-type.type-spec   { color: #9B59B6; }
 
-@media (max-width: 992px) {
-    #results-list-container { grid-template-columns: repeat(2, 1fr); }
+/* 학교명 (2줄 말줄임 처리) */
+.res-name {
+    font-size: 17px;
+    font-weight: 800;
+    color: #222;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    word-break: keep-all; /* 단어 단위 줄바꿈 */
+    
+    /* 긴 이름 처리 */
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 최대 2줄 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-@media (max-width: 768px) { 
-    .range-grid { grid-template-columns: 1fr; } 
+
+/* 주소 (항상 하단 배치) */
+.res-addr {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.4;
+    
+    margin-top: auto; /* 위 내용 길이에 상관없이 바닥에 붙음 */
+    
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-@media (max-width: 600px) {
-    #results-list-container { grid-template-columns: 1fr; }
+
+/* 결과 헤더 타이틀 */
+.results-header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 결과 개수 뱃지 */
+.results-count-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* -----------------------------------------------------------
+   반응형 미디어 쿼리
+----------------------------------------------------------- */
+
+/* 모바일 화면 대응 */
+@media (max-width: 480px) {
+    /* 모바일에서는 무조건 1열로 보기 (가로 스크롤 방지) */
+    #results-list-container {
+        grid-template-columns: 1fr; 
+    }
+    
+    .results-window {
+        height: 100vh;
+        width: 100%;
+        border-radius: 0;
+    }
+    
+    .range-grid {
+        grid-template-columns: 1fr;
+    }
 }
