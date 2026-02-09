@@ -1,17 +1,18 @@
-require('dotenv').config(); // .env 파일 로드
+require('dotenv').config(); // .env 파일 로드 필수
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const path = require('path');
 
 const app = express();
 const db = new sqlite3.Database('./database.db');
 const SALT_ROUNDS = 10;
 const PORT = 3000;
 
-// [관리자 설정] ID와 이메일 매핑 (.env 파일에 해당 변수들이 있어야 함)
+// [관리자 설정] .env 파일에 등록된 관리자 ID와 이메일 매핑
 const ADMINS = {
     'spring': process.env.ADMIN_EMAIL_SPRING,
     'summer': process.env.ADMIN_EMAIL_SUMMER,
@@ -24,10 +25,10 @@ app.use(session({
     secret: 'hwao-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24시간 유지
+    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24시간
 }));
 
-// 메일 전송 설정 (Nodemailer)
+// [이메일 전송 설정] Nodemailer
 const transporter = nodemailer.createTransport({
     service: process.env.MAIL_SERVICE, // 예: 'gmail'
     auth: {
@@ -36,7 +37,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// 인증 코드 임시 저장소
+// 관리자 인증 코드 임시 저장소 (메모리)
 let adminOtpStore = {
     userId: null,
     code: null,
@@ -45,14 +46,16 @@ let adminOtpStore = {
 
 // --- 미들웨어 ---
 
+// 1. 일반 로그인 체크
 function isLoggedIn(req, res, next) {
     if (req.session.userId) return next();
     res.status(403).json({ success: false, message: "로그인이 필요합니다." });
 }
 
+// 2. 관리자 권한 체크 (세션 플래그 확인)
 function isAdmin(req, res, next) {
     const userId = req.session.userId;
-    // 세션 ID가 관리자 목록에 있고, 관리자 인증 플래그가 true여야 함
+    // 세션 ID가 관리자 목록에 있고, 인증 플래그(isAdminAuth)가 true여야 함
     if (userId && ADMINS[userId] && req.session.isAdminAuth) {
         return next();
     }
@@ -66,7 +69,7 @@ db.serialize(async () => {
     db.run("CREATE TABLE IF NOT EXISTS reset_requests (id TEXT PRIMARY KEY, requestDate DATETIME DEFAULT CURRENT_TIMESTAMP)");
     db.run("CREATE TABLE IF NOT EXISTS favorites (userId TEXT, schoolName TEXT, PRIMARY KEY(userId, schoolName))");
     
-    // 관리자 ID가 일반 유저 테이블에 있다면 삭제 (충돌 방지)
+    // [중요] 관리자 ID가 일반 users 테이블에 존재하면 삭제 (일반 비번 로그인 차단)
     Object.keys(ADMINS).forEach(adminId => {
         db.run("DELETE FROM users WHERE id = ?", [adminId]);
     });
@@ -74,23 +77,25 @@ db.serialize(async () => {
 
 const loginAttempts = {};
 
-// --- 관리자 인증 API (OTP) ---
+// --- [신규] 관리자 인증 API (이메일 OTP) ---
 
 // 1. 인증 코드 발송 요청
 app.post('/api/admin/send-code', (req, res) => {
     const { id } = req.body;
 
+    // 등록된 관리자 ID인지 확인
     if (!ADMINS[id]) {
         return res.status(400).json({ success: false, message: "등록되지 않은 관리자 ID입니다." });
     }
 
     const targetEmail = ADMINS[id];
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6자리 코드 생성
     
+    // 코드 저장 (유효시간 3분)
     adminOtpStore = {
         userId: id,
         code: code,
-        expires: Date.now() + 3 * 60 * 1000 // 3분 유효
+        expires: Date.now() + 3 * 60 * 1000
     };
 
     const mailOptions = {
@@ -105,13 +110,13 @@ app.post('/api/admin/send-code', (req, res) => {
             console.error(error);
             return res.status(500).json({ success: false, message: "메일 발송 실패" });
         }
-        // 보안을 위해 이메일 일부 마스킹 처리 후 응답
+        // 이메일 주소 마스킹하여 응답
         const maskedEmail = targetEmail.replace(/(.{2})(.*)(@.*)/, '$1*****$3');
         res.json({ success: true, message: `${maskedEmail}로 인증코드를 보냈습니다.` });
     });
 });
 
-// 2. 인증 코드 검증
+// 2. 인증 코드 검증 및 로그인
 app.post('/api/admin/verify-code', (req, res) => {
     const { code } = req.body;
 
@@ -122,11 +127,11 @@ app.post('/api/admin/verify-code', (req, res) => {
     if (adminOtpStore.code === code) {
         const adminId = adminOtpStore.userId;
         
-        // 인증 성공 시 정보 파기 및 세션 설정
+        // 인증 성공: 정보 파기 후 세션 생성
         adminOtpStore = { userId: null, code: null, expires: null };
         
         req.session.userId = adminId;
-        req.session.isAdminAuth = true;
+        req.session.isAdminAuth = true; // 관리자 인증 플래그 설정
         
         req.session.save(() => {
             res.json({ success: true, userId: adminId });
@@ -136,12 +141,12 @@ app.post('/api/admin/verify-code', (req, res) => {
     }
 });
 
-// --- 일반 사용자 API ---
+// --- 일반 사용자 인증 API ---
 
 app.post('/api/login', (req, res) => {
     const { id, pw } = req.body;
     
-    // 관리자 ID로 일반 로그인 시도 차단
+    // 관리자 ID로 일반 로그인 시도 시 차단 및 안내
     if (ADMINS[id]) {
         return res.status(403).json({ success: false, message: "관리자 로그인은 아이디 박스를 5번 클릭하세요." });
     }
@@ -150,7 +155,7 @@ app.post('/api/login', (req, res) => {
         if (row && await bcrypt.compare(pw, row.pw)) {
             delete loginAttempts[id];
             req.session.userId = id;
-            req.session.isAdminAuth = false;
+            req.session.isAdminAuth = false; // 일반 사용자는 false
             req.session.save(() => res.json({ success: true, userId: id }));
         } else {
             loginAttempts[id] = (loginAttempts[id] || 0) + 1;
@@ -177,13 +182,14 @@ app.get('/api/check-auth', (req, res) => {
 
 app.post('/api/register', async (req, res) => {
     const { id, pw } = req.body;
-    if (!id || !pw) return res.status(400).json({ success: false, message: "정보를 입력하세요." });
-    
+    if (!id || !pw) return res.status(400).json({ success: false, message: "정보를 모두 입력하세요." });
+
+    // 관리자 ID로 가입 시도 차단
     if (ADMINS[id]) return res.status(400).json({ success: false, message: "사용할 수 없는 아이디입니다." });
 
     try {
-        const hash = await bcrypt.hash(pw, SALT_ROUNDS);
-        db.run("INSERT INTO users (id, pw) VALUES (?, ?)", [id, hash], (err) => {
+        const hashedPassword = await bcrypt.hash(pw, SALT_ROUNDS);
+        db.run("INSERT INTO users (id, pw) VALUES (?, ?)", [id, hashedPassword], (err) => {
             if (err) return res.status(409).json({success: false, message: "이미 존재하는 아이디입니다."});
             res.json({success: true, message: "회원가입 완료"});
         });
@@ -195,14 +201,33 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/change-pw', isLoggedIn, async (req, res) => {
     const { newPw } = req.body;
     try {
-        const hash = await bcrypt.hash(newPw, SALT_ROUNDS);
-        db.run("UPDATE users SET pw = ? WHERE id = ?", [hash, req.session.userId], (err) => {
-            res.json({ success: !err, message: err ? "변경 실패" : "비밀번호 변경됨" });
+        const hashedNewPw = await bcrypt.hash(newPw, SALT_ROUNDS);
+        db.run("UPDATE users SET pw = ? WHERE id = ?", [hashedNewPw, req.session.userId], (err) => {
+            res.json({ success: !err, message: err ? "변경 실패" : "비밀번호가 변경되었습니다." });
         });
     } catch (err) { res.status(500).json({success: false}); }
 });
 
-// --- 메모 & 즐겨찾기 API ---
+// --- 비밀번호 찾기 (기존 기능 유지) ---
+app.post('/api/find-pw', (req, res) => {
+    const { id } = req.body;
+    // 보안상 실제 비밀번호 전송보다 초기화 유도가 좋지만, 기존 기능 유지를 위해 코드 보존
+    db.get("SELECT pw FROM users WHERE id = ?", [id], (err, row) => {
+        // 해시된 비밀번호는 복호화 불가능하므로 이 API는 사실상 동작 한계가 있음 (재확인 필요)
+        // 하지만 요청대로 원본 유지. (실제로는 해시값을 보내도 클라이언트가 알 수 없음)
+        if (row) res.json({ success: true, message: "비밀번호는 암호화되어 있어 알려드릴 수 없습니다. 초기화를 요청하세요." }); 
+        else res.status(404).json({ success: false, message: "존재하지 않는 아이디" });
+    });
+});
+
+app.post('/api/request-reset-pw', (req, res) => {
+    const { id } = req.body;
+    db.run("INSERT OR IGNORE INTO reset_requests (id) VALUES (?)", [id], (err) => {
+        res.json({ success: !err, message: "초기화 요청이 접수되었습니다." });
+    });
+});
+
+// --- 메모 API (기존 기능 유지) ---
 
 app.get('/api/memo/:schoolName', (req, res) => {
     if (!req.session.userId) return res.json({ content: "" });
@@ -223,6 +248,8 @@ app.delete('/api/memo', isLoggedIn, (req, res) => {
     db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", 
         [req.session.userId, schoolName], (err) => res.json({ success: !err }));
 });
+
+// --- 즐겨찾기 API (기존 기능 유지) ---
 
 app.get('/api/favorite/:schoolName', isLoggedIn, (req, res) => {
     db.get("SELECT * FROM favorites WHERE userId = ? AND schoolName = ?",
@@ -247,17 +274,10 @@ app.get('/api/my-favorites', isLoggedIn, (req, res) => {
     });
 });
 
-app.post('/api/request-reset-pw', (req, res) => {
-    const { id } = req.body;
-    db.run("INSERT OR IGNORE INTO reset_requests (id) VALUES (?)", [id], (err) => {
-        res.json({ success: !err, message: "초기화 요청이 접수되었습니다." });
-    });
-});
-
-// --- 관리자 전용 API ---
+// --- 관리자 전용 패널 API (기존 기능 유지) ---
 
 app.get('/api/admin/users', isAdmin, (req, res) => {
-    db.all("SELECT id FROM users", (err, rows) => { // 관리자 ID는 이미 제거했으므로 전체 조회해도 무방
+    db.all("SELECT id FROM users", (err, rows) => {
         res.json({ users: rows || [] });
     });
 });
@@ -294,6 +314,7 @@ app.post('/api/admin/approve-reset', isAdmin, async (req, res) => {
     });
 });
 
+// --- 서버 실행 ---
 app.listen(PORT, () => {
     console.log(`서버 실행: http://localhost:${PORT}`);
 });
