@@ -8,20 +8,27 @@ const AuthManager = {
             let clickCount = 0;
             let clickTimer = null;
 
-            idInput.addEventListener('click', () => {
-                clickCount++;
+            idInput.addEventListener('click', (e) => {
+                // 입력창 클릭 시 텍스트 선택 등으로 인한 간섭 최소화 (필요시 주석 해제)
+                // e.preventDefault(); 
                 
-                // 첫 클릭 시 타이머 시작 (1초 안에 5번 못 누르면 리셋)
+                clickCount++;
+                console.log(`클릭 감지됨: ${clickCount}회`); // F12 콘솔에서 확인 가능하도록 로그 추가
+
+                // 첫 클릭 시 타이머 시작 (3초 안에 5번 못 누르면 리셋)
+                // 기존 1000(1초) -> 3000(3초)로 변경하여 여유를 줌
                 if (clickCount === 1) {
                     clickTimer = setTimeout(() => {
+                        console.log('시간 초과: 클릭 카운트 초기화');
                         clickCount = 0;
-                    }, 1000);
+                    }, 3000); 
                 }
 
                 // 5번 클릭 도달 시
                 if (clickCount >= 5) {
                     clearTimeout(clickTimer);
                     clickCount = 0;
+                    console.log('관리자 로그인 프로세스 시작');
                     AdminManager.startLoginProcess(); // 관리자 로그인 시작
                 }
             });
