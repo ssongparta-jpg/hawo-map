@@ -1,11 +1,12 @@
 #auth-area {
     position: absolute; 
-    z-index: 99999 !important; /* 지도 레이어 20000보다 높게 설정 */
+    z-index: 99999 !important; /* 지도 레이어보다 높게 설정 */
     display: flex; 
     align-items: center; 
     gap: 6px;
     top: 18px; 
     right: 20px;
+    pointer-events: auto; /* [중요] 클릭 이벤트가 무시되지 않도록 강제 */
 }
 
 #login-form, #user-info { display: flex; align-items: center; gap: 5px; }
@@ -26,6 +27,36 @@
 .admin-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
 .admin-table th, .admin-table td { padding: 8px; border: 1px solid #ddd; text-align: center; }
 .admin-table th { background: #f2f2f2; color: #333; }
+
+/* [신규] 관리자 인증 모달 스타일 */
+.admin-select-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.admin-select-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333 !important;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.admin-select-btn:hover {
+    background-color: #e2e6ea;
+    border-color: #adb5bd;
+}
+.admin-submit-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #2ecc71 !important;
+    font-size: 15px;
+    margin-top: 5px;
+}
 
 @media (max-width: 768px) {
     #auth-area { position: fixed; bottom: 0; left: 0; width: 100%; top: auto; height: 60px; background: #fff; justify-content: center; z-index: 3000; padding: 0 10px; border-top: 1px solid #eee; }

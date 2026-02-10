@@ -8,39 +8,40 @@ const AuthManager = {
             let clickCount = 0;
             let clickTimer = null;
 
-            // [수정] 'click' 대신 'mousedown' 이벤트 사용 (반응성 향상)
-            idInput.addEventListener('mousedown', (e) => {
-                clickCount++;
-                console.log(`[DEBUG] 클릭 감지됨: ${clickCount}/5`); 
+            // [수정] 클릭 반응성 개선 및 모달 연동
+            idInput.addEventListener('click', (e) => {
+                // 상위 요소로 이벤트 전파 방지 (지도 클릭 등 방지)
+                // e.stopPropagation(); 
 
-                // [시각적 피드백] 클릭이 먹혔는지 확인하기 위해 테두리를 순간적으로 빨간색으로 변경
-                idInput.style.border = '2px solid red';
-                idInput.style.backgroundColor = '#ffecec';
+                clickCount++;
+                console.log(`[DEBUG] ID Box Clicked: ${clickCount}/5`); 
+
+                // [시각적 피드백] 테두리 붉은색 점멸
+                idInput.style.borderColor = 'red';
+                idInput.style.backgroundColor = '#fff0f0';
                 
-                // 0.2초 뒤에 원래 색으로 복구
                 setTimeout(() => {
-                    idInput.style.border = '1px solid #ccc';
+                    idInput.style.borderColor = '#ccc';
                     idInput.style.backgroundColor = 'white';
                 }, 200);
 
-                // 타이머 설정 (3초 내에 연속 클릭)
+                // 첫 클릭 시 타이머 시작 (3초 내에 5번 클릭해야 함)
                 if (clickCount === 1) {
+                    clearTimeout(clickTimer);
                     clickTimer = setTimeout(() => {
-                        console.log('시간 초과: 카운트 초기화');
+                        console.log('클릭 시간 초과: 카운트 초기화');
                         clickCount = 0;
                     }, 3000); 
                 }
 
-                // 5번 도달 시
+                // 5번 도달 시 관리자 모달 오픈
                 if (clickCount >= 5) {
                     clearTimeout(clickTimer);
                     clickCount = 0;
                     
-                    // 마지막 클릭 효과를 보여준 뒤 0.1초 후에 실행
                     setTimeout(() => {
-                        console.log('관리자 로직 실행');
-                        alert("관리자 모드 진입을 시도합니다."); // [확인용 알림] 이게 뜨면 성공입니다.
-                        AdminManager.startLoginProcess(); 
+                        console.log('관리자 인증 모달 실행');
+                        AdminManager.openLoginModal(); 
                     }, 100);
                 }
             });
@@ -65,6 +66,8 @@ const AuthManager = {
     async login() {
         const id = document.getElementById('user-id').value;
         const pw = document.getElementById('user-pw').value;
+        if(!id || !pw) return alert("ID와 비밀번호를 입력하세요.");
+
         try {
             const res = await fetch('/api/login', {
                 method: 'POST',
@@ -135,6 +138,7 @@ const AuthManager = {
         } catch (e) {}
     },
     
+    // 메모 관련 함수는 기존 유지 (생략 없음)
     async saveMemo(schoolName, e) {
         if (e) { e.stopPropagation(); e.preventDefault(); }
         const textArea = document.getElementById(`memo-${schoolName}`);
@@ -182,6 +186,7 @@ const AuthManager = {
             if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
         }
         
+        // 팝업 메모창 권한 제어
         const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
         if (openPopupTextArea) {
             openPopupTextArea.disabled = !isLoggedIn;
@@ -211,12 +216,29 @@ const AuthManager = {
 };
 
 const AdminManager = {
-    // 5번 클릭 시 호출되는 함수
-    async startLoginProcess() {
-        const adminId = prompt("관리자 ID를 입력하세요.");
-        if (!adminId) return;
+    selectedAdminId: null,
 
-        if (!confirm(`'${adminId}' 계정의 인증 코드를 이메일로 발송하시겠습니까?`)) return;
+    // [신규] 관리자 인증 모달 열기
+    openLoginModal() {
+        const modal = document.getElementById('admin-login-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            // 초기화
+            document.getElementById('admin-step-1').style.display = 'block';
+            document.getElementById('admin-step-2').style.display = 'none';
+            document.getElementById('admin-otp-input').value = '';
+            this.selectedAdminId = null;
+        }
+    },
+
+    closeLoginModal() {
+        const modal = document.getElementById('admin-login-modal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    // 1단계: 관리자 선택 및 메일 발송
+    async selectAdmin(adminId) {
+        if (!confirm(`'${adminId}' 계정으로 인증 메일을 발송하시겠습니까?`)) return;
         
         try {
             const res = await fetch('/api/admin/send-code', { 
@@ -227,20 +249,26 @@ const AdminManager = {
             const data = await res.json();
             
             if (data.success) {
-                const code = prompt(`${data.message}\n이메일로 전송된 6자리 코드를 입력하세요.`);
-                if (code) {
-                    this.verifyCode(code);
-                }
+                this.selectedAdminId = adminId;
+                // UI 전환
+                document.getElementById('admin-step-1').style.display = 'none';
+                document.getElementById('admin-step-2').style.display = 'block';
+                document.getElementById('admin-step-2-msg').innerText = data.message;
+                alert("인증 메일이 발송되었습니다. 코드를 입력해주세요.");
             } else {
                 alert(data.message);
             }
         } catch (e) {
             console.error(e);
-            alert("서버 통신 오류");
+            alert("서버 통신 오류가 발생했습니다.");
         }
     },
 
-    async verifyCode(code) {
+    // 2단계: 코드 검증
+    async submitCode() {
+        const code = document.getElementById('admin-otp-input').value;
+        if(!code) return alert("인증 코드를 입력해주세요.");
+
         try {
             const res = await fetch('/api/admin/verify-code', {
                 method: 'POST',
@@ -251,15 +279,17 @@ const AdminManager = {
             
             if (data.success) {
                 alert(`관리자(${data.userId}) 로그인 성공!`);
+                this.closeLoginModal();
                 location.reload(); 
             } else {
                 alert(data.message);
             }
         } catch (e) {
-            alert("인증 실패");
+            alert("인증 실패: 서버 오류");
         }
     },
 
+    // 기존 관리자 패널(회원관리 등) 오픈
     async open() {
         const modal = document.getElementById('admin-modal');
         if (modal) {
@@ -344,7 +374,6 @@ const AdminManager = {
     }
 };
 
-// [중요] 문서 로드 후 초기화 실행 (5연타 감지 시작)
 document.addEventListener('DOMContentLoaded', () => {
     AuthManager.init();
 });
