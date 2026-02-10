@@ -17,6 +17,8 @@
   <link rel="stylesheet" href="css/marker.css" />
   <link rel="stylesheet" href="css/popup.css" />
   <link rel="stylesheet" href="css/dashboard.css" />
+  
+  <link rel="stylesheet" href="css/nav.css" />
 </head>
 <body>
   <div class="container"> 
@@ -52,9 +54,7 @@
       <div id="user-info" style="display:none;">
         <span id="welcome-msg" style="font-weight:bold; margin-right:5px; font-size: 13px;"></span>
         <button id="change-pw-btn" onclick="AuthManager.changePw()" style="display:none;">PW변경</button>
-        
         <button id="admin-panel-btn" onclick="AdminManager.open()" class="btn-admin" style="display: none;">관리자</button>
-        
         <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
       </div>
     </div>
@@ -63,7 +63,7 @@
 
     <div class="boundary-toggle-container">
         <div class="control-row">
-            <span class="switch-label">행정구역 켜기/끄기</span>
+            <span class="switch-label">행정구역</span>
             <label class="toggle-switch">
                 <input type="checkbox" id="toggle-boundary" checked>
                 <span class="slider"></span>
@@ -80,7 +80,24 @@
 
     <div id="map"></div>
     
-    <button id="btn-measure" onclick="DistanceManager.toggle()">📏 거리재기</button>
+    <button id="btn-measure" onclick="DistanceManager.toggle()" 
+    style="position: absolute; bottom: 80px; right: 20px; top: auto !important; z-index: 10000; height: 40px; width: auto; padding: 0 15px; border-radius: 20px; background: white; border: 1px solid #ccc; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex !important; align-items: center; justify-content: center;">
+    <span>📏</span> 거리재기
+    </button>
+
+    <div id="nav-panel" style="display:none;">
+        <div class="nav-header">
+            <span class="nav-title">경로 탐색 결과</span>
+            <span class="nav-close" onclick="NavManager.resetPanel()">✕</span>
+        </div>
+        <div class="nav-mode-group">
+            <button class="nav-mode-btn active" data-mode="walking" onclick="NavManager.setMode('walking')">도보</button>
+            <button class="nav-mode-btn" data-mode="driving" onclick="NavManager.setMode('driving')">차량</button>
+        </div>
+        <div id="nav-result">
+            경로 계산 대기 중...
+        </div>
+    </div>
 
     <div id="search-dashboard" class="dashboard-backdrop" style="display:none;">
         <div class="dashboard-window">
@@ -178,7 +195,6 @@
                         <button onclick="AdminManager.selectAdmin('autumn')" class="admin-select-btn">🍁 관리자 3 (Autumn)</button>
                     </div>
                 </div>
-                
                 <div id="admin-step-2" style="display:none;">
                     <p id="admin-step-2-msg" style="margin-bottom: 10px; font-weight: bold; color: #2ecc71;"></p>
                     <input type="text" id="admin-otp-input" placeholder="인증코드 6자리" style="width: 100%; padding: 10px; font-size: 16px; text-align: center; margin-bottom: 10px;">
@@ -196,15 +212,31 @@
     </div>
   </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
-    <script src="js/config.js" defer></script>
-    <script src="js/utils.js" defer></script>
-    <script src="js/auth.js" defer></script>
-    <script src="js/search.js" defer></script>
-    <script src="js/map.js" defer></script>
-    <script src="js/main.js" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/search.js" defer></script>
+  <script src="js/map.js" defer></script>
+  
+  <script src="js/nav.js" defer></script>
+  <script src="js/main.js" defer></script>
+
+<div id="test-notice-modal" class="help-modal-overlay" style="display:flex; z-index: 100000;">
+    <div class="help-modal-content" style="text-align: center; max-width: 400px;">
+        <div style="font-size: 50px; margin-bottom: 15px;">⚠️</div>
+        <h2 style="margin-bottom: 15px; word-break: keep-all;">서비스 이용 안내</h2>
+        <p style="color: #666; line-height: 1.6; margin-bottom: 20px; word-break: keep-all;">
+            <b>거리 재기 내 길 찾기</b> 기능은 현재 <span style="color: #e74c3c; font-weight: bold;">개발중 단계</span>이므로 오류 발생, 미작동 가능성이 있습니다. 사용을 지양해주세요.</p>
+        <button onclick="document.getElementById('test-notice-modal').style.display='none'" 
+                style="width: 100%; padding: 12px; background: #00427a; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+            확인했습니다
+        </button>
+    </div>
+</div>
+
 </body>
 </html>

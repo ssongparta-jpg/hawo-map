@@ -6,7 +6,11 @@ const SearchManager = {
         input.addEventListener('keyup', (e) => {
             const val = e.target.value.trim();
             if (val.length < 1) { resultBox.style.display = 'none'; return; }
-            const matches = MapManager.markers.filter(m => m.properties.name.includes(val));
+            const matches = MapManager.markers.filter(m => {
+                const p = m.properties;
+                const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청');
+                return isSchool && p.name.includes(val);
+            });
             this.renderResults(matches, resultBox);
         });
         
@@ -101,6 +105,7 @@ const FilterManager = {
 
         const filtered = MapManager.markers.filter(m => {
             const p = m.properties;
+            if (p.type.includes('교육') || p.name.includes('교육지원청')) return false;
             const matchName = !nameQuery || p.name.includes(nameQuery);
             const matchType = this.selectedTypes.size === 0 || this.selectedTypes.has(p.type);
             const estVal = (p.establish || '').trim();

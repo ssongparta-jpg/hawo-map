@@ -397,12 +397,20 @@ const MapManager = {
 
     showDistrictStats(fullName, latlng) {
         let keyword = fullName.replace('화성시 ', '').replace(' 전체', '').trim();
+        
+        // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
         const targets = this.markers.filter(m => {
-            const adrs = m.properties.adrs || '';
+            const p = m.properties;
+            const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청'); // 학교만 필터
+            if (!isSchool) return false;
+
+            const adrs = p.adrs || '';
             if (fullName === '화성시 전체') return adrs.includes('화성시');
             if (fullName === '오산시') return adrs.includes('오산시');
             return MapConfig.DISTRICTS[keyword]?.keywords?.some(k => adrs.includes(k));
         });
+
+        // 통계 계산
         const stats = targets.reduce((acc, m) => {
             acc.s += parseInt(m.properties.stdnt_cnt) || 0;
             acc.c += parseInt(m.properties.class_cnt) || 0;
