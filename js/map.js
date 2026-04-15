@@ -43,46 +43,37 @@ const MapManager = {
         });
     },
 
-    getMarkerIcon(p, index, count) {
-        let symbolChar = '●';
-        let symbolColor = '#333';
-        let typeClass = '';
+    getMarkerIcon(p, stackIndex = 0, count = 1) {
+        let typeClass = 'is-spec';
+        let symbolChar = '◆';
+        let symbolColor = p.color;
         let posClass = '';
-        let labelPosClass = '';
+        let labelPosClass = ''; 
 
-        const sType = String(p.type || '');
-        const sName = String(p.name || '');
-
-        if (sType.includes('교육') || sName.includes('교육지원청')) {
+        if (p.type.includes('교육') || p.name.includes('교육지원청')) {
             symbolChar = '🏢';
-            typeClass = 'is-edu';
+            typeClass = 'is-edu'; 
         }
-        else if (sType === '공유학교') {
-            typeClass = 'is-shared';
-            symbolChar = '❤';
-            symbolColor = '#e84393';
-        }
-        else if (sName.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
-        else if (sName.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
-        else if (sName.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '■'; }
-        else if (sName.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
-        else if (sName.includes('특수')) { typeClass = 'is-spec'; symbolChar = '◆'; }
-        
+        else if (p.name.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
+        else if (p.name.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
+        else if (p.name.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '●'; }
+        else if (p.name.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
+
         if (count > 1) {
-            if (index === 0) {
+            if (stackIndex === 0) {
                 posClass = 'shift-up';
             } else {
-                if (index === 1) posClass = 'shift-down'; 
-                else if (index === 2) posClass = 'shift-left'; 
+                if (stackIndex === 1) posClass = 'shift-down'; 
+                else if (stackIndex === 2) posClass = 'shift-left'; 
                 else posClass = 'shift-right';
+                
                 labelPosClass = 'label-bottom';
             }
         }
-
         const safeName = p.name.replace(/'/g, "\\'");
         const html = `
             <div class="custom-combined-marker ${typeClass} ${posClass}"
-                 style="z-index: ${500 - index};"
+                 style="z-index: ${500 - stackIndex};"
                  onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
                 <div class="marker-label-box ${labelPosClass}" 
                      onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
@@ -224,12 +215,12 @@ const MapManager = {
         }
     },
 
-    createMarker(lat, lng, p, index = 0, count = 1) {
+    createMarker(lat, lng, p, stackIndex = 0, count = 1) {
         const isMobile = window.innerWidth <= 768;
         const autoPanPaddingVal = isMobile ? L.point(160, 50) : L.point(80, 50);
         const marker = L.marker([lat, lng], {
-            icon: this.getMarkerIcon(p, index, count),
-            zIndexOffset: 100 - index * 10
+            icon: this.getMarkerIcon(p, stackIndex, count),
+            zIndexOffset: 100 - stackIndex * 10
         }).bindPopup(this.makePopupHtml(p), {
             className: 'custom-popup',
             pane: 'ultraTopPane', 
@@ -267,15 +258,12 @@ const MapManager = {
     },
 
     makePopupHtml(p) {
-        const sType = String(p.type || '');
-        const sName = String(p.name || '');
-        const isEduOffice = sType.includes('교육') || sName.includes('교육지원청');
-        const isSharedSchool = sType === '공유학교';
-
-        let principalName = p.principal || '정보 없음';
+        const isEduOffice = (p.type && p.type.includes('교육')) || p.name.includes('교육지원청');
+        let principalName = p.principal;
+        if (!principalName || principalName === 'No Data' || principalName.trim() === '') principalName = '정보 없음'; 
         
         const linkHtml = p.url 
-            ? `<a href="${p.url}" target="_blank" class="popup-link-top">🏠 홈페이지 이동 ↗</a>` 
+            ? `<a href="${p.url}" target="_blank" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>` 
             : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
             
         const isLoggedIn = AuthManager.userId !== null;
@@ -286,46 +274,72 @@ const MapManager = {
         
         let bodyContent = '';
         if (isEduOffice) {
-            bodyContent = `<div style="background:#e3f2fd; padding:12px; border-radius:8px; text-align:center; margin-bottom:15px; border:1px solid #bbdefb;">
-                                <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">교육장</span>
-                                <strong style="font-size:18px; color:#0d47a1;">${principalName}</strong>
-                           </div>`;
-        } else if (isSharedSchool) {  
-            bodyContent = `<ul class="popup-info-list" style="margin-top:10px;">
-                                <li><span class="label">대상</span> <span class="value"><strong>${p.target || '-'}</strong></span></li>
-                                <li><span class="label">운영 기간</span> <span class="value"><strong>${p.period || '-'}</strong></span></li>
-                           </ul>`;
+            bodyContent = `
+                <div style="background:#e3f2fd; padding:12px; border-radius:8px; text-align:center; margin-bottom:15px; border:1px solid #bbdefb;">
+                    <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">교육장</span>
+                    <strong style="font-size:18px; color:#0d47a1;">${principalName}</strong>
+                </div>
+                <div style="text-align:center; color:#555; margin-bottom:15px; font-weight:bold; font-size:13px; line-height:1.5;">
+                    행복한 성장, 함께하는 화성오산 교육
+                </div>`;
         } else {
-            bodyContent = `<div class="popup-admin-row">
-                                <span>교장(원장) <strong>${principalName}</strong></span>
-                           </div>
-                           <ul class="popup-info-list grid-list">
-                                <li><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
-                                <li><span class="label">학급 수</span> <span class="value"><strong>${p.class_cnt || 0}</strong>개</span></li>
-                           </ul>`;
+            const vicePrincipal = p.vice_principal || '-';
+            const chiefAdmin = p.chief_of_administration || '-';
+            bodyContent = `
+                <div class="popup-admin-row">
+                    <span>교장(원장) <strong>${principalName}</strong></span><span class="divider">|</span>
+                    <span>교감(원감) <strong>${vicePrincipal}</strong></span><span class="divider">|</span>
+                    <span>행정실장 <strong>${chiefAdmin}</strong></span>
+                </div>
+                <ul class="popup-info-list grid-list">
+                    <li><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
+                    <li><span class="label">교사 수</span> <span class="value"><strong>${p.tchr_cnt || 0}</strong>명</span></li>
+                    <li><span class="label">학급 수</span> <span class="value"><strong>${p.class_cnt || 0}</strong>개</span></li>
+                    <li><span class="label">학급당 학생 수</span> <span class="value"><strong>${p.stdnt_per_cl || 0}</strong>명</span></li>
+                    <li><span class="label">교사 1인당 학생 수</span> <span class="value"><strong>${p.stdnt_per_tchr || 0}</strong>명</span></li>
+                </ul>`;
         }
 
-        return `<div class="popup-content compact-mode">
-                    <div class="popup-header">
-                        <div class="popup-category">${p.type || '교육기관'} ${estBadge}</div>
-                        ${linkHtml}
+        return `
+            <div class="popup-content compact-mode">
+                <div class="popup-header">
+                    <div class="popup-category">${p.type || '교육기관'} ${estBadge}</div>
+                    ${linkHtml}
+                </div>
+                <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div class="popup-title" style="margin: 0;">${p.name || ''}</div>
+                    <button id="fav-btn-${p.name}" class="fav-toggle-btn" 
+                            onclick="MapManager.toggleFavorite('${p.name}', event)"
+                            style="background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc;">
+                        ☆
+                    </button>
+                </div>
+                <div class="popup-adrs">${p.adrs || ''}</div>
+                <hr class="popup-hr">
+                ${bodyContent}
+                <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
+                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
+                    <textarea id="memo-${p.name}" 
+                        style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
+                        placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
+                        disabled></textarea>
+                    
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button id="btn-save-${p.name}" class="memo-save-btn"
+                            onclick="AuthManager.saveMemo('${p.name}', event)" 
+                            style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
+                            ${btnDisabled}>
+                            저장
+                        </button>
+                        <button id="btn-del-${p.name}" class="memo-del-btn"
+                            onclick="AuthManager.deleteMemo('${p.name}', event)" 
+                            style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
+                            ${btnDisabled}>
+                            삭제
+                        </button>
                     </div>
-                    <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
-                        <div class="popup-title">${p.name || ''}</div>
-                        <button id="fav-btn-${p.name}" class="fav-toggle-btn" onclick="MapManager.toggleFavorite('${p.name}', event)" style="background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc;">☆</button>
-                    </div>
-                    <div class="popup-adrs">${p.adrs || ''}</div>
-                    <hr class="popup-hr">
-                    ${bodyContent}
-                    <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
-                        <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
-                        <textarea id="memo-${p.name}" style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;" placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}" disabled></textarea>
-                        <div style="display: flex; gap: 5px; margin-top: 5px;">
-                            <button id="btn-save-${p.name}" class="memo-save-btn" onclick="AuthManager.saveMemo('${p.name}', event)" style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;" ${btnDisabled}>저장</button>
-                            <button id="btn-del-${p.name}" class="memo-del-btn" onclick="AuthManager.deleteMemo('${p.name}', event)" style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;" ${btnDisabled}>삭제</button>
-                        </div>
-                    </div>
-                </div>`;
+                </div>
+            </div>`;
     },
 
     async loadBoundaries() {
@@ -383,12 +397,20 @@ const MapManager = {
 
     showDistrictStats(fullName, latlng) {
         let keyword = fullName.replace('화성시 ', '').replace(' 전체', '').trim();
+        
+        // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
         const targets = this.markers.filter(m => {
-            const adrs = m.properties.adrs || '';
+            const p = m.properties;
+            const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청'); // 학교만 필터
+            if (!isSchool) return false;
+
+            const adrs = p.adrs || '';
             if (fullName === '화성시 전체') return adrs.includes('화성시');
             if (fullName === '오산시') return adrs.includes('오산시');
             return MapConfig.DISTRICTS[keyword]?.keywords?.some(k => adrs.includes(k));
         });
+
+        // 통계 계산
         const stats = targets.reduce((acc, m) => {
             acc.s += parseInt(m.properties.stdnt_cnt) || 0;
             acc.c += parseInt(m.properties.class_cnt) || 0;
@@ -403,6 +425,7 @@ const MapManager = {
                 <ul class="popup-info-list">
                     <li><span class="label">학교 수</span> <span class="value"><strong>${targets.length}</strong>개교</span></li>
                     <li><span class="label">총 학생 수</span> <span class="value"><strong>${stats.s.toLocaleString()}</strong>명</span></li>
+                    <li><span class="label">총 교사 수</span> <span class="value"><strong>${stats.t.toLocaleString()}</strong>명</span></li>
                 </ul>
             </div>
         `).openOn(this.map);

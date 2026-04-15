@@ -3,113 +3,109 @@ const SearchManager = {
         const input = document.getElementById('schoolSearch');
         const resultBox = document.getElementById('searchResults');
         
-        if (!input || !resultBox) return;
-
-        // 검색창 입력 이벤트
         input.addEventListener('keyup', (e) => {
             const val = e.target.value.trim();
-<<<<<<< HEAD
-            
-            // 엔터키 입력 시 바로 상세 결과창(대시보드) 띄우기
-            if (e.key === 'Enter' && val.length >= 1) {
-                const matches = this.getMatches(val);
-                if (matches.length > 0) {
-                    this.close();
-                    this.showResultsPage(matches, val);
-                }
-                return;
-            }
-
-            // 입력값이 없으면 결과창 숨김
-            if (val.length < 1) { 
-                resultBox.style.display = 'none'; 
-                return; 
-            }
-            
-            const matches = this.getMatches(val);
-            this.renderResults(matches, resultBox, val);
-=======
             if (val.length < 1) { resultBox.style.display = 'none'; return; }
-            const matches = MapManager.markers.filter(m => m.properties.name.includes(val));
+            const matches = MapManager.markers.filter(m => {
+                const p = m.properties;
+                const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청');
+                return isSchool && p.name.includes(val);
+            });
             this.renderResults(matches, resultBox);
->>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
         });
         
-        // 검색창 외부 클릭 시 드롭다운 닫기
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-wrapper')) {
-                resultBox.style.display = 'none';
-            }
+            if (!e.target.closest('.search-wrapper')) resultBox.style.display = 'none';
         });
     },
-
-    // 🔍 검색 필터링 로직 (빈칸 오류 방지 및 공유학교/교육청 제외)
-    getMatches(val) {
-        return MapManager.markers.filter(m => {
-            const p = m.properties;
-            const sType = String(p.type || '');
-            const sName = String(p.name || '');
-            
-            // 교육지원청과 공유학교는 일반 검색에서 제외
-            if (sType.includes('교육') || sName.includes('교육지원청') || sType === '공유학교') return false; 
-            
-            return sName.includes(val);
-        });
-    },
-
-    // 📋 드롭다운 결과 렌더링 (최대 8개)
-    renderResults(matches, container, val) {
+    renderResults(matches, container) {
         container.innerHTML = '';
-        if (matches.length === 0) { 
-            container.style.display = 'none'; 
-            return; 
-        }
-        
+        if (matches.length === 0) { container.style.display = 'none'; return; }
         matches.slice(0, 8).forEach(m => {
             const div = document.createElement('div');
             div.className = 'search-item';
             let typeColor = '#333';
-            
-            const sName = String(m.properties.name || '');
-            const sType = String(m.properties.type || '');
-            
-            // 학교급별 마커 색상 매칭
-            if (sType.includes('초등') || sName.includes('초등학교')) typeColor = '#2ECC71';
-            else if (sType.includes('중학') || sName.includes('중학교')) typeColor = '#3498DB';
-            else if (sType.includes('고등') || sName.includes('고등학교')) typeColor = '#E74C3C';
-            else if (sType.includes('유치') || sName.includes('유치원')) typeColor = '#F1C40F';
-            else if (sType.includes('특수') || sName.includes('특수')) typeColor = '#9B59B6';
-            
-            div.innerHTML = `<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${typeColor}; margin-right:8px;"></span>${sName}`;
-            div.onclick = () => { 
-                this.close(); 
-                this.focusSchool(m); 
+            if (m.properties.name.includes('초등학교')) typeColor = '#2ECC71';
+            else if (m.properties.name.includes('중학교')) typeColor = '#F1C40F';
+            else if (m.properties.name.includes('고등학교')) typeColor = '#E74C3C';
+            else if (m.properties.name.includes('유치원')) typeColor = '#4A90E2';
+
+            div.innerHTML = `<span>${m.properties.name}</span><span style="font-size:11px; color:${typeColor}; font-weight:bold;">${m.properties.type}</span>`;
+            div.onclick = () => {
+                MapManager.focusMarker(m);
+                container.style.display = 'none';
+                const inputEl = document.getElementById('schoolSearch');
+                inputEl.value = m.properties.name;
+                inputEl.blur(); 
             };
             container.appendChild(div);
         });
-        
         container.style.display = 'block';
+    }
+};
 
-<<<<<<< HEAD
-        // 검색 결과가 8개를 초과할 경우 '더보기' 버튼 추가
-        if (matches.length > 8) {
-            const moreBtn = document.createElement('div');
-            moreBtn.className = 'search-item';
-            moreBtn.style.textAlign = 'center';
-            moreBtn.style.fontWeight = 'bold';
-            moreBtn.style.color = '#4A90E2';
-            moreBtn.style.borderTop = '1px solid #eee';
-            moreBtn.style.marginTop = '4px';
-            moreBtn.style.paddingTop = '8px';
-            moreBtn.innerText = `+ ${matches.length - 8}개 결과 더보기`;
-            moreBtn.onclick = () => { 
-                this.close(); 
-                this.showResultsPage(matches, val); 
+const FilterManager = {
+    selectedTypes: new Set(),
+    selectedDistricts: new Set(),
+    selectedEst: new Set(),
+
+    init() {
+        document.querySelectorAll('.filter-tag').forEach(tag => {
+            tag.onclick = () => {
+                const type = tag.getAttribute('data-type');
+                tag.classList.toggle('active');
+                this.selectedTypes.has(type) ? this.selectedTypes.delete(type) : this.selectedTypes.add(type);
             };
-            container.appendChild(moreBtn);
-=======
+        });
+        document.querySelectorAll('.dist-tag').forEach(tag => {
+            tag.onclick = () => {
+                const dist = tag.getAttribute('data-dist');
+                tag.classList.toggle('active');
+                this.selectedDistricts.has(dist) ? this.selectedDistricts.delete(dist) : this.selectedDistricts.add(dist);
+            };
+        });
+        document.querySelectorAll('.est-tag').forEach(tag => {
+            tag.onclick = () => {
+                const est = tag.getAttribute('data-est');
+                tag.classList.toggle('active');
+                this.selectedEst.has(est) ? this.selectedEst.delete(est) : this.selectedEst.add(est);
+            };
+        });
+    },
+
+    open() { document.getElementById('search-dashboard').style.display = 'flex'; },
+    close() { document.getElementById('search-dashboard').style.display = 'none'; },
+    
+    reset() {
+        this.selectedTypes.clear();
+        this.selectedDistricts.clear();
+        this.selectedEst.clear(); 
+        document.querySelectorAll('.filter-tag, .dist-tag, .est-tag').forEach(tag => tag.classList.remove('active'));
+        document.getElementById('adv-name-input').value = '';
+        const ids = ['min-s', 'max-s', 'min-c', 'max-c', 'min-t', 'max-t', 'min-sc', 'max-sc', 'min-st', 'max-st'];
+        ids.forEach(id => {
+            const el = document.getElementById(id); if(el) el.value = '';
+        });
+    },
+
+    execute() {
+        const nameQuery = document.getElementById('adv-name-input').value.trim();
+        const getVal = (id, def) => {
+            const val = document.getElementById(id)?.value;
+            return (val === '' || val === null) ? def : Number(val);
+        };
+        
+        const ranges = {
+            s: [getVal('min-s', 0), getVal('max-s', Infinity)],      
+            c: [getVal('min-c', 0), getVal('max-c', Infinity)],      
+            t: [getVal('min-t', 0), getVal('max-t', Infinity)],      
+            sc: [getVal('min-sc', 0), getVal('max-sc', Infinity)],   
+            st: [getVal('min-st', 0), getVal('max-st', Infinity)]    
+        };
+
         const filtered = MapManager.markers.filter(m => {
             const p = m.properties;
+            if (p.type.includes('교육') || p.name.includes('교육지원청')) return false;
             const matchName = !nameQuery || p.name.includes(nameQuery);
             const matchType = this.selectedTypes.size === 0 || this.selectedTypes.has(p.type);
             const estVal = (p.establish || '').trim();
@@ -144,70 +140,43 @@ const SearchManager = {
             } else {
                 ResultPageManager.open(filtered); 
             }
->>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
         }
-    },
+    }
+};
 
-    // 🎯 특정 학교로 지도 이동 및 팝업 열기 (클러스터링 연동)
-    focusSchool(m) {
-        MapManager.map.setView(m.getLatLng(), 16);
-        if (MapManager.cluster.hasLayer(m)) {
-            MapManager.cluster.zoomToShowLayer(m, () => m.openPopup());
-        } else {
-            m.openPopup();
-        }
-    },
-
-    // 🗂️ 상세 결과창 (더보기 팝업 대시보드) 렌더링
-    showResultsPage(results, val) {
-        const container = document.getElementById('search-results-list');
-        const page = document.getElementById('search-results-page');
-        const headerTitle = document.querySelector('.results-header-title');
-        
-        if (!container || !page) return;
-
-        // 상단 타이틀 업데이트 (선택 사항 - HTML에 해당 클래스가 있을 경우 작동)
-        if (headerTitle) {
-            headerTitle.innerHTML = `🔍 '${val}' 검색 결과 (${results.length}건)`;
-        }
+const ResultPageManager = {
+    open(results) {
+        const container = document.getElementById('results-list-container');
+        const badge = document.getElementById('results-count-badge');
+        if (badge) badge.innerText = results.length;
+        if (!container) return;
 
         container.innerHTML = '';
-        
-        // 가나다 순 정렬 후 카드 렌더링
-        [...results].sort((a, b) => String(a.properties.name || '').localeCompare(String(b.properties.name || ''), 'ko')).forEach(m => {
+        [...results].sort((a, b) => a.properties.name.localeCompare(b.properties.name, 'ko')).forEach(m => {
             const p = m.properties;
-            const sType = String(p.type || '');
-            const sName = String(p.name || '');
-            const sAdrs = String(p.adrs || p.location || '');
             
             let typeClass = '';
-            if (sType.includes('유치원') || sName.includes('유치원')) typeClass = 'type-kinder';
-            else if (sType.includes('초등학교') || sName.includes('초등학교')) typeClass = 'type-elem';
-            else if (sType.includes('중학교') || sName.includes('중학교')) typeClass = 'type-mid';
-            else if (sType.includes('고등학교') || sName.includes('고등학교')) typeClass = 'type-high';
-            else if (sType.includes('특수') || sName.includes('특수')) typeClass = 'type-spec';
+            if (p.type.includes('유치원')) typeClass = 'type-kinder';
+            else if (p.type.includes('초등학교')) typeClass = 'type-elem';
+            else if (p.type.includes('중학교')) typeClass = 'type-mid';
+            else if (p.type.includes('고등학교')) typeClass = 'type-high';
+            else if (p.type.includes('특수')) typeClass = 'type-spec';
             
             const card = document.createElement('div');
             card.className = 'result-card';
             card.innerHTML = `
-                <div class="res-type ${typeClass}">${sType} ${p.establish ? `· ${p.establish}` : ''}</div>
-                <div class="res-name" title="${sName}">${sName}</div>
-                <div class="res-addr" title="${sAdrs}">${sAdrs}</div>
+                <div class="res-type ${typeClass}">${p.type} ${p.establish ? `· ${p.establish}` : ''}</div>
+                <div class="res-name" title="${p.name}">${p.name}</div>
+                <div class="res-addr" title="${p.adrs}">${p.adrs}</div>
             `;
-            // 카드 클릭 시 대시보드 닫고 해당 위치로 이동
-            card.onclick = () => { 
-                page.style.display = 'none'; 
-                this.focusSchool(m); 
-            };
+            card.onclick = () => { this.close(); this.focusSchool(m); };
             container.appendChild(card);
         });
-        
-        page.style.display = 'flex';
+        document.getElementById('search-results-page').style.display = 'flex';
     },
-
-    // 드롭다운 숨기기
-    close() { 
-        const resultBox = document.getElementById('searchResults');
-        if (resultBox) resultBox.style.display = 'none'; 
+    close() { document.getElementById('search-results-page').style.display = 'none'; },
+    focusSchool(marker) {
+        MapManager.map.flyTo(marker.getLatLng(), 16, { duration: 1 });
+        setTimeout(() => marker.openPopup(), 1100);
     }
 };
