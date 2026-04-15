@@ -25,34 +25,36 @@ const App = {
             };
 
             // 데이터 파싱
-            pRows.forEach((row) => {
-                const c = row.c;
-                if (!c || !c[1] || !c[2]) return;
-                const lat = parseFloat(c[1]?.v || 0);
-                const lng = parseFloat(c[2]?.v || 0);
-                
-                const p = {
-                    type: c[3]?.v || '', 
-                    name: c[4]?.v || '이름 없음', 
-                    adrs: c[5]?.v || '',
-                    establish: (c[15]?.v || '').trim(),
-                    stdnt_cnt: parseNum(c[6]?.v), 
-                    stdnt_per_cl: parseNum(c[7]?.v), 
-                    tchr_cnt: parseNum(c[8]?.v), 
-                    stdnt_per_tchr: parseNum(c[9]?.v),
-                    class_cnt: parseNum(c[14]?.v),
-                    shape: c[10]?.v || '●', 
-                    color: c[11]?.v || '#333', 
-                    url: c[13]?.v,
-                    principal: c[16]?.v || c[16]?.f,                 
-                    vice_principal: c[17]?.v || c[17]?.f,            
-                    chief_of_administration: c[18]?.v || c[18]?.f    
-                };
-                
-                const locKey = lat.toFixed(5) + "," + lng.toFixed(5);
-                if(!groupedSchools[locKey]) groupedSchools[locKey] = [];
-                groupedSchools[locKey].push({lat, lng, p});
-            });
+            if (pRows) {
+                pRows.forEach((row) => {
+                    const c = row.c;
+                    if (!c || !c[1] || !c[2]) return;
+                    const lat = parseFloat(c[1]?.v || 0);
+                    const lng = parseFloat(c[2]?.v || 0);
+                    
+                    const p = {
+                        type: c[3]?.v || '', 
+                        name: c[4]?.v || '이름 없음', 
+                        adrs: c[5]?.v || '',
+                        establish: (c[15]?.v || '').trim(),
+                        stdnt_cnt: parseNum(c[6]?.v), 
+                        stdnt_per_cl: parseNum(c[7]?.v), 
+                        tchr_cnt: parseNum(c[8]?.v), 
+                        stdnt_per_tchr: parseNum(c[9]?.v),
+                        class_cnt: parseNum(c[14]?.v),
+                        shape: c[10]?.v || '●', 
+                        color: c[11]?.v || '#333', 
+                        url: c[13]?.v,
+                        principal: c[16]?.v || c[16]?.f,                 
+                        vice_principal: c[17]?.v || c[17]?.f,            
+                        chief_of_administration: c[18]?.v || c[18]?.f    
+                    };
+                    
+                    const locKey = lat.toFixed(5) + "," + lng.toFixed(5);
+                    if (!groupedSchools[locKey]) groupedSchools[locKey] = [];
+                    groupedSchools[locKey].push({lat, lng, p});
+                });
+            }
 
             if (sRows) {
                 sRows.forEach((row) => {
@@ -121,6 +123,7 @@ const App = {
 renderLegend(rows) {
         const container = document.getElementById('legend');
         if (!container) return;
+        container.innerHTML = '';
         
         container.innerHTML = `
             <div class="legend-item legend-reset" onclick="location.reload()" style="cursor:pointer; padding:5px; text-align:center; background:#eef; margin-bottom:5px; border-radius:4px; font-weight:bold; color:#00427a;">
@@ -130,6 +133,7 @@ renderLegend(rows) {
         rows.forEach(row => {
             const type = row.c[1]?.v;
             if (!type) return;
+            if (type === '공유학교') return;
             
             const item = document.createElement('div');
             item.className = 'legend-item';
