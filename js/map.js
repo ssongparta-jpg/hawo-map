@@ -418,9 +418,8 @@ const MapManager = {
 
     showDistrictStats(fullName, latlng) {
         let keyword = fullName.replace('화성시 ', '').replace(' 전체', '').trim();
-        
-        // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
         const targets = this.markers.filter(m => {
+<<<<<<< HEAD
 
             const p = m.properties;
             const sType = String(p.type || '');
@@ -429,12 +428,13 @@ const MapManager = {
             if (!isSchool) return false;
 
             const adrs = p.adrs || '';
+=======
+            const adrs = m.properties.adrs || '';
+>>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
             if (fullName === '화성시 전체') return adrs.includes('화성시');
             if (fullName === '오산시') return adrs.includes('오산시');
             return MapConfig.DISTRICTS[keyword]?.keywords?.some(k => adrs.includes(k));
         });
-
-        // 통계 계산
         const stats = targets.reduce((acc, m) => {
             acc.s += parseInt(m.properties.stdnt_cnt) || 0;
             acc.c += parseInt(m.properties.class_cnt) || 0;

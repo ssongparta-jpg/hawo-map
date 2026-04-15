@@ -8,6 +8,7 @@ const SearchManager = {
         // 검색창 입력 이벤트
         input.addEventListener('keyup', (e) => {
             const val = e.target.value.trim();
+<<<<<<< HEAD
             
             // 엔터키 입력 시 바로 상세 결과창(대시보드) 띄우기
             if (e.key === 'Enter' && val.length >= 1) {
@@ -27,6 +28,11 @@ const SearchManager = {
             
             const matches = this.getMatches(val);
             this.renderResults(matches, resultBox, val);
+=======
+            if (val.length < 1) { resultBox.style.display = 'none'; return; }
+            const matches = MapManager.markers.filter(m => m.properties.name.includes(val));
+            this.renderResults(matches, resultBox);
+>>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
         });
         
         // 검색창 외부 클릭 시 드롭다운 닫기
@@ -84,6 +90,7 @@ const SearchManager = {
         
         container.style.display = 'block';
 
+<<<<<<< HEAD
         // 검색 결과가 8개를 초과할 경우 '더보기' 버튼 추가
         if (matches.length > 8) {
             const moreBtn = document.createElement('div');
@@ -100,6 +107,44 @@ const SearchManager = {
                 this.showResultsPage(matches, val); 
             };
             container.appendChild(moreBtn);
+=======
+        const filtered = MapManager.markers.filter(m => {
+            const p = m.properties;
+            const matchName = !nameQuery || p.name.includes(nameQuery);
+            const matchType = this.selectedTypes.size === 0 || this.selectedTypes.has(p.type);
+            const estVal = (p.establish || '').trim();
+            const matchEst = this.selectedEst.size === 0 || Array.from(this.selectedEst).some(e => estVal === e);
+            let matchDist = this.selectedDistricts.size === 0 || Array.from(this.selectedDistricts).some(distKey => {
+                if (distKey === "오산시") return p.adrs.includes("오산시");
+                return MapConfig.DISTRICTS[distKey]?.keywords?.some(k => p.adrs.includes(k));
+            });
+
+            const sVal = parseFloat(p.stdnt_cnt) || 0;
+            const cVal = parseFloat(p.class_cnt) || 0;
+            const tVal = parseFloat(p.tchr_cnt) || 0;
+            const scVal = parseFloat(p.stdnt_per_cl) || 0;
+            const stVal = parseFloat(p.stdnt_per_tchr) || 0;
+
+            return matchName && matchType && matchDist && matchEst &&
+                   (sVal >= ranges.s[0] && sVal <= ranges.s[1]) &&
+                   (cVal >= ranges.c[0] && cVal <= ranges.c[1]) &&
+                   (tVal >= ranges.t[0] && tVal <= ranges.t[1]) &&
+                   (scVal >= ranges.sc[0] && scVal <= ranges.sc[1]) &&
+                   (stVal >= ranges.st[0] && stVal <= ranges.st[1]);
+        });
+
+        this.close();
+        if (filtered.length === 0) {
+            alert("조건에 맞는 학교가 없습니다.");
+        } else {
+            if (filtered.length === 1) {
+                const target = filtered[0];
+                MapManager.map.flyTo(target.getLatLng(), 16, { duration: 1.5 });
+                setTimeout(() => target.openPopup(), 1600);
+            } else {
+                ResultPageManager.open(filtered); 
+            }
+>>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
         }
     },
 
