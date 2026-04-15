@@ -112,7 +112,8 @@ const App = {
     },
 
     async fetchJson(gid) {
-        const res = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`);
+        const timestamp = new Date().getTime();
+        const res = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}&t=${timestamp}`);
         const txt = await res.text();
         return JSON.parse(txt.substring(47).slice(0, -2)).table.rows;
     },
