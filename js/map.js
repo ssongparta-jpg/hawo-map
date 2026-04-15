@@ -43,26 +43,29 @@ const MapManager = {
         });
     },
 
-    getMarkerIcon(p, stackIndex = 0, count = 1) {
-        let typeClass = 'is-spec';
-        let symbolChar = '◆';
-        let symbolColor = p.color;
-        let posClass = '';
-        let labelPosClass = ''; 
+    getMarkerIcon(p, index, count) {
+        let symbolChar = '●';
+        let symbolColor = '#333';
+        let typeClass = '';
 
-        if (p.type.includes('교육') || p.name.includes('교육지원청')) {
+        // ▼▼▼ 이 부분을 아래 코드로 덮어쓰세요 ▼▼▼
+        const sType = String(p.type || '');
+        const sName = String(p.name || '');
+
+        if (sType.includes('교육') || sName.includes('교육지원청')) {
             symbolChar = '🏢';
-            typeClass = 'is-edu'; 
+            typeClass = 'is-edu';
         }
-        else if (p.type === '공유학교') {  
+        else if (sType === '공유학교') {
             typeClass = 'is-shared';
             symbolChar = '❤';
-            symbolColor = '#e84393'; 
+            symbolColor = '#e84393';
         }
-        else if (p.name.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
-        else if (p.name.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
-        else if (p.name.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '●'; }
-        else if (p.name.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
+        else if (sName.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
+        else if (sName.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
+        else if (sName.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '■'; }
+        else if (sName.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
+        else if (sName.includes('특수')) { typeClass = 'is-spec'; symbolChar = '◆'; }
 
         if (count > 1) {
             if (stackIndex === 0) {
@@ -263,8 +266,13 @@ const MapManager = {
     },
 
     makePopupHtml(p) {
-        const isEduOffice = (p.type && p.type.includes('교육')) || p.name.includes('교육지원청');
-        const isSharedSchool = p.type === '공유학교';
+
+        const sType = String(p.type || '');
+        const sName = String(p.name || '');
+        
+        const isEduOffice = sType.includes('교육') || sName.includes('교육지원청');
+        const isSharedSchool = sType === '공유학교';
+
         let principalName = p.principal;
         if (!principalName || principalName === 'No Data' || principalName.trim() === '') principalName = '정보 없음'; 
         
@@ -414,8 +422,11 @@ const MapManager = {
         
         // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
         const targets = this.markers.filter(m => {
+            
             const p = m.properties;
-            const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청') && p.type !== '공유학교';
+            const sType = String(p.type || '');
+            const sName = String(p.name || '');
+            const isSchool = !sType.includes('교육') && !sName.includes('교육지원청') && sType !== '공유학교';
             if (!isSchool) return false;
 
             const adrs = p.adrs || '';

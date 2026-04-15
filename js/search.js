@@ -5,11 +5,15 @@ const SearchManager = {
         
         input.addEventListener('keyup', (e) => {
             const val = e.target.value.trim();
-            if (val.length < 1) { resultBox.style.display = 'none'; return; }
             const matches = MapManager.markers.filter(m => {
                 const p = m.properties;
-                if (p.type.includes('교육') || p.name.includes('교육지원청') || p.type === '공유학교') return false; 
-                return isSchool && p.name.includes(val);
+                const sType = String(p.type || '');
+                const sName = String(p.name || '');
+                
+                // 교육청과 공유학교는 검색 및 통계에서 제외
+                if (sType.includes('교육') || sName.includes('교육지원청') || sType === '공유학교') return false; 
+                
+                return sName.includes(val);
             });
             this.renderResults(matches, resultBox);
         });
