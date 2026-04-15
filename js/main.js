@@ -80,15 +80,17 @@ const App = {
             }
 
             // 마커 생성 (겹침 처리)
-            Object.values(groupedSchools).forEach(group => {
-                group.sort((a, b) => {
-                    const getRank = (name) => {
-                        if(name.includes('교육')) return 0; 
-                        if(name.includes('고등')) return 1;
-                        if(name.includes('중학')) return 2;
-                        if(name.includes('초등')) return 3;
-                        if(name.includes('유치')) return 4;
-                        return 5;
+                Object.values(groupedSchools).forEach(group => {
+                    group.sort((a, b) => {
+                        const getRank = (name) => {
+                            const safeName = String(name || ''); 
+                            
+                            if(safeName.includes('교육')) return 0; 
+                            if(safeName.includes('고등')) return 1;
+                            if(safeName.includes('중학')) return 2;
+                            if(safeName.includes('초등')) return 3;
+                            if(safeName.includes('유치')) return 4;
+                            return 5;
                     };
                     return getRank(a.p.name) - getRank(b.p.name);
                 });
@@ -97,8 +99,10 @@ const App = {
                 group.forEach((item, index) => {
                     const m = MapManager.createMarker(item.lat, item.lng, item.p, index, count);
                     MapManager.markers.push(m); 
+
+                    const safeItemName = String(item.p.name || '');
                     
-                    if ((item.p.type && item.p.type.includes('교육')) || item.p.name.includes('교육지원청')) {
+                    if ((item.p.type && item.p.type.includes('교육')) || safeItemName.includes('교육지원청')) {
                         MapManager.eduOfficeLayer.addLayer(m);
                     } else {
                         MapManager.cluster.addLayer(m);
