@@ -68,11 +68,11 @@ const MapManager = {
         else if (sName.includes('특수')) { typeClass = 'is-spec'; symbolChar = '◆'; }
 
         if (count > 1) {
-            if (stackIndex === 0) {
+            if (index === 0) {
                 posClass = 'shift-up';
             } else {
-                if (stackIndex === 1) posClass = 'shift-down'; 
-                else if (stackIndex === 2) posClass = 'shift-left'; 
+                if (index === 1) posClass = 'shift-down'; 
+                else if (index === 2) posClass = 'shift-left'; 
                 else posClass = 'shift-right';
                 
                 labelPosClass = 'label-bottom';
@@ -81,7 +81,7 @@ const MapManager = {
         const safeName = p.name.replace(/'/g, "\\'");
         const html = `
             <div class="custom-combined-marker ${typeClass} ${posClass}"
-                 style="z-index: ${500 - stackIndex};"
+                 style="z-index: ${500 - index};"
                  onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
                 <div class="marker-label-box ${labelPosClass}" 
                      onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
@@ -223,12 +223,12 @@ const MapManager = {
         }
     },
 
-    createMarker(lat, lng, p, stackIndex = 0, count = 1) {
+    createMarker(lat, lng, p, index = 0, count = 1) {
         const isMobile = window.innerWidth <= 768;
         const autoPanPaddingVal = isMobile ? L.point(160, 50) : L.point(80, 50);
         const marker = L.marker([lat, lng], {
-            icon: this.getMarkerIcon(p, stackIndex, count),
-            zIndexOffset: 100 - stackIndex * 10
+            icon: this.getMarkerIcon(p, index, count),
+            zIndexOffset: 100 - index * 10
         }).bindPopup(this.makePopupHtml(p), {
             className: 'custom-popup',
             pane: 'ultraTopPane', 
@@ -422,7 +422,7 @@ const MapManager = {
         
         // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
         const targets = this.markers.filter(m => {
-            
+
             const p = m.properties;
             const sType = String(p.type || '');
             const sName = String(p.name || '');
