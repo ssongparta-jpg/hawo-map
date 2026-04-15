@@ -420,6 +420,7 @@ const MapManager = {
         let keyword = fullName.replace('화성시 ', '').replace(' 전체', '').trim();
         const targets = this.markers.filter(m => {
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             const p = m.properties;
             const sType = String(p.type || '');
@@ -428,6 +429,9 @@ const MapManager = {
             if (!isSchool) return false;
 
             const adrs = p.adrs || '';
+=======
+            const adrs = m.properties.adrs || '';
+>>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
 =======
             const adrs = m.properties.adrs || '';
 >>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)

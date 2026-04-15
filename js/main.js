@@ -23,6 +23,7 @@ const App = {
             };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             // 데이터 파싱
             if (pRows) {
                 pRows.forEach((row) => {
@@ -91,6 +92,8 @@ const App = {
                             if(safeName.includes('유치')) return 4;
                             return 5;
 =======
+=======
+>>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
             pRows.forEach((row) => {
                 const c = row.c;
                 if (!c || !c[1] || !c[2]) return;
@@ -134,11 +137,14 @@ const App = {
                     const m = MapManager.createMarker(item.lat, item.lng, item.p, index, count);
                     MapManager.markers.push(m); 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
                     const safeItemName = String(item.p.name || '');
                     
                     if ((item.p.type && item.p.type.includes('교육')) || safeItemName.includes('교육지원청')) {
 =======
+=======
+>>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
                     if ((item.p.type && item.p.type.includes('교육')) || item.p.name.includes('교육지원청')) {
 >>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
                         MapManager.eduOfficeLayer.addLayer(m);
@@ -162,6 +168,7 @@ const App = {
         const container = document.getElementById('legend');
         if (!container) return;
 <<<<<<< HEAD
+<<<<<<< HEAD
         container.innerHTML = '';
         
         container.innerHTML = `
@@ -174,6 +181,12 @@ const App = {
             if (!type) return;
             if (type === '공유학교') return;
             
+=======
+        container.innerHTML = '<div class="legend-item" onclick="location.reload()" style="cursor:pointer;font-weight:bold;margin-bottom:8px;color:#00427a;">⏪ 전체 보기</div>';
+        rows.forEach(row => {
+            const type = row.c[1]?.v;
+            if (!type) return;
+>>>>>>> parent of 5b107bf (범례 간격/교육청필터및통계제거/길찾기 1차 업데이트)
 =======
         container.innerHTML = '<div class="legend-item" onclick="location.reload()" style="cursor:pointer;font-weight:bold;margin-bottom:8px;color:#00427a;">⏪ 전체 보기</div>';
         rows.forEach(row => {
