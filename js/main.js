@@ -6,7 +6,7 @@ const App = {
         SearchManager.init(); 
         await AuthManager.checkAuth();
         try {
-            const [pRows, lRows, hRows] = await Promise.all([
+            const [pRows, lRows, hRows, sRows] = await Promise.all([
                 this.fetchJson(MapConfig.GIDS.POINTS),
                 this.fetchJson(MapConfig.GIDS.LEGEND),
                 this.fetchJson(MapConfig.GIDS.HEADER),
