@@ -48,7 +48,6 @@ const MapManager = {
         let symbolColor = '#333';
         let typeClass = '';
 
-        // ▼▼▼ 이 부분을 아래 코드로 덮어쓰세요 ▼▼▼
         const sType = String(p.type || '');
         const sName = String(p.name || '');
 
@@ -57,7 +56,7 @@ const MapManager = {
             typeClass = 'is-edu';
         }
         else if (sType === '공유학교') {
-            typeClass = 'is-shared';
+            typeClass = 'is-shared'; // CSS 테두리 반영을 위한 클래스
             symbolChar = '❤';
             symbolColor = '#e84393';
         }
@@ -66,7 +65,7 @@ const MapManager = {
         else if (sName.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '■'; }
         else if (sName.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
         else if (sName.includes('특수')) { typeClass = 'is-spec'; symbolChar = '◆'; }
-
+        
         if (count > 1) {
             if (index === 0) {
                 posClass = 'shift-up';
