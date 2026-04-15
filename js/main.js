@@ -9,7 +9,8 @@ const App = {
             const [pRows, lRows, hRows] = await Promise.all([
                 this.fetchJson(MapConfig.GIDS.POINTS),
                 this.fetchJson(MapConfig.GIDS.LEGEND),
-                this.fetchJson(MapConfig.GIDS.HEADER)
+                this.fetchJson(MapConfig.GIDS.HEADER),
+                this.fetchJson(MapConfig.GIDS.SHARED)
             ]);
             
             if (hRows) HelpManager.init(hRows);
@@ -52,6 +53,29 @@ const App = {
                 if(!groupedSchools[locKey]) groupedSchools[locKey] = [];
                 groupedSchools[locKey].push({lat, lng, p});
             });
+
+            if (sRows) {
+                sRows.forEach((row) => {
+                    const c = row.c;
+                    if (!c || !c[1] || !c[2]) return;
+                    const lat = parseFloat(c[1]?.v || 0);
+                    const lng = parseFloat(c[2]?.v || 0);
+                    
+                    const p = {
+                        type: c[3]?.v || '공유학교',
+                        name: c[4]?.v || '이름 없음', 
+                        target: c[5]?.v || '-',       // 대상
+                        period: c[6]?.v || '-',       // 기간
+                        location: c[7]?.v || '-',     // 장소
+                        agency: c[8]?.v || '-'        // 위탁기관
+                    };
+                    
+                    const locKey = lat.toFixed(5) + "," + lng.toFixed(5);
+                    if(!groupedSchools[locKey]) groupedSchools[locKey] = [];
+                    // 기존 학교들과 동일한 그룹에 push 되므로 위치가 같으면 자동으로 안 겹치게 흩어집니다!
+                    groupedSchools[locKey].push({lat, lng, p}); 
+                });
+            }
 
             // 마커 생성 (겹침 처리)
             Object.values(groupedSchools).forEach(group => {
@@ -125,6 +149,19 @@ renderLegend(rows) {
             };
             container.appendChild(item);
         });
+
+        const sharedItem = document.createElement('div');
+        sharedItem.className = 'legend-item';
+        sharedItem.style.cssText = "display:flex; align-items:center; padding:4px; cursor:pointer;";
+        sharedItem.innerHTML = `
+            <div class="legend-icon" style="color:#e84393; width:20px; text-align:center; margin-right:8px; font-weight:bold;">❤</div>
+            <div class="legend-text" style="font-size:13px;">공유학교</div>
+        `;
+        sharedItem.onclick = () => {
+            MapManager.cluster.clearLayers();
+            MapManager.markers.filter(m => m.properties.type === '공유학교').forEach(m => MapManager.cluster.addLayer(m));
+        };
+        container.appendChild(sharedItem);
     }
 };
 

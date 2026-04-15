@@ -1,7 +1,12 @@
 // js/config.js 에는 이것만 남겨야 합니다.
 const MapConfig = {
     SHEET_ID: '1xzpPpZh00DCC6zl0PhVx7uGab_6-9qkPhTHqcz5yuIE',
-    GIDS: { HEADER: '1120810254', POINTS: '1290947643', LEGEND: '882261582' },
+    GIDS: { 
+        HEADER: '1120810254', 
+        POINTS: '1290947643', 
+        LEGEND: '882261582',
+        SHARED: '1582242290' 
+    },
     MAP_CENTER: [37.196554, 126.911871],
     BOUNDS: [[36.886521, 126.557641], [37.403725, 127.272064]],
     DISTRICTS: {

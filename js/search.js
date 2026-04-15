@@ -8,7 +8,7 @@ const SearchManager = {
             if (val.length < 1) { resultBox.style.display = 'none'; return; }
             const matches = MapManager.markers.filter(m => {
                 const p = m.properties;
-                const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청');
+                if (p.type.includes('교육') || p.name.includes('교육지원청') || p.type === '공유학교') return false; 
                 return isSchool && p.name.includes(val);
             });
             this.renderResults(matches, resultBox);

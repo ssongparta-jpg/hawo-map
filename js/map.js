@@ -54,6 +54,11 @@ const MapManager = {
             symbolChar = '🏢';
             typeClass = 'is-edu'; 
         }
+        else if (p.type === '공유학교') {  
+            typeClass = 'is-shared';
+            symbolChar = '❤';
+            symbolColor = '#e84393'; 
+        }
         else if (p.name.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
         else if (p.name.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
         else if (p.name.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '●'; }
@@ -259,6 +264,7 @@ const MapManager = {
 
     makePopupHtml(p) {
         const isEduOffice = (p.type && p.type.includes('교육')) || p.name.includes('교육지원청');
+        const isSharedSchool = p.type === '공유학교';
         let principalName = p.principal;
         if (!principalName || principalName === 'No Data' || principalName.trim() === '') principalName = '정보 없음'; 
         
@@ -282,6 +288,14 @@ const MapManager = {
                 <div style="text-align:center; color:#555; margin-bottom:15px; font-weight:bold; font-size:13px; line-height:1.5;">
                     행복한 성장, 함께하는 화성오산 교육
                 </div>`;
+        } else if (isSharedSchool) {  
+            bodyContent = `
+                <ul class="popup-info-list" style="margin-top:10px;">
+                    <li><span class="label">대상</span> <span class="value"><strong>${p.target || '-'}</strong></span></li>
+                    <li><span class="label">운영 기간</span> <span class="value"><strong>${p.period || '-'}</strong></span></li>
+                    <li><span class="label">장소</span> <span class="value"><strong>${p.location || '-'}</strong></span></li>
+                    <li><span class="label">위탁/운영</span> <span class="value"><strong>${p.agency || '-'}</strong></span></li>
+                </ul>`;
         } else {
             const vicePrincipal = p.vice_principal || '-';
             const chiefAdmin = p.chief_of_administration || '-';
@@ -401,7 +415,7 @@ const MapManager = {
         // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
         const targets = this.markers.filter(m => {
             const p = m.properties;
-            const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청'); // 학교만 필터
+            const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청') && p.type !== '공유학교';
             if (!isSchool) return false;
 
             const adrs = p.adrs || '';
