@@ -6,10 +6,12 @@ const App = {
         SearchManager.init(); 
         await AuthManager.checkAuth();
         try {
-            const [pRows, lRows, hRows] = await Promise.all([
+            // [완벽 선언] 여기서 sRows를 포함해 4개를 가져옵니다.
+            const [pRows, lRows, hRows, sRows] = await Promise.all([
                 this.fetchJson(MapConfig.GIDS.POINTS),
                 this.fetchJson(MapConfig.GIDS.LEGEND),
-                this.fetchJson(MapConfig.GIDS.HEADER)
+                this.fetchJson(MapConfig.GIDS.HEADER),
+                this.fetchJson(MapConfig.GIDS.SHARED) // 공유학교 데이터 로드
             ]);
             
             if (hRows) HelpManager.init(hRows);
@@ -23,8 +25,8 @@ const App = {
                 return parseFloat(String(val).replace(/,/g, '')) || 0;
             };
 
-            // 데이터 파싱
-            pRows.forEach((row) => {
+            // 일반 학교 데이터 파싱
+            pRows?.forEach((row) => {
                 const c = row.c;
                 if (!c || !c[1] || !c[2]) return;
                 const lat = parseFloat(c[1]?.v || 0);
@@ -43,9 +45,9 @@ const App = {
                     shape: c[10]?.v || '●', 
                     color: c[11]?.v || '#333', 
                     url: c[13]?.v,
-                    principal: c[16]?.v || c[16]?.f,                 
-                    vice_principal: c[17]?.v || c[17]?.f,            
-                    chief_of_administration: c[18]?.v || c[18]?.f    
+                    principal: c[16]?.v || c[16]?.f, 
+                    vice_principal: c[17]?.v || c[17]?.f, 
+                    chief_of_administration: c[18]?.v || c[18]?.f 
                 };
                 
                 const locKey = lat.toFixed(5) + "," + lng.toFixed(5);
@@ -53,78 +55,119 @@ const App = {
                 groupedSchools[locKey].push({lat, lng, p});
             });
 
+            sRows?.forEach((row) => {
+                const c = row.c;
+                if (!c || !c[1] || !c[2]) return;
+
+                // 숫자로 변환 시도 (문자열일 경우를 대비해 trim 처리)
+                const lat = parseFloat(String(c[1]?.v || '').trim());
+                const lng = parseFloat(String(c[2]?.v || '').trim());
+
+                // [핵심] 좌표가 유효한 숫자가 아니면 해당 행은 무시하고 다음으로 넘어갑니다. (에러 방지)
+                if (isNaN(lat) || isNaN(lng) || lat === 0) return;
+
+                const p = {
+                    type: '공유학교',
+                    name: String(c[4]?.v || '이름 없음'), // E열
+                    target: String(c[5]?.v || '-'),       // F열
+                    period: String(c[6]?.v || '-'),       // G열
+                    location: String(c[7]?.v || '-'),     // H열
+                    agency: String(c[8]?.v || '-')        // I열
+                };
+
+                const locKey = lat.toFixed(5) + "," + lng.toFixed(5);
+                if (!groupedSchools[locKey]) groupedSchools[locKey] = [];
+                groupedSchools[locKey].push({ lat, lng, p });
+            });
+            
             // 마커 생성 (겹침 처리)
             Object.values(groupedSchools).forEach(group => {
                 group.sort((a, b) => {
                     const getRank = (name) => {
-                        if(name.includes('교육')) return 0; 
-                        if(name.includes('고등')) return 1;
-                        if(name.includes('중학')) return 2;
-                        if(name.includes('초등')) return 3;
-                        if(name.includes('유치')) return 4;
+                        const sName = String(name || '');
+                        if(sName.includes('교육')) return 0;
+                        if(sName.includes('고등')) return 1;
+                        if(sName.includes('중학')) return 2;
+                        if(sName.includes('초등')) return 3;
+                        if(sName.includes('유치')) return 4;
                         return 5;
                     };
                     return getRank(a.p.name) - getRank(b.p.name);
                 });
-                
+
                 const count = group.length;
                 group.forEach((item, index) => {
                     const m = MapManager.createMarker(item.lat, item.lng, item.p, index, count);
-                    MapManager.markers.push(m); 
-                    
-                    if ((item.p.type && item.p.type.includes('교육')) || item.p.name.includes('교육지원청')) {
+                    MapManager.markers.push(m);
+
+                    const sType = String(item.p.type || '');
+                    const sName = String(item.p.name || '');
+
+                    if (sType.includes('교육') || sName.includes('교육지원청')) {
                         MapManager.eduOfficeLayer.addLayer(m);
                     } else {
                         MapManager.cluster.addLayer(m);
                     }
                 });
             });
-            
+
             await MapManager.loadBoundaries();
             MapManager.addDistrictButtons();
             console.log("앱 초기화 완료.");
-            
+
         } catch (e) { console.error("데이터 로드 중 오류 발생:", e); }
     },
 
     async fetchJson(gid) {
-        const res = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`);
+        const timestamp = new Date().getTime();
+        const res = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}&t=${timestamp}`);
         const txt = await res.text();
         return JSON.parse(txt.substring(47).slice(0, -2)).table.rows;
     },
 
-renderLegend(rows) {
+    renderLegend(rows) {
         const container = document.getElementById('legend');
         if (!container) return;
-        
+
         container.innerHTML = `
             <div class="legend-item legend-reset" onclick="location.reload()" style="cursor:pointer; padding:5px; text-align:center; background:#eef; margin-bottom:5px; border-radius:4px; font-weight:bold; color:#00427a;">
                 ↺ 전체 보기
             </div>`;
-            
+
         rows.forEach(row => {
             const type = row.c[1]?.v;
-            if (!type) return;
-            
+            // 빈칸이거나 스프레드시트에 적힌 '공유학교'는 무시 (중복 방지)
+            if (!type || type === '공유학교') return;
+
             const item = document.createElement('div');
             item.className = 'legend-item';
-            // Flex 정렬을 위한 스타일 적용
             item.style.cssText = "display:flex; align-items:center; padding:4px; cursor:pointer;";
-            
+
             const color = row.c[3]?.v || '#333';
             const symbol = row.c[2]?.v || '●';
-            
+
             item.innerHTML = `
                 <div class="legend-icon" style="color:${color}; width:20px; text-align:center; margin-right:8px; font-weight:bold;">${symbol}</div>
                 <div class="legend-text" style="font-size:13px;">${type}</div>
             `;
-            
+
             item.onclick = () => {
                 MapManager.cluster.clearLayers();
                 MapManager.markers.filter(m => m.properties.type === type).forEach(m => MapManager.cluster.addLayer(m));
             };
             container.appendChild(item);
         });
+
+        // [버그 수정] 하트 범례는 반복문(루프)이 끝난 뒤 딱 한 번만 그려지도록 밖으로 빼냈습니다!
+        const sharedItem = document.createElement('div');
+        sharedItem.className = 'legend-item';
+        sharedItem.style.cssText = "display:flex; align-items:center; padding:4px; cursor:pointer;";
+        sharedItem.innerHTML = `<div class="legend-icon" style="color:#e84393; width:20px; text-align:center; margin-right:8px; font-weight:bold;">❤</div><div class="legend-text" style="font-size:13px;">공유학교</div>`;
+        sharedItem.onclick = () => {
+            MapManager.cluster.clearLayers();
+            MapManager.markers.filter(m => String(m.properties.type || '') === '공유학교').forEach(m => MapManager.cluster.addLayer(m));
+        };
+        container.appendChild(sharedItem);
     }
 };
 
