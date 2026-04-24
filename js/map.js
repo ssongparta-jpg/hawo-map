@@ -43,42 +43,48 @@ const MapManager = {
         });
     },
 
-    getMarkerIcon(p, index, count) {
-        let symbolChar = '●';
-        let symbolColor = '#333';
-        let typeClass = '';
+    getMarkerIcon(p, stackIndex = 0, count = 1) {
+        let typeClass = 'is-spec';
+        let symbolChar = '◆';
+        let symbolColor = p.color;
+        let posClass = '';
+        let labelPosClass = ''; 
 
-        const sType = String(p.type || '');
-        const sName = String(p.name || '');
-
-        if (sType.includes('교육') || sName.includes('교육지원청')) {
+        if (p.type.includes('교육') || p.name.includes('교육지원청')) {
             symbolChar = '🏢';
-            typeClass = 'is-edu';
+            typeClass = 'is-edu'; 
         }
-        else if (sType === '공유학교') {
-            typeClass = 'is-shared'; // CSS 테두리 연동
-            symbolChar = '❤';
-            symbolColor = '#e84393';
+        else if (p.name.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
+        else if (p.name.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
+        else if (p.name.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '●'; }
+        else if (p.name.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
+
+        if (count > 1) {
+            if (stackIndex === 0) {
+                posClass = 'shift-up';
+            } else {
+                if (stackIndex === 1) posClass = 'shift-down'; 
+                else if (stackIndex === 2) posClass = 'shift-left'; 
+                else posClass = 'shift-right';
+                
+                labelPosClass = 'label-bottom';
+            }
         }
-        else if (sName.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
-        else if (sName.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
-        else if (sName.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '■'; }
-        else if (sName.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
-        else if (sName.includes('특수')) { typeClass = 'is-spec'; symbolChar = '◆'; }
-
-        const zIndex = 1000 - index;
-        const offset = index * 5;
-
-        return L.divIcon({
-            className: 'marker-container-icon',
-            html: `
-                <div class="custom-combined-marker ${typeClass}" style="z-index:${zIndex};">
-                    <div class="marker-symbol" style="color:${symbolColor}; left:${offset}px; top:${offset}px;">${symbolChar}</div>
-                    <div class="marker-label-box" style="left:${offset}px; top:${offset - 20}px;">${sName}</div>
-                </div>`,
-            iconSize: [0, 0],
-            iconAnchor: [0, 0]
-        });
+        const safeName = p.name.replace(/'/g, "\\'");
+        const html = `
+            <div class="custom-combined-marker ${typeClass} ${posClass}"
+                 style="z-index: ${500 - stackIndex};"
+                 onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
+                <div class="marker-label-box ${labelPosClass}" 
+                     onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
+                     ${p.name}
+                </div>
+                <div class="marker-symbol" style="color:${symbolColor};">
+                    ${symbolChar}
+                </div>
+            </div>
+        `;
+        return L.divIcon({ className: 'marker-container-icon', html, iconSize: [0, 0] });
     },
 
     bindEvents() {
@@ -252,14 +258,10 @@ const MapManager = {
     },
 
     makePopupHtml(p) {
-        const sType = String(p.type || '');
-        const sName = String(p.name || '');
-        
-        const isEduOffice = sType.includes('교육') || sName.includes('교육지원청');
-        const isSharedSchool = sType === '공유학교';
-
+        const isEduOffice = (p.type && p.type.includes('교육')) || p.name.includes('교육지원청');
         let principalName = p.principal;
-
+        if (!principalName || principalName === 'No Data' || principalName.trim() === '') principalName = '정보 없음'; 
+        
         const linkHtml = p.url 
             ? `<a href="${p.url}" target="_blank" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>` 
             : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
@@ -280,16 +282,6 @@ const MapManager = {
                 <div style="text-align:center; color:#555; margin-bottom:15px; font-weight:bold; font-size:13px; line-height:1.5;">
                     행복한 성장, 함께하는 화성오산 교육
                 </div>`;
-            // 교육지원청 코드 유지
-        } else if (isSharedSchool) {
-            // 공유학교 전용 4가지 요소 표시
-            bodyContent = `
-                <ul class="popup-info-list" style="margin-top:10px;">
-                    <li><span class="label">대상</span> <span class="value"><strong>${p.target || '-'}</strong></span></li>
-                    <li><span class="label">운영 기간</span> <span class="value"><strong>${p.period || '-'}</strong></span></li>
-                    <li><span class="label">장소</span> <span class="value"><strong>${p.location || '-'}</strong></span></li>
-                    <li><span class="label">위탁/운영</span> <span class="value"><strong>${p.agency || '-'}</strong></span></li>
-                </ul>`;
         } else {
             const vicePrincipal = p.vice_principal || '-';
             const chiefAdmin = p.chief_of_administration || '-';
@@ -405,12 +397,11 @@ const MapManager = {
 
     showDistrictStats(fullName, latlng) {
         let keyword = fullName.replace('화성시 ', '').replace(' 전체', '').trim();
-        //통계제외
+        
+        // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
         const targets = this.markers.filter(m => {
-            const sType = String(p.type || '');
-            const sName = String(p.name || '');
             const p = m.properties;
-            const isSchool = !sType.includes('교육') && !sName.includes('교육지원청') && sType !== '공유학교';            
+            const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청'); // 학교만 필터
             if (!isSchool) return false;
 
             const adrs = p.adrs || '';

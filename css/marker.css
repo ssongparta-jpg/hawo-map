@@ -11,7 +11,8 @@
 .shift-left .marker-label-box.label-bottom { left: -26px; }
 .shift-right .marker-label-box.label-bottom { left: 26px; }
 
-.is-shared .marker-label-box { border-left-color: #e84393; } /* 공유학교 테두리 색 */   
+.is-edu .marker-label-box { border-left-color: #0d47a1; }
+.is-shared .marker-label-box { border-left-color: #e84393; } /* 공유학교 테두리 색 */
 
 .is-kinder .marker-label-box { border-left-color: #4A90E2; }
 .is-elem .marker-label-box { border-left-color: #2ECC71; }

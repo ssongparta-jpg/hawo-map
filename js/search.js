@@ -6,14 +6,10 @@ const SearchManager = {
         input.addEventListener('keyup', (e) => {
             const val = e.target.value.trim();
             if (val.length < 1) { resultBox.style.display = 'none'; return; }
-                const matches = MapManager.markers.filter(m => {
+            const matches = MapManager.markers.filter(m => {
                 const p = m.properties;
-                const sType = String(p.type || '');
-                const sName = String(p.name || '');
-                
-                if (sType.includes('교육') || sName.includes('교육지원청') || sType === '공유학교') return false; 
-                
-                return sName.includes(val);
+                const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청');
+                return isSchool && p.name.includes(val);
             });
             this.renderResults(matches, resultBox);
         });
@@ -33,10 +29,7 @@ const SearchManager = {
             else if (m.properties.name.includes('중학교')) typeColor = '#F1C40F';
             else if (m.properties.name.includes('고등학교')) typeColor = '#E74C3C';
             else if (m.properties.name.includes('유치원')) typeColor = '#4A90E2';
-            
-            const sType = String(p.type || '');
-            if (sType === '공유학교' || sType.includes('교육')) return false;
-            
+
             div.innerHTML = `<span>${m.properties.name}</span><span style="font-size:11px; color:${typeColor}; font-weight:bold;">${m.properties.type}</span>`;
             div.onclick = () => {
                 MapManager.focusMarker(m);
