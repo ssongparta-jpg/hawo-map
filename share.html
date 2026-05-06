@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>화성오산 공유학교 지도</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/header.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/ui.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/marker.css" />
+  <link rel="stylesheet" href="css/popup.css" />
+</head>
+<body>
+  <div class="container"> 
+    <header>
+    <div class="header-shape">
+        <div class="logo-group">
+        <button class="help-button" id="helpBtn">?</button>
+        <a href="index.html" class="logo-area">
+            <img src="hwaologo.svg" alt="GOEHS" class="logo-img" />
+        </a>
+        </div>
+
+        <h1 class="header_text" id="header-title">로딩 중...</h1>
+
+        <a href="share.html" class="nav-switch-btn">공유학교 지도 ↗</a>
+    </div>
+    </header>
+    
+    <div class="search-container">
+        <div class="search-wrapper">
+            <input type="text" id="schoolSearch" class="search-input-box" placeholder="공유학교명 검색" autocomplete="off" />
+            <div id="searchResults" class="search-results-list"></div>
+        </div>
+    </div>
+
+    <div id="auth-area">
+      <div id="login-form">
+        <input type="text" id="user-id" placeholder="ID">
+        <input type="password" id="user-pw" placeholder="PW">
+        <button onclick="AuthManager.login()" class="btn-login">로그인</button>
+      </div>
+      <div id="user-info" style="display:none;">
+        <span id="welcome-msg"></span>
+        <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.js"></script>
+    
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/share_main.js"></script>
+  </div>
+</body>
+</html>

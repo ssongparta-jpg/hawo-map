@@ -97,33 +97,52 @@ renderLegend(rows) {
         const container = document.getElementById('legend');
         if (!container) return;
         
+        // 여기에 예쁜 카드 형태의 HTML 구조를 통째로 렌더링합니다.
         container.innerHTML = `
-            <div class="legend-item legend-reset" onclick="location.reload()" style="cursor:pointer; padding:5px; text-align:center; background:#eef; margin-bottom:5px; border-radius:4px; font-weight:bold; color:#00427a;">
-                ↺ 전체 보기
-            </div>`;
-            
+            <div class="legend-card">
+                <div class="legend-header" id="legendToggleBtn">
+                    <span class="legend-label">📍 지도 범례</span>
+                    <span class="arrow-icon" id="legendArrow">▼</span>
+                </div>
+                <div class="legend-content" id="legendBody">
+                    <div class="legend-reset-row" onclick="location.reload()">↺ 전체 보기</div>
+                    <div id="type-list-area"></div>
+                </div>
+            </div>
+        `;
+
+        const toggleBtn = document.getElementById('legendToggleBtn');
+        const body = document.getElementById('legendBody');
+        const arrow = document.getElementById('legendArrow');
+
+        // 토글 클릭 시 CSS의 .collapsed 클래스를 켰다 껐다 함
+        toggleBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isCollapsed = body.classList.toggle('collapsed');
+            arrow.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+        };
+
+        const listArea = document.getElementById('type-list-area');
         rows.forEach(row => {
             const type = row.c[1]?.v;
-            if (!type) return;
+            if (!type || type === '공유학교') return;
             
             const item = document.createElement('div');
-            item.className = 'legend-item';
-            // Flex 정렬을 위한 스타일 적용
-            item.style.cssText = "display:flex; align-items:center; padding:4px; cursor:pointer;";
-            
+            item.className = 'legend-row';
             const color = row.c[3]?.v || '#333';
             const symbol = row.c[2]?.v || '●';
             
             item.innerHTML = `
-                <div class="legend-icon" style="color:${color}; width:20px; text-align:center; margin-right:8px; font-weight:bold;">${symbol}</div>
-                <div class="legend-text" style="font-size:13px;">${type}</div>
+                <span class="l-symbol" style="color:${color}">${symbol}</span>
+                <span class="l-text">${type}</span>
             `;
             
-            item.onclick = () => {
+            item.onclick = (e) => {
+                e.stopPropagation();
                 MapManager.cluster.clearLayers();
                 MapManager.markers.filter(m => m.properties.type === type).forEach(m => MapManager.cluster.addLayer(m));
             };
-            container.appendChild(item);
+            listArea.appendChild(item);
         });
     }
 };

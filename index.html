@@ -24,13 +24,24 @@
     <div class="pc-top-bar"></div>
 
     <header class="header-center-group">
-      <div class="header-shape">
-        <button class="help-button" id="helpBtn" title="도움말">?</button>
-        <a href="https://www.goehs.kr" target="_blank" class="logo-area">
-            <img src="hwaologo.svg" alt="GOEHS" class="logo-img" onerror="this.style.display='none';this.parentNode.innerText='GOEHS';"/>
+    <div class="header-shape">
+        <!-- 1) 왼쪽 -->
+        <div class="logo-group">
+        <button class="help-button" id="helpBtn">?</button>
+        <a href="index.html" class="logo-area">
+            <img src="hwaologo.svg" alt="GOEHS" class="logo-img" />
         </a>
-        <span class="header_text" id="header-title">로딩 중...</span>
-      </div>
+        </div>
+
+        <!-- 2) 중앙 -->
+        <div class="title-wrapper">
+        <span class="header_text" id="header-title">경기도화성오산교육지원청 학교 지도</span>
+        <a href="share.html" class="title-switch-btn" title="공유학교 지도로 전환">🔄</a>
+        </div>
+
+        <!-- 3) 우측 (정중앙 밸런스용 빈 박스) -->
+        <div class="header-right-empty"></div>
+    </div>
     </header>
     
     <div class="search-container">
