@@ -27,7 +27,7 @@ const AdminApp = {
         document.getElementById(navId).classList.add('active');
     },
 
-    /* 1. PW 초기화 (기존 동일) */
+    /* 1. PW 초기화 */
     async loadResetRequests() {
         this.setActiveNav('nav-reset');
         const content = document.getElementById('admin-content');
@@ -53,7 +53,7 @@ const AdminApp = {
         alert(`완료되었습니다.`); this.loadResetRequests();
     },
 
-    /* 2. 회원 관리 (검색 기능 추가) */
+    /* 2. 회원 관리 */
     async manageUsers() {
         this.setActiveNav('nav-users');
         const content = document.getElementById('admin-content');
@@ -94,7 +94,7 @@ const AdminApp = {
         this.manageUsers();
     },
 
-    /* 3. 메모 관리 (검색 & 개별 삭제 기능 추가) */
+    /* 3. 메모 관리 */
     async viewAllMemos() {
         this.setActiveNav('nav-memos');
         const content = document.getElementById('admin-content');
@@ -144,17 +144,20 @@ const AdminApp = {
         this.viewAllMemos();
     },
 
-    /* 4. 지도 색상 관리 (일반/공유학교 탭 분리 및 JSON 연동) */
+    /* 4. 지도 색상 관리 (버그 수정 및 미리보기 추가) */
     async manageColors() {
         this.setActiveNav('nav-colors');
         const content = document.getElementById('admin-content');
         
-        // 서버에서 색상 불러오기
+        // [버그 수정] 서버 404 에러 방어 로직 강화
         try {
             const res = await fetch('/api/colors');
-            this.currentColors = await res.json();
+            if (!res.ok) throw new Error("저장된 색상 파일이 없습니다."); 
+            const data = await res.json();
+            if (!data.general || !data.shared) throw new Error("데이터 구조가 올바르지 않습니다.");
+            this.currentColors = data;
         } catch(e) {
-            // 실패 시 기본값 세팅
+            console.log("기본 색상을 불러옵니다:", e.message);
             this.currentColors = {
                 general: { dongtanFill: "#e9c40e", byeongjeomFill: "#473198", hyohoengFill: "#3299e7", manseFill: "#a9d1ec", hwaseongBorder: "#0047AB", osanFill: "#FF6392", osanBorder: "#e7733d" },
                 shared: { hwaseongFill: "#4A90E2", hwaseongBorder: "#0047AB", osanFill: "#FF6392", osanBorder: "#e7733d" }
@@ -188,18 +191,50 @@ const AdminApp = {
 
                 <button type="button" class="btn-save-colors" onclick="AdminApp.saveColors()">💾 설정 저장 적용하기</button>
             </form>
+
+            <div class="preview-section">
+                <h3>👀 실시간 디자인 미리보기</h3>
+                
+                <div id="prev-box-general" class="preview-box">
+                    <div id="prev-area-hwaseong" class="prev-area">
+                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">화성시 영역</div>
+                        <div id="prev-btn-dongtan" class="prev-btn">화성시 동탄구 ↗</div>
+                        <div id="prev-btn-byeongjeom" class="prev-btn">화성시 병점구 ↗</div>
+                        <div id="prev-btn-hyohoeng" class="prev-btn">화성시 효행구 ↗</div>
+                        <div id="prev-btn-manse" class="prev-btn">화성시 만세구 ↗</div>
+                    </div>
+                    <div id="prev-area-osan" class="prev-area">
+                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">오산시 영역</div>
+                        <div id="prev-btn-osan" class="prev-btn">오산시 ↗</div>
+                    </div>
+                </div>
+
+                <div id="prev-box-shared" class="preview-box" style="display:none;">
+                    <div id="prev-area-shared-hw" class="prev-area">
+                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">화성 다(多)가치 영역</div>
+                        <div id="prev-btn-shared-hw" class="prev-btn"><img src="source/coco.png"> 화성 다(多)가치 ↗</div>
+                    </div>
+                    <div id="prev-area-shared-os" class="prev-area">
+                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">오산나래 영역</div>
+                        <div id="prev-btn-shared-os" class="prev-btn"><img src="source/caca.png"> 오산나래 ↗</div>
+                    </div>
+                </div>
+            </div>
         `;
+        
+        // 렌더링 직후 미리보기 초기화 업데이트
+        this.updatePreview();
     },
 
     createColorInput(category, key, label, defaultVal) {
         const id = `${category}-${key}`;
-        // 피커 변경 시 텍스트 변경, 텍스트 변경 시 피커 변경
+        // 값이 바뀔 때마다 updatePreview() 호출
         return `
             <div class="color-item">
                 <label>${label}</label>
                 <div class="color-input-group">
-                    <input type="color" id="${id}-picker" value="${defaultVal}" oninput="document.getElementById('${id}-text').value = this.value">
-                    <input type="text" id="${id}-text" value="${defaultVal}" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('${id}-picker').value = this.value">
+                    <input type="color" id="${id}-picker" value="${defaultVal}" oninput="document.getElementById('${id}-text').value = this.value; AdminApp.updatePreview();">
+                    <input type="text" id="${id}-text" value="${defaultVal}" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) { document.getElementById('${id}-picker').value = this.value; AdminApp.updatePreview(); }">
                 </div>
             </div>
         `;
@@ -210,6 +245,43 @@ const AdminApp = {
         btnElement.classList.add('active');
         document.getElementById('tab-general').style.display = tabName === 'general' ? 'grid' : 'none';
         document.getElementById('tab-shared').style.display = tabName === 'shared' ? 'grid' : 'none';
+        
+        // 미리보기 박스 전환
+        document.getElementById('prev-box-general').style.display = tabName === 'general' ? 'flex' : 'none';
+        document.getElementById('prev-box-shared').style.display = tabName === 'shared' ? 'flex' : 'none';
+    },
+
+    // ✨ 값을 읽어와 미리보기 요소에 디자인 적용
+    updatePreview() {
+        // 1. 일반 지도 요소 적용
+        const dFill = document.getElementById('general-dongtanFill-text')?.value;
+        if (dFill) {
+            document.getElementById('prev-btn-dongtan').style.backgroundColor = dFill;
+            document.getElementById('prev-btn-byeongjeom').style.backgroundColor = document.getElementById('general-byeongjeomFill-text').value;
+            document.getElementById('prev-btn-hyohoeng').style.backgroundColor = document.getElementById('general-hyohoengFill-text').value;
+            document.getElementById('prev-btn-manse').style.backgroundColor = document.getElementById('general-manseFill-text').value;
+            
+            document.getElementById('prev-area-hwaseong').style.borderColor = document.getElementById('general-hwaseongBorder-text').value;
+            document.getElementById('prev-area-hwaseong').style.backgroundColor = "transparent"; // 화성은 내부 채우기 없음
+            
+            const oFill = document.getElementById('general-osanFill-text').value;
+            document.getElementById('prev-btn-osan').style.backgroundColor = oFill;
+            document.getElementById('prev-area-osan').style.borderColor = document.getElementById('general-osanBorder-text').value;
+            document.getElementById('prev-area-osan').style.backgroundColor = oFill + '33'; // 헥스코드에 33을 붙이면 투명도 20% 효과
+        }
+
+        // 2. 공유학교 지도 요소 적용
+        const shFill = document.getElementById('shared-hwaseongFill-text')?.value;
+        if (shFill) {
+            document.getElementById('prev-btn-shared-hw').style.backgroundColor = shFill;
+            document.getElementById('prev-area-shared-hw').style.borderColor = document.getElementById('shared-hwaseongBorder-text').value;
+            document.getElementById('prev-area-shared-hw').style.backgroundColor = shFill + '33';
+
+            const soFill = document.getElementById('shared-osanFill-text').value;
+            document.getElementById('prev-btn-shared-os').style.backgroundColor = soFill;
+            document.getElementById('prev-area-shared-os').style.borderColor = document.getElementById('shared-osanBorder-text').value;
+            document.getElementById('prev-area-shared-os').style.backgroundColor = soFill + '33';
+        }
     },
 
     async saveColors() {
