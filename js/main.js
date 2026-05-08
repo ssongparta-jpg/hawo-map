@@ -149,7 +149,7 @@ renderLegend(rows) {
 };
 
 // =========================================
-// 거리재기 및 네이버 길찾기 연동 매니저 (최종: 네이버 경유지 순서 버그 완벽 수정!)
+// 거리재기 및 네이버 길찾기 연동 매니저 (경유지 유무 버그 완벽 수정)
 // =========================================
 const DistanceManager = {
     active: false,
@@ -305,22 +305,20 @@ const DistanceManager = {
         this.tempLine = L.polyline([lastPoint, latlng], { color: '#e74c3c', weight: 3, dashArray: '5, 5', opacity: 0.5 }).addTo(MapManager.map);
     },
 
-    // [핵심 해결] 네이버 지도 URL 규칙 (출발지 / 도착지 / 경유지목록) 완벽 적용
     openNaverUpTo(endIndex) {
         if (endIndex < 1 || this.points.length < 2) return;
         
         let fullPath = this.points.slice(0, endIndex + 1);
         let finalPoints = [];
 
-        // 최대 7개 지점 샘플링 (출발1+경유5+도착1)
         if (fullPath.length <= 7) {
             finalPoints = fullPath;
         } else {
-            finalPoints.push(fullPath[0]); // 출발 고정
+            finalPoints.push(fullPath[0]); 
             let mid = fullPath.slice(1, -1);
             let step = (mid.length - 1) / 4;
             for (let i = 0; i < 5; i++) finalPoints.push(mid[Math.round(i * step)]);
-            finalPoints.push(fullPath[fullPath.length - 1]); // 도착 고정
+            finalPoints.push(fullPath[fullPath.length - 1]); 
         }
         
         const fmt = (p, name) => `${p.lng},${p.lat},${encodeURIComponent(name)}`;
@@ -328,15 +326,16 @@ const DistanceManager = {
 
         const startPt = finalPoints[0];
         const endPt = finalPoints[finalPoints.length - 1];
-        const waypoints = finalPoints.slice(1, -1); // 출발과 도착을 제외한 나머지 경유지들
+        const waypoints = finalPoints.slice(1, -1); 
 
+        // [버그 수정 핵심 파트] 네이버 지도가 인식할 수 있도록 /-/ 구분자 추가!
         if (waypoints.length === 0) {
-            // 경유지가 없을 때: 출발 / 도착 / car
-            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/car`;
+            // 경유지가 없을 때: 출발 / 도착 /-/ car
+            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/-/car`;
         } else {
-            // 경유지가 있을 때: 출발 / 도착 / 경유1:경유2:경유3... / car
+            // 경유지가 있을 때: 출발 / 도착 / 경유1:경유2 /-/ car
             const waypointsStr = waypoints.map((p, i) => fmt(p, `경유지${i + 1}`)).join(':');
-            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/car`;
+            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/-/car`;
         }
         
         window.open(url, '_blank');

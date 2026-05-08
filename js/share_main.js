@@ -298,7 +298,7 @@ const ShareApp = {
 };
 
 // =========================================
-// 거리재기 및 네이버 길찾기 연동 매니저
+// 거리재기 및 네이버 길찾기 연동 매니저 (경유지 유무 버그 완벽 수정)
 // =========================================
 const DistanceManager = {
     active: false,
@@ -477,11 +477,14 @@ const DistanceManager = {
         const endPt = finalPoints[finalPoints.length - 1];
         const waypoints = finalPoints.slice(1, -1); 
 
+        // [버그 수정 핵심 파트] 네이버 지도가 인식할 수 있도록 /-/ 구분자 추가!
         if (waypoints.length === 0) {
-            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/car`;
+            // 경유지가 없을 때: 출발 / 도착 /-/ car
+            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/-/car`;
         } else {
+            // 경유지가 있을 때: 출발 / 도착 / 경유1:경유2 /-/ car
             const waypointsStr = waypoints.map((p, i) => fmt(p, `경유지${i + 1}`)).join(':');
-            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/car`;
+            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/-/car`;
         }
         
         window.open(url, '_blank');
