@@ -97,3 +97,23 @@ body {
 .admin-btn-delete:hover { background: #c0392b; }
 .admin-btn-approve { background: #2ecc71; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
 .admin-btn-approve:hover { background: #27ae60; }
+
+/* 검색창 스타일 */
+.admin-search-bar { width: 100%; max-width: 400px; padding: 10px 15px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 15px; outline: none; transition: border-color 0.2s; }
+.admin-search-bar:focus { border-color: #3498db; }
+
+/* 색상 관리 탭 스타일 */
+.color-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+.color-tab-btn { background: #f4f6f8; border: 1px solid #ddd; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; color: #555; transition: 0.2s; }
+.color-tab-btn.active { background: #3498db; color: white; border-color: #2980b9; }
+
+/* 색상 피커 그리드 */
+.color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+.color-item { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; display: flex; flex-direction: column; gap: 10px; }
+.color-item label { font-weight: bold; font-size: 14px; color: #333; }
+.color-input-group { display: flex; align-items: center; gap: 10px; }
+.color-input-group input[type="color"] { width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer; padding: 0; }
+.color-input-group input[type="text"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; }
+
+.btn-save-colors { background: #2ecc71; color: white; border: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.btn-save-colors:hover { background: #27ae60; }

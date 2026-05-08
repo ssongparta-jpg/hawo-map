@@ -5,6 +5,7 @@ const App = {
         FilterManager.init();
         SearchManager.init(); 
         DistanceManager.init();
+        await MapConfig.loadCustomColors();
         await AuthManager.checkAuth();
         try {
             const [pRows, lRows, hRows] = await Promise.all([

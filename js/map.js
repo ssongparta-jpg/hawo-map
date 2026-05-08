@@ -370,10 +370,21 @@ const MapManager = {
                     return { fillColor, fillOpacity: 0.35, color: '#ffffff', weight: 2.5, dashArray: '20,5,2,5', pane: 'boundaryPane' };
                 }
             }).addTo(this.boundaryGroup);
+            // map.js 파일 내 loadBoundaries() 안의 geoJson 그리는 부분 (약 250번째 줄 부근)
             L.geoJson(boundaryData, {
                 style: (f) => {
                     const sgg = f.properties.sggnm;
-                    const col = sgg === '화성시' ? '#0047AB' : sgg === '오산시' ? '#e7733d' : 'transparent';
+                    
+                    // 저장된 테두리 색상이 있으면 쓰고, 없으면 기본값 사용
+                    let hwaseongBorder = '#0047AB';
+                    let osanBorder = '#e7733d';
+                    
+                    if (MapConfig.CustomColors && MapConfig.CustomColors.general) {
+                        hwaseongBorder = MapConfig.CustomColors.general.hwaseongBorder;
+                        osanBorder = MapConfig.CustomColors.general.osanBorder;
+                    }
+
+                    const col = sgg === '화성시' ? hwaseongBorder : sgg === '오산시' ? osanBorder : 'transparent';
                     return { fill: false, color: col, weight: 3, pane: 'boundaryPane' };
                 }
             }).addTo(this.boundaryGroup);

@@ -2,6 +2,7 @@ const ShareApp = {
     async init() {
         MapManager.init();
         DistanceManager.init(); 
+        await MapConfig.loadCustomColors();
         await AuthManager.checkAuth();
         
         const shareStyle = document.createElement('style');

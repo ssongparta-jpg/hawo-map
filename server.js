@@ -164,6 +164,48 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+// ====== 서버 파일 상단에 모듈 선언 (없을 경우 추가) ======
+const fs = require('fs');
+const path = require('path');
+
+// 색상 설정 저장 파일 경로
+const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
+
+// ====== API 라우터 부분에 추가 ======
+
+// 1. 관리자 권한 메모 강제 삭제 API
+app.delete('/api/admin/memos', (req, res) => {
+    // 세션에서 관리자 권한 검사 (필요 시)
+    if (!req.session.userId || req.session.userId !== '관리자ID등의 조건') {
+        // 보안 검사를 원하시면 적용, 여기서는 로직 처리만 진행
+    }
+    const { userId, schoolName } = req.body;
+    db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", [userId, schoolName], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+// 2. 색상 불러오기 API
+app.get('/api/colors', (req, res) => {
+    fs.readFile(COLORS_FILE, 'utf8', (err, data) => {
+        if (err) {
+            // 파일이 없으면 404 (클라이언트에서 기본값 사용)
+            return res.status(404).json({ error: "색상 파일이 없습니다." });
+        }
+        res.json(JSON.parse(data));
+    });
+});
+
+// 3. 색상 저장하기 API
+app.post('/api/colors', (req, res) => {
+    const newColors = req.body;
+    fs.writeFile(COLORS_FILE, JSON.stringify(newColors, null, 2), 'utf8', (err) => {
+        if (err) return res.status(500).json({ error: "파일 쓰기 실패" });
+        res.json({ success: true });
+    });
+});
+
 app.post('/api/logout', (req, res) => {
     req.session.destroy(() => res.json({ success: true }));
 });
