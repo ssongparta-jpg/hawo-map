@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>화성오산 지도 관리자 패널</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="server/admin.css">
+</head>
+<body>
+  <div id="admin-app">
+    <header class="admin-header">
+      <h1>⚙️ 화성오산 지도 관리자 대시보드</h1>
+      <div class="user-info">
+        <span id="admin-name" style="margin-right: 15px; font-weight: bold;"></span>
+        <button onclick="location.href='index.html'" class="btn-return">지도 돌아가기</button>
+        <button onclick="AdminApp.logout()" class="btn-logout">로그아웃</button>
+      </div>
+    </header>
+
+    <div class="admin-container">
+      <nav class="admin-sidebar">
+        <button onclick="AdminApp.loadResetRequests()" class="nav-btn" id="nav-reset">🔑 PW 초기화 요청</button>
+        <button onclick="AdminApp.manageUsers()" class="nav-btn" id="nav-users">👥 전체 회원 관리</button>
+        <button onclick="AdminApp.viewAllMemos()" class="nav-btn" id="nav-memos">📝 전체 유저 메모</button>
+      </nav>
+      
+      <main class="admin-content" id="admin-content">
+        <h2 style="color:#666;">데이터를 불러오는 중입니다...</h2>
+      </main>
+    </div>
+  </div>
+
+  <script src="server/admin.js"></script>
+</body>
+</html>

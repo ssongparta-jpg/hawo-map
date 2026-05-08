@@ -1,3 +1,8 @@
+// =========================================
+// js/auth.js : 사용자 로그인 및 관리자 인증 로직
+// (관리자 대시보드 기능은 server/admin.js로 분리됨)
+// =========================================
+
 const AuthManager = {
     userId: null,
     
@@ -8,45 +13,33 @@ const AuthManager = {
             let clickCount = 0;
             let clickTimer = null;
 
-            // [수정] 클릭 반응성 개선 및 모달 연동
+            // 관리자 로그인 트리거 (ID칸 5번 클릭)
             idInput.addEventListener('click', (e) => {
-                // 상위 요소로 이벤트 전파 방지 (지도 클릭 등 방지)
-                // e.stopPropagation(); 
-
                 clickCount++;
-                console.log(`[DEBUG] ID Box Clicked: ${clickCount}/5`); 
-
-                // [시각적 피드백] 테두리 붉은색 점멸
+                
+                // 시각적 피드백
                 idInput.style.borderColor = 'red';
                 idInput.style.backgroundColor = '#fff0f0';
-                
                 setTimeout(() => {
                     idInput.style.borderColor = '#ccc';
                     idInput.style.backgroundColor = 'white';
                 }, 200);
 
-                // 첫 클릭 시 타이머 시작 (3초 내에 5번 클릭해야 함)
                 if (clickCount === 1) {
                     clearTimeout(clickTimer);
                     clickTimer = setTimeout(() => {
-                        console.log('클릭 시간 초과: 카운트 초기화');
                         clickCount = 0;
                     }, 3000); 
                 }
 
-                // 5번 도달 시 관리자 모달 오픈
                 if (clickCount >= 5) {
                     clearTimeout(clickTimer);
                     clickCount = 0;
-                    
                     setTimeout(() => {
-                        console.log('관리자 인증 모달 실행');
                         AdminManager.openLoginModal(); 
                     }, 100);
                 }
             });
-        } else {
-            console.error("ID 입력창(#user-id)을 찾을 수 없습니다.");
         }
         
         this.checkAuth();
@@ -138,7 +131,6 @@ const AuthManager = {
         } catch (e) {}
     },
     
-    // 메모 관련 함수는 기존 유지 (생략 없음)
     async saveMemo(schoolName, e) {
         if (e) { e.stopPropagation(); e.preventDefault(); }
         const textArea = document.getElementById(`memo-${schoolName}`);
@@ -186,7 +178,6 @@ const AuthManager = {
             if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
         }
         
-        // 팝업 메모창 권한 제어
         const openPopupTextArea = document.querySelector('.leaflet-popup-content textarea');
         if (openPopupTextArea) {
             openPopupTextArea.disabled = !isLoggedIn;
@@ -215,15 +206,15 @@ const AuthManager = {
     }
 };
 
+// 관리자 인증 로그인 & 화면 이동 매니저
 const AdminManager = {
     selectedAdminId: null,
 
-    // [신규] 관리자 인증 모달 열기
+    // 관리자 인증 모달창 띄우기 (지도 위에서 동작)
     openLoginModal() {
         const modal = document.getElementById('admin-login-modal');
         if (modal) {
             modal.style.display = 'flex';
-            // 초기화
             document.getElementById('admin-step-1').style.display = 'block';
             document.getElementById('admin-step-2').style.display = 'none';
             document.getElementById('admin-otp-input').value = '';
@@ -250,7 +241,6 @@ const AdminManager = {
             
             if (data.success) {
                 this.selectedAdminId = adminId;
-                // UI 전환
                 document.getElementById('admin-step-1').style.display = 'none';
                 document.getElementById('admin-step-2').style.display = 'block';
                 document.getElementById('admin-step-2-msg').innerText = data.message;
@@ -264,7 +254,7 @@ const AdminManager = {
         }
     },
 
-    // 2단계: 코드 검증
+    // 2단계: 코드 검증 및 성공 시 관리자 페이지로 이동
     async submitCode() {
         const code = document.getElementById('admin-otp-input').value;
         if(!code) return alert("인증 코드를 입력해주세요.");
@@ -289,88 +279,10 @@ const AdminManager = {
         }
     },
 
-    // 기존 관리자 패널(회원관리 등) 오픈
+    // 관리자가 우측 상단의 '관리자' 버튼을 눌렀을 때의 동작
     async open() {
-        const modal = document.getElementById('admin-modal');
-        if (modal) {
-            modal.style.display = 'flex';
-            this.loadResetRequests();
-        }
-    },
-    
-    close() {
-        const modal = document.getElementById('admin-modal');
-        if (modal) modal.style.display = 'none';
-    },
-
-    async manageUsers() {
-        const content = document.getElementById('admin-content');
-        content.innerHTML = '<p>데이터 로딩중...</p>';
-        try {
-            const res = await fetch('/api/admin/users');
-            const data = await res.json();
-            let html = `<h3>회원 관리</h3><table class="admin-table"><thead><tr><th>ID</th><th>Action</th></tr></thead><tbody>`;
-            data.users.forEach(u => {
-                html += `<tr><td>${u.id}</td><td><button onclick="AdminManager.deleteUser('${u.id}')" class="admin-btn-delete">강제탈퇴</button></td></tr>`;
-            });
-            html += `</tbody></table>`;
-            content.innerHTML = html;
-        } catch (e) { content.innerHTML = '<p>로딩 실패</p>'; }
-    },
-
-    async deleteUser(id) {
-        if(!confirm(`${id}님을 탈퇴시킬까요?`)) return;
-        await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-        this.manageUsers();
-    },
-
-    async loadResetRequests() {
-        const content = document.getElementById('admin-content');
-        content.innerHTML = '<p>데이터 로딩중...</p>';
-        try {
-            const res = await fetch('/api/admin/reset-requests');
-            const data = await res.json();
-            if (!data.requests || data.requests.length === 0) {
-                 content.innerHTML = '<h3>비밀번호 초기화 요청</h3><p>대기 중인 요청이 없습니다.</p>';
-                 return;
-            }
-            let html = `<h3>비밀번호 초기화 요청</h3><table class="admin-table"><thead><tr><th>ID</th><th>요청일시</th><th>승인</th></tr></thead><tbody>`;
-            data.requests.forEach(r => {
-                html += `<tr><td>${r.id}</td><td>${new Date(r.requestDate).toLocaleString()}</td><td><button onclick="AdminManager.approveOne('${r.id}')" class="admin-btn-approve">초기화 승인 (1234)</button></td></tr>`;
-            });
-            html += `</tbody></table>`;
-            content.innerHTML = html;
-        } catch (e) { content.innerHTML = '<p>데이터 로드 오류</p>'; }
-    },
-
-    async approveOne(id) {
-        if(!confirm(`${id}님의 비밀번호를 '1234'로 초기화하시겠습니까?`)) return;
-        try {
-            const res = await fetch('/api/admin/approve-reset', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, tempPw: '1234' }) 
-            });
-            if (res.ok) {
-                alert(`${id}님의 비밀번호가 1234로 초기화되었습니다.`);
-                this.loadResetRequests();
-            }
-        } catch (e) { alert("승인 처리 실패"); }
-    },
-
-    async viewAllMemos() {
-        const content = document.getElementById('admin-content');
-        content.innerHTML = '<p>메모 로딩중...</p>';
-        try {
-            const res = await fetch('/api/admin/memos');
-            const data = await res.json();
-            let html = `<h3>전체 사용자 메모</h3><table class="admin-table"><thead><tr><th>ID</th><th>학교</th><th>내용</th></tr></thead><tbody>`;
-            data.memos.forEach(m => {
-                html += `<tr><td>${m.userId}</td><td>${m.schoolName}</td><td>${m.content}</td></tr>`;
-            });
-            html += `</tbody></table>`;
-            content.innerHTML = html;
-        } catch (e) { content.innerHTML = '<p>로드 실패</p>'; }
+        // [수정] 팝업 모달 대신 전용 페이지를 새 탭으로 오픈
+        window.open('admin.html', '_blank');
     }
 };
 
