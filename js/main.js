@@ -149,7 +149,7 @@ renderLegend(rows) {
 };
 
 // =========================================
-// 거리재기 및 네이버 길찾기 연동 매니저 (최종: 네이버 경유지 로직 & 호버 강화)
+// 거리재기 및 네이버 길찾기 연동 매니저 (최종: 네이버 경유지 순서 버그 완벽 수정!)
 // =========================================
 const DistanceManager = {
     active: false,
@@ -172,7 +172,6 @@ const DistanceManager = {
             }
             #btn-pause-measure.paused { background: #f39c12; color: white; border-color: #e67e22; }
             
-            /* 거리 표시 툴팁이 마우스 이벤트를 받을 수 있도록 설정 */
             .dist-tooltip { 
                 pointer-events: auto !important; 
                 cursor: pointer !important;
@@ -272,7 +271,6 @@ const DistanceManager = {
             permanent: true, direction: 'right', className: 'dist-tooltip', interactive: true
         }).openTooltip();
 
-        // [PC 호버 제어]
         const openAction = (e) => {
             clearTimeout(this.hoverTimer);
             marker.openPopup();
@@ -284,7 +282,6 @@ const DistanceManager = {
 
         marker.on('mouseover', openAction).on('mouseout', closeAction);
         
-        // 말풍선(툴팁) 요소에 호버 이벤트 직접 연결
         setTimeout(() => {
             const tooltipEl = tooltip.getTooltip().getElement();
             if (tooltipEl) {
@@ -293,7 +290,6 @@ const DistanceManager = {
             }
         }, 50);
 
-        // 팝업 내부 마우스 감지
         marker.on('popupopen', (e) => {
             const node = e.popup.getElement();
             node.addEventListener('mouseenter', openAction);
@@ -309,7 +305,7 @@ const DistanceManager = {
         this.tempLine = L.polyline([lastPoint, latlng], { color: '#e74c3c', weight: 3, dashArray: '5, 5', opacity: 0.5 }).addTo(MapManager.map);
     },
 
-    // [핵심] 특정 점까지의 네이버 길찾기 (샘플링 및 콜론 로직 적용)
+    // [핵심 해결] 네이버 지도 URL 규칙 (출발지 / 도착지 / 경유지목록) 완벽 적용
     openNaverUpTo(endIndex) {
         if (endIndex < 1 || this.points.length < 2) return;
         
@@ -330,19 +326,17 @@ const DistanceManager = {
         const fmt = (p, name) => `${p.lng},${p.lat},${encodeURIComponent(name)}`;
         let url = "https://map.naver.com/p/directions/";
 
-        if (finalPoints.length === 2) {
-            url += `${fmt(finalPoints[0], '출발지')}/${fmt(finalPoints[1], '도착지')}/car`;
+        const startPt = finalPoints[0];
+        const endPt = finalPoints[finalPoints.length - 1];
+        const waypoints = finalPoints.slice(1, -1); // 출발과 도착을 제외한 나머지 경유지들
+
+        if (waypoints.length === 0) {
+            // 경유지가 없을 때: 출발 / 도착 / car
+            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/car`;
         } else {
-            // 사용자 예시 로직 적용: P0 / P1 / P2:P3:P4 / car
-            url += `${fmt(finalPoints[0], '출발지')}/`;
-            url += `${fmt(finalPoints[1], '경유지1')}/`;
-            
-            const rest = finalPoints.slice(2).map((p, i) => {
-                const isLast = (i === finalPoints.length - 3);
-                return fmt(p, isLast ? '도착지' : `경유지${i+2}`);
-            }).join(':');
-            
-            url += `${rest}/car`;
+            // 경유지가 있을 때: 출발 / 도착 / 경유1:경유2:경유3... / car
+            const waypointsStr = waypoints.map((p, i) => fmt(p, `경유지${i + 1}`)).join(':');
+            url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/car`;
         }
         
         window.open(url, '_blank');
