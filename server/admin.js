@@ -3,6 +3,12 @@ const AdminApp = {
     allMemos: [],
     currentColors: {},
 
+    // 각 구역별 완전한 '기본(순정) 헥스코드' 정의
+    defaultColors: {
+        general: { dongtanFill: "#e9c40e", byeongjeomFill: "#473198", hyohoengFill: "#3299e7", manseFill: "#a9d1ec", hwaseongBorder: "#0047AB", osanFill: "#FF6392", osanBorder: "#e7733d" },
+        shared: { hwaseongFill: "#4A90E2", hwaseongBorder: "#0047AB", osanFill: "#FF6392", osanBorder: "#e7733d" }
+    },
+
     async init() {
         try {
             const res = await fetch('/api/check-auth');
@@ -144,24 +150,21 @@ const AdminApp = {
         this.viewAllMemos();
     },
 
-    /* 4. 지도 색상 관리 (버그 수정 및 미리보기 추가) */
+    /* 4. 지도 색상 관리 (초기화 버튼 및 배경색 미리보기 추가) */
     async manageColors() {
         this.setActiveNav('nav-colors');
         const content = document.getElementById('admin-content');
         
-        // [버그 수정] 서버 404 에러 방어 로직 강화
         try {
             const res = await fetch('/api/colors');
-            if (!res.ok) throw new Error("저장된 색상 파일이 없습니다."); 
+            if (!res.ok) throw new Error("저장된 색상 파일 없음"); 
             const data = await res.json();
-            if (!data.general || !data.shared) throw new Error("데이터 구조가 올바르지 않습니다.");
+            if (!data.general || !data.shared) throw new Error("데이터 구조 오류");
             this.currentColors = data;
         } catch(e) {
             console.log("기본 색상을 불러옵니다:", e.message);
-            this.currentColors = {
-                general: { dongtanFill: "#e9c40e", byeongjeomFill: "#473198", hyohoengFill: "#3299e7", manseFill: "#a9d1ec", hwaseongBorder: "#0047AB", osanFill: "#FF6392", osanBorder: "#e7733d" },
-                shared: { hwaseongFill: "#4A90E2", hwaseongBorder: "#0047AB", osanFill: "#FF6392", osanBorder: "#e7733d" }
-            };
+            // 저장된 값이 없으면 순정(defaultColors) 상태를 복사해서 씀
+            this.currentColors = JSON.parse(JSON.stringify(this.defaultColors));
         }
 
         content.innerHTML = `
@@ -173,20 +176,20 @@ const AdminApp = {
             
             <form id="color-form">
                 <div id="tab-general" class="color-grid">
-                    ${this.createColorInput('general', 'dongtanFill', '동탄구 내부 색상', this.currentColors.general.dongtanFill)}
-                    ${this.createColorInput('general', 'byeongjeomFill', '병점구 내부 색상', this.currentColors.general.byeongjeomFill)}
-                    ${this.createColorInput('general', 'hyohoengFill', '효행구 내부 색상', this.currentColors.general.hyohoengFill)}
-                    ${this.createColorInput('general', 'manseFill', '만세구 내부 색상', this.currentColors.general.manseFill)}
-                    ${this.createColorInput('general', 'hwaseongBorder', '화성시 테두리 색상', this.currentColors.general.hwaseongBorder)}
-                    ${this.createColorInput('general', 'osanFill', '오산시 내부 색상', this.currentColors.general.osanFill)}
-                    ${this.createColorInput('general', 'osanBorder', '오산시 테두리 색상', this.currentColors.general.osanBorder)}
+                    ${this.createColorInput('general', 'dongtanFill', '동탄구 내부 색상', this.currentColors.general.dongtanFill, this.defaultColors.general.dongtanFill)}
+                    ${this.createColorInput('general', 'byeongjeomFill', '병점구 내부 색상', this.currentColors.general.byeongjeomFill, this.defaultColors.general.byeongjeomFill)}
+                    ${this.createColorInput('general', 'hyohoengFill', '효행구 내부 색상', this.currentColors.general.hyohoengFill, this.defaultColors.general.hyohoengFill)}
+                    ${this.createColorInput('general', 'manseFill', '만세구 내부 색상', this.currentColors.general.manseFill, this.defaultColors.general.manseFill)}
+                    ${this.createColorInput('general', 'hwaseongBorder', '화성시 테두리 색상', this.currentColors.general.hwaseongBorder, this.defaultColors.general.hwaseongBorder)}
+                    ${this.createColorInput('general', 'osanFill', '오산시 내부 색상', this.currentColors.general.osanFill, this.defaultColors.general.osanFill)}
+                    ${this.createColorInput('general', 'osanBorder', '오산시 테두리 색상', this.currentColors.general.osanBorder, this.defaultColors.general.osanBorder)}
                 </div>
 
                 <div id="tab-shared" class="color-grid" style="display:none;">
-                    ${this.createColorInput('shared', 'hwaseongFill', '화성 다(多)가치 내부 색상', this.currentColors.shared.hwaseongFill)}
-                    ${this.createColorInput('shared', 'hwaseongBorder', '화성 다(多)가치 테두리 색상', this.currentColors.shared.hwaseongBorder)}
-                    ${this.createColorInput('shared', 'osanFill', '오산나래 내부 색상', this.currentColors.shared.osanFill)}
-                    ${this.createColorInput('shared', 'osanBorder', '오산나래 테두리 색상', this.currentColors.shared.osanBorder)}
+                    ${this.createColorInput('shared', 'hwaseongFill', '화성 다(多)가치 내부 색상', this.currentColors.shared.hwaseongFill, this.defaultColors.shared.hwaseongFill)}
+                    ${this.createColorInput('shared', 'hwaseongBorder', '화성 다(多)가치 테두리 색상', this.currentColors.shared.hwaseongBorder, this.defaultColors.shared.hwaseongBorder)}
+                    ${this.createColorInput('shared', 'osanFill', '오산나래 내부 색상', this.currentColors.shared.osanFill, this.defaultColors.shared.osanFill)}
+                    ${this.createColorInput('shared', 'osanBorder', '오산나래 테두리 색상', this.currentColors.shared.osanBorder, this.defaultColors.shared.osanBorder)}
                 </div>
 
                 <button type="button" class="btn-save-colors" onclick="AdminApp.saveColors()">💾 설정 저장 적용하기</button>
@@ -196,12 +199,22 @@ const AdminApp = {
                 <h3>👀 실시간 디자인 미리보기</h3>
                 
                 <div id="prev-box-general" class="preview-box">
-                    <div id="prev-area-hwaseong" class="prev-area">
-                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">화성시 영역</div>
-                        <div id="prev-btn-dongtan" class="prev-btn">화성시 동탄구 ↗</div>
-                        <div id="prev-btn-byeongjeom" class="prev-btn">화성시 병점구 ↗</div>
-                        <div id="prev-btn-hyohoeng" class="prev-btn">화성시 효행구 ↗</div>
-                        <div id="prev-btn-manse" class="prev-btn">화성시 만세구 ↗</div>
+                    <div id="prev-area-hwaseong" class="prev-area" style="padding: 15px;">
+                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:10px; text-align:center;">화성시 영역</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
+                            <div id="prev-fill-dongtan" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                                <div id="prev-btn-dongtan" class="prev-btn">화성시 동탄구 ↗</div>
+                            </div>
+                            <div id="prev-fill-byeongjeom" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                                <div id="prev-btn-byeongjeom" class="prev-btn">화성시 병점구 ↗</div>
+                            </div>
+                            <div id="prev-fill-hyohoeng" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                                <div id="prev-btn-hyohoeng" class="prev-btn">화성시 효행구 ↗</div>
+                            </div>
+                            <div id="prev-fill-manse" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                                <div id="prev-btn-manse" class="prev-btn">화성시 만세구 ↗</div>
+                            </div>
+                        </div>
                     </div>
                     <div id="prev-area-osan" class="prev-area">
                         <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">오산시 영역</div>
@@ -222,22 +235,29 @@ const AdminApp = {
             </div>
         `;
         
-        // 렌더링 직후 미리보기 초기화 업데이트
         this.updatePreview();
     },
 
-    createColorInput(category, key, label, defaultVal) {
+    // 초기화 버튼 매개변수(defaultVal) 추가
+    createColorInput(category, key, label, currentVal, defaultVal) {
         const id = `${category}-${key}`;
-        // 값이 바뀔 때마다 updatePreview() 호출
         return `
             <div class="color-item">
                 <label>${label}</label>
                 <div class="color-input-group">
-                    <input type="color" id="${id}-picker" value="${defaultVal}" oninput="document.getElementById('${id}-text').value = this.value; AdminApp.updatePreview();">
-                    <input type="text" id="${id}-text" value="${defaultVal}" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) { document.getElementById('${id}-picker').value = this.value; AdminApp.updatePreview(); }">
+                    <input type="color" id="${id}-picker" value="${currentVal}" oninput="document.getElementById('${id}-text').value = this.value; AdminApp.updatePreview();">
+                    <input type="text" id="${id}-text" value="${currentVal}" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) { document.getElementById('${id}-picker').value = this.value; AdminApp.updatePreview(); }">
+                    <button type="button" class="btn-reset-color" onclick="AdminApp.resetColor('${id}', '${defaultVal}')">초기화</button>
                 </div>
             </div>
         `;
+    },
+
+    // 초기화 버튼 클릭 시 동작하는 함수
+    resetColor(id, defaultHex) {
+        document.getElementById(`${id}-picker`).value = defaultHex;
+        document.getElementById(`${id}-text`).value = defaultHex;
+        this.updatePreview();
     },
 
     switchColorTab(tabName, btnElement) {
@@ -246,28 +266,35 @@ const AdminApp = {
         document.getElementById('tab-general').style.display = tabName === 'general' ? 'grid' : 'none';
         document.getElementById('tab-shared').style.display = tabName === 'shared' ? 'grid' : 'none';
         
-        // 미리보기 박스 전환
         document.getElementById('prev-box-general').style.display = tabName === 'general' ? 'flex' : 'none';
         document.getElementById('prev-box-shared').style.display = tabName === 'shared' ? 'flex' : 'none';
     },
 
-    // ✨ 값을 읽어와 미리보기 요소에 디자인 적용
     updatePreview() {
         // 1. 일반 지도 요소 적용
         const dFill = document.getElementById('general-dongtanFill-text')?.value;
         if (dFill) {
+            // 버튼 자체 색상 적용
             document.getElementById('prev-btn-dongtan').style.backgroundColor = dFill;
             document.getElementById('prev-btn-byeongjeom').style.backgroundColor = document.getElementById('general-byeongjeomFill-text').value;
             document.getElementById('prev-btn-hyohoeng').style.backgroundColor = document.getElementById('general-hyohoengFill-text').value;
             document.getElementById('prev-btn-manse').style.backgroundColor = document.getElementById('general-manseFill-text').value;
             
+            // [수정] 화성시 각 4개구 내부(Fill) 투명도 배경색 적용 (+33은 20% 투명도 헥스코드)
+            document.getElementById('prev-fill-dongtan').style.backgroundColor = dFill + '33';
+            document.getElementById('prev-fill-byeongjeom').style.backgroundColor = document.getElementById('general-byeongjeomFill-text').value + '33';
+            document.getElementById('prev-fill-hyohoeng').style.backgroundColor = document.getElementById('general-hyohoengFill-text').value + '33';
+            document.getElementById('prev-fill-manse').style.backgroundColor = document.getElementById('general-manseFill-text').value + '33';
+
+            // 화성시 큰 테두리 (안쪽 채우기는 투명하게 둠)
             document.getElementById('prev-area-hwaseong').style.borderColor = document.getElementById('general-hwaseongBorder-text').value;
-            document.getElementById('prev-area-hwaseong').style.backgroundColor = "transparent"; // 화성은 내부 채우기 없음
+            document.getElementById('prev-area-hwaseong').style.backgroundColor = "transparent"; 
             
+            // 오산시 적용
             const oFill = document.getElementById('general-osanFill-text').value;
             document.getElementById('prev-btn-osan').style.backgroundColor = oFill;
             document.getElementById('prev-area-osan').style.borderColor = document.getElementById('general-osanBorder-text').value;
-            document.getElementById('prev-area-osan').style.backgroundColor = oFill + '33'; // 헥스코드에 33을 붙이면 투명도 20% 효과
+            document.getElementById('prev-area-osan').style.backgroundColor = oFill + '33'; 
         }
 
         // 2. 공유학교 지도 요소 적용
