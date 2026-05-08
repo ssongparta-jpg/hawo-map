@@ -4,6 +4,7 @@ const App = {
         MapManager.init();
         FilterManager.init();
         SearchManager.init(); 
+        DistanceManager.init();
         await AuthManager.checkAuth();
         try {
             const [pRows, lRows, hRows] = await Promise.all([
@@ -144,6 +145,221 @@ renderLegend(rows) {
             };
             listArea.appendChild(item);
         });
+    }
+};
+
+// =========================================
+// 거리재기 및 네이버 길찾기 연동 매니저 (최종: 네이버 경유지 로직 & 호버 강화)
+// =========================================
+const DistanceManager = {
+    active: false,
+    isPaused: false,
+    points: [],
+    lines: [],
+    markers: [],
+    tempLine: null,
+    totalDistance: 0,
+    hoverTimer: null,
+
+    init() {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #btn-pause-measure {
+                position: absolute; bottom: 30px; right: 120px; z-index: 1200;
+                background: white; color: #333; border: 1px solid #ccc; padding: 8px 14px;
+                border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: all 0.2s; display: none;
+            }
+            #btn-pause-measure.paused { background: #f39c12; color: white; border-color: #e67e22; }
+            
+            /* 거리 표시 툴팁이 마우스 이벤트를 받을 수 있도록 설정 */
+            .dist-tooltip { 
+                pointer-events: auto !important; 
+                cursor: pointer !important;
+                border: 1px solid #e74c3c !important;
+                background: white !important;
+                color: #e74c3c !important;
+                font-weight: bold !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            }
+            @media (max-width: 768px) { #btn-pause-measure { bottom: 70px; right: 105px; padding: 8px 12px; font-size: 12px; } }
+        `;
+        document.head.appendChild(style);
+
+        const pauseBtn = document.createElement('button');
+        pauseBtn.id = 'btn-pause-measure';
+        pauseBtn.innerHTML = '⏸ 일시정지';
+        const container = document.querySelector('.container') || document.body;
+        container.appendChild(pauseBtn);
+
+        document.addEventListener('click', (e) => {
+            const pBtn = e.target.closest('#btn-pause-measure');
+            if (pBtn) { e.preventDefault(); this.togglePause(); }
+        });
+        
+        if (MapManager && MapManager.map) {
+            MapManager.map.on('click', (e) => {
+                if (this.active && !this.isPaused) this.addPoint(e.latlng);
+            });
+            MapManager.map.on('mousemove', (e) => {
+                if (this.active && !this.isPaused && this.points.length > 0) this.drawTempLine(e.latlng);
+            });
+        }
+    },
+
+    toggle(btnElem) {
+        this.active = !this.active;
+        this.isPaused = false;
+        const btn = btnElem || document.getElementById('btn-measure');
+        const pauseBtn = document.getElementById('btn-pause-measure');
+        const mapEl = document.getElementById('map');
+        
+        if (this.active) {
+            if (btn) { btn.classList.add('active'); btn.innerHTML = '🛑 중단'; }
+            if (pauseBtn) { pauseBtn.style.display = 'block'; pauseBtn.classList.remove('paused'); pauseBtn.innerHTML = '⏸ 일시정지'; }
+            if (mapEl) mapEl.classList.add('cursor-crosshair');
+            this.clearAll();
+        } else {
+            if (btn) { btn.classList.remove('active'); btn.innerHTML = '📏 거리재기'; }
+            if (pauseBtn) pauseBtn.style.display = 'none';
+            if (mapEl) mapEl.classList.remove('cursor-crosshair');
+            this.clearAll();
+        }
+    },
+
+    togglePause() {
+        if (!this.active) return;
+        this.isPaused = !this.isPaused;
+        const pauseBtn = document.getElementById('btn-pause-measure');
+        const mapEl = document.getElementById('map');
+        if (this.isPaused) {
+            pauseBtn.classList.add('paused');
+            pauseBtn.innerHTML = '▶ 그리기 재개';
+            if (mapEl) mapEl.classList.remove('cursor-crosshair');
+            if (this.tempLine) { MapManager.map.removeLayer(this.tempLine); this.tempLine = null; }
+        } else {
+            pauseBtn.classList.remove('paused');
+            pauseBtn.innerHTML = '⏸ 일시정지';
+            if (mapEl) mapEl.classList.add('cursor-crosshair');
+        }
+    },
+
+    addPoint(latlng) {
+        this.points.push(latlng);
+        const pIndex = this.points.length - 1; 
+        
+        if (this.points.length > 1) {
+            const prev = this.points[this.points.length - 2];
+            const dist = MapManager.map.distance(prev, latlng); 
+            this.totalDistance += dist;
+            const line = L.polyline([prev, latlng], { color: '#e74c3c', weight: 3, dashArray: '5, 5' }).addTo(MapManager.map);
+            this.lines.push(line);
+        }
+
+        const marker = L.circleMarker(latlng, { radius: 7, color: '#c0392b', fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(MapManager.map);
+        const distStr = this.formatDistance(this.totalDistance);
+        
+        const popupHtml = `
+            <div id="route-popup-${pIndex}" style="text-align:center; padding:8px; min-width:180px;">
+                <div style="font-weight:bold; font-size:13px; margin-bottom:8px; color:#333;">이 지점까지 길 찾기</div>
+                <button onclick="DistanceManager.openNaverUpTo(${pIndex})" style="background:#03c75a; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%;">네이버 지도 열기 ↗</button>
+                <div style="color:#e74c3c; font-size:11px; margin-top:8px; font-weight:bold;">※ 경유지는 최대 5개 설정 가능합니다</div>
+            </div>
+        `;
+        marker.bindPopup(popupHtml, { closeButton: false, autoClose: false, offset: [0, -5] });
+
+        const tooltip = marker.bindTooltip(`<div class="tooltip-inner">${this.points.length === 1 ? '출발지' : distStr}</div>`, {
+            permanent: true, direction: 'right', className: 'dist-tooltip', interactive: true
+        }).openTooltip();
+
+        // [PC 호버 제어]
+        const openAction = (e) => {
+            clearTimeout(this.hoverTimer);
+            marker.openPopup();
+        };
+
+        const closeAction = (e) => {
+            this.hoverTimer = setTimeout(() => { marker.closePopup(); }, 600);
+        };
+
+        marker.on('mouseover', openAction).on('mouseout', closeAction);
+        
+        // 말풍선(툴팁) 요소에 호버 이벤트 직접 연결
+        setTimeout(() => {
+            const tooltipEl = tooltip.getTooltip().getElement();
+            if (tooltipEl) {
+                tooltipEl.addEventListener('mouseenter', openAction);
+                tooltipEl.addEventListener('mouseleave', closeAction);
+            }
+        }, 50);
+
+        // 팝업 내부 마우스 감지
+        marker.on('popupopen', (e) => {
+            const node = e.popup.getElement();
+            node.addEventListener('mouseenter', openAction);
+            node.addEventListener('mouseleave', closeAction);
+        });
+
+        this.markers.push(marker);
+    },
+
+    drawTempLine(latlng) {
+        if (this.tempLine) MapManager.map.removeLayer(this.tempLine);
+        const lastPoint = this.points[this.points.length - 1];
+        this.tempLine = L.polyline([lastPoint, latlng], { color: '#e74c3c', weight: 3, dashArray: '5, 5', opacity: 0.5 }).addTo(MapManager.map);
+    },
+
+    // [핵심] 특정 점까지의 네이버 길찾기 (샘플링 및 콜론 로직 적용)
+    openNaverUpTo(endIndex) {
+        if (endIndex < 1 || this.points.length < 2) return;
+        
+        let fullPath = this.points.slice(0, endIndex + 1);
+        let finalPoints = [];
+
+        // 최대 7개 지점 샘플링 (출발1+경유5+도착1)
+        if (fullPath.length <= 7) {
+            finalPoints = fullPath;
+        } else {
+            finalPoints.push(fullPath[0]); // 출발 고정
+            let mid = fullPath.slice(1, -1);
+            let step = (mid.length - 1) / 4;
+            for (let i = 0; i < 5; i++) finalPoints.push(mid[Math.round(i * step)]);
+            finalPoints.push(fullPath[fullPath.length - 1]); // 도착 고정
+        }
+        
+        const fmt = (p, name) => `${p.lng},${p.lat},${encodeURIComponent(name)}`;
+        let url = "https://map.naver.com/p/directions/";
+
+        if (finalPoints.length === 2) {
+            url += `${fmt(finalPoints[0], '출발지')}/${fmt(finalPoints[1], '도착지')}/car`;
+        } else {
+            // 사용자 예시 로직 적용: P0 / P1 / P2:P3:P4 / car
+            url += `${fmt(finalPoints[0], '출발지')}/`;
+            url += `${fmt(finalPoints[1], '경유지1')}/`;
+            
+            const rest = finalPoints.slice(2).map((p, i) => {
+                const isLast = (i === finalPoints.length - 3);
+                return fmt(p, isLast ? '도착지' : `경유지${i+2}`);
+            }).join(':');
+            
+            url += `${rest}/car`;
+        }
+        
+        window.open(url, '_blank');
+    },
+
+    clearAll() {
+        if (MapManager && MapManager.map) {
+            this.lines.forEach(l => MapManager.map.removeLayer(l));
+            this.markers.forEach(m => MapManager.map.removeLayer(m));
+            if (this.tempLine) MapManager.map.removeLayer(this.tempLine);
+        }
+        this.lines = []; this.markers = []; this.points = [];
+        this.totalDistance = 0; this.tempLine = null;
+    },
+
+    formatDistance(m) {
+        return m < 1000 ? Math.round(m) + 'm' : (m / 1000).toFixed(1) + 'km';
     }
 };
 

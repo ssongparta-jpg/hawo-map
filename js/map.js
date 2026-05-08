@@ -39,7 +39,7 @@ const MapManager = {
 
         this.bindEvents();
         this.map.on('contextmenu', () => {
-            if (DistanceManager.active) DistanceManager.reset();
+            if (window.DistanceManager && DistanceManager.active) DistanceManager.finish(); 
         });
     },
 

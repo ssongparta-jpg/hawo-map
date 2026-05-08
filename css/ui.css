@@ -152,3 +152,20 @@ input:checked + .slider:before { transform: translateX(16px); }
     color: #4A90E2 !important;
     font-weight: bold !important;
 }
+
+/* 거리재기 툴팁 디자인 */
+.dist-tooltip {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid #e74c3c !important;
+    border-radius: 6px !important;
+    color: #e74c3c !important;
+    padding: 2px 8px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+}
+.dist-tooltip::before { display: none !important; } /* 기본 꼬리 제거 */
+
+#btn-measure.active { 
+    background: #e74c3c !important; 
+    color: white !important; 
+    border-color: #c0392b !important; 
+}
