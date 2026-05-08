@@ -6,11 +6,15 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs'); // 파일 시스템 모듈을 최상단으로 이동
 
 const app = express();
 const db = new sqlite3.Database('./database.db');
 const SALT_ROUNDS = 10;
 const PORT = 3000;
+
+// 색상 설정 저장 파일 경로 설정
+const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
 
 // [관리자 설정] .env 파일에 등록된 관리자 ID와 이메일 매핑
 const ADMINS = {
@@ -77,7 +81,7 @@ db.serialize(async () => {
 
 const loginAttempts = {};
 
-// --- [신규] 관리자 인증 API (이메일 OTP) ---
+// --- 관리자 인증 API (이메일 OTP) ---
 
 // 1. 인증 코드 발송 요청
 app.post('/api/admin/send-code', (req, res) => {
@@ -146,7 +150,6 @@ app.post('/api/admin/verify-code', (req, res) => {
 app.post('/api/login', (req, res) => {
     const { id, pw } = req.body;
     
-    // 관리자 ID로 일반 로그인 시도 시 차단 및 안내
     if (ADMINS[id]) {
         return res.status(403).json({ success: false, message: "관리자 로그인은 아이디 박스를 5번 클릭하세요." });
     }
@@ -155,54 +158,12 @@ app.post('/api/login', (req, res) => {
         if (row && await bcrypt.compare(pw, row.pw)) {
             delete loginAttempts[id];
             req.session.userId = id;
-            req.session.isAdminAuth = false; // 일반 사용자는 false
+            req.session.isAdminAuth = false; 
             req.session.save(() => res.json({ success: true, userId: id }));
         } else {
             loginAttempts[id] = (loginAttempts[id] || 0) + 1;
             res.status(401).json({ success: false, message: "ID/PW가 일치하지 않습니다.", attempts: loginAttempts[id] });
         }
-    });
-});
-
-// ====== 서버 파일 상단에 모듈 선언 (없을 경우 추가) ======
-const fs = require('fs');
-const path = require('path');
-
-// 색상 설정 저장 파일 경로
-const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
-
-// ====== API 라우터 부분에 추가 ======
-
-// 1. 관리자 권한 메모 강제 삭제 API
-app.delete('/api/admin/memos', (req, res) => {
-    // 세션에서 관리자 권한 검사 (필요 시)
-    if (!req.session.userId || req.session.userId !== '관리자ID등의 조건') {
-        // 보안 검사를 원하시면 적용, 여기서는 로직 처리만 진행
-    }
-    const { userId, schoolName } = req.body;
-    db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", [userId, schoolName], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true });
-    });
-});
-
-// 2. 색상 불러오기 API
-app.get('/api/colors', (req, res) => {
-    fs.readFile(COLORS_FILE, 'utf8', (err, data) => {
-        if (err) {
-            // 파일이 없으면 404 (클라이언트에서 기본값 사용)
-            return res.status(404).json({ error: "색상 파일이 없습니다." });
-        }
-        res.json(JSON.parse(data));
-    });
-});
-
-// 3. 색상 저장하기 API
-app.post('/api/colors', (req, res) => {
-    const newColors = req.body;
-    fs.writeFile(COLORS_FILE, JSON.stringify(newColors, null, 2), 'utf8', (err) => {
-        if (err) return res.status(500).json({ error: "파일 쓰기 실패" });
-        res.json({ success: true });
     });
 });
 
@@ -226,7 +187,6 @@ app.post('/api/register', async (req, res) => {
     const { id, pw } = req.body;
     if (!id || !pw) return res.status(400).json({ success: false, message: "정보를 모두 입력하세요." });
 
-    // 관리자 ID로 가입 시도 차단
     if (ADMINS[id]) return res.status(400).json({ success: false, message: "사용할 수 없는 아이디입니다." });
 
     try {
@@ -250,13 +210,10 @@ app.post('/api/change-pw', isLoggedIn, async (req, res) => {
     } catch (err) { res.status(500).json({success: false}); }
 });
 
-// --- 비밀번호 찾기 (기존 기능 유지) ---
+// --- 비밀번호 찾기 ---
 app.post('/api/find-pw', (req, res) => {
     const { id } = req.body;
-    // 보안상 실제 비밀번호 전송보다 초기화 유도가 좋지만, 기존 기능 유지를 위해 코드 보존
     db.get("SELECT pw FROM users WHERE id = ?", [id], (err, row) => {
-        // 해시된 비밀번호는 복호화 불가능하므로 이 API는 사실상 동작 한계가 있음 (재확인 필요)
-        // 하지만 요청대로 원본 유지. (실제로는 해시값을 보내도 클라이언트가 알 수 없음)
         if (row) res.json({ success: true, message: "비밀번호는 암호화되어 있어 알려드릴 수 없습니다. 초기화를 요청하세요." }); 
         else res.status(404).json({ success: false, message: "존재하지 않는 아이디" });
     });
@@ -269,8 +226,7 @@ app.post('/api/request-reset-pw', (req, res) => {
     });
 });
 
-// --- 메모 API (기존 기능 유지) ---
-
+// --- 메모 API ---
 app.get('/api/memo/:schoolName', (req, res) => {
     if (!req.session.userId) return res.json({ content: "" });
     db.get("SELECT content FROM memos WHERE userId = ? AND schoolName = ?", 
@@ -291,8 +247,7 @@ app.delete('/api/memo', isLoggedIn, (req, res) => {
         [req.session.userId, schoolName], (err) => res.json({ success: !err }));
 });
 
-// --- 즐겨찾기 API (기존 기능 유지) ---
-
+// --- 즐겨찾기 API ---
 app.get('/api/favorite/:schoolName', isLoggedIn, (req, res) => {
     db.get("SELECT * FROM favorites WHERE userId = ? AND schoolName = ?",
         [req.session.userId, req.params.schoolName], (err, row) => res.json({ isFavorite: !!row }));
@@ -316,7 +271,7 @@ app.get('/api/my-favorites', isLoggedIn, (req, res) => {
     });
 });
 
-// --- 관리자 전용 패널 API (기존 기능 유지) ---
+// --- 관리자 전용 패널 API ---
 
 app.get('/api/admin/users', isAdmin, (req, res) => {
     db.all("SELECT id FROM users", (err, rows) => {
@@ -339,6 +294,15 @@ app.get('/api/admin/memos', isAdmin, (req, res) => {
     });
 });
 
+// 관리자 권한 메모 강제 삭제 (isAdmin 미들웨어로 보호됨)
+app.delete('/api/admin/memos', isAdmin, (req, res) => {
+    const { userId, schoolName } = req.body;
+    db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", [userId, schoolName], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
 app.get('/api/admin/reset-requests', isAdmin, (req, res) => {
     db.all("SELECT id, requestDate FROM reset_requests ORDER BY requestDate DESC", (err, rows) => {
         res.json({ requests: rows || [] });
@@ -353,6 +317,27 @@ app.post('/api/admin/approve-reset', isAdmin, async (req, res) => {
         db.run("DELETE FROM reset_requests WHERE id = ?", [id], () => {
             res.json({ success: true, message: "초기화 성공" });
         });
+    });
+});
+
+// --- 지도 색상 JSON 관리 API ---
+
+// 1. 색상 불러오기
+app.get('/api/colors', (req, res) => {
+    fs.readFile(COLORS_FILE, 'utf8', (err, data) => {
+        if (err) {
+            return res.status(404).json({ error: "색상 파일이 없습니다." });
+        }
+        res.json(JSON.parse(data));
+    });
+});
+
+// 2. 색상 저장하기 (관리자 권한 필수)
+app.post('/api/colors', isAdmin, (req, res) => {
+    const newColors = req.body;
+    fs.writeFile(COLORS_FILE, JSON.stringify(newColors, null, 2), 'utf8', (err) => {
+        if (err) return res.status(500).json({ error: "파일 쓰기 실패" });
+        res.json({ success: true });
     });
 });
 
