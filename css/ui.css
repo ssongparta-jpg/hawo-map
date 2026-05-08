@@ -5,13 +5,13 @@
 /* 1. 검색창 (겹침 현상 완벽 해결) */
 .search-container {
     position: absolute;
-    top: 11px; /* 하얀 바 중앙 */
+    top: 11px; 
     left: 20px;
-    z-index: 1200;
+    z-index: 1500 !important; /* 👈 여기를 1500으로 수정 */
     display: flex; 
     align-items: center;
-    gap: 8px; /* 입력칸과 버튼 사이 간격 */
-    width: 360px; /* 너비를 넉넉하게 */
+    gap: 8px; 
+    width: 360px; 
 }
 .search-wrapper { flex: 1; position: relative; }
 .search-input-box {
@@ -45,9 +45,9 @@
 /* 3. 범례 카드 (사라진 디자인 복구 및 검색창 아래로 롤백) */
 #legend {
     position: absolute;
-    top: 80px; /* 검색창 아래로 안전하게 띄움 */
+    top: 80px; 
     left: 20px;
-    z-index: 1200;
+    z-index: 1100 !important; 
 }
 .legend-card {
     background: #ffffff;
@@ -105,4 +105,50 @@ input:checked + .slider:before { transform: translateX(16px); }
     #auth-area { top: auto; bottom: 0; left: 0; right: 0; width: 100%; justify-content: center; background: white; padding: 10px 0; border-top: 1px solid #ddd; }
     .boundary-toggle-container { bottom: 70px; left: 10px; flex-direction: column; align-items: flex-start; gap: 8px; }
     #btn-measure { bottom: 70px; right: 10px; }
+}
+
+/* =========================================
+   검색 자동완성(드롭다운) 결과창 완벽 복구
+   ========================================= */
+
+/* 검색결과 목록을 감싸는 전체 박스 */
+.search-results-list {
+    position: absolute !important;
+    top: calc(100% + 5px) !important; /* 검색창에서 5px 정도 예쁘게 띄움 */
+    left: 0 !important;
+    width: 100% !important;
+    background-color: #ffffff !important; /* 하얀 배경 강제 적용! */
+    border: 1px solid #ddd !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+    z-index: 9999 !important; /* 지도, 헤더, 범례 모두 뚫고 무조건 최상단 */
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* 검색결과 항목(줄) 디자인 */
+.search-item {
+    background-color: #ffffff !important; /* 항목 배경도 확실하게 하얀색으로 칠함 */
+    padding: 10px 15px !important;
+    font-size: 13px !important;
+    color: #333 !important;
+    cursor: pointer !important;
+    border-bottom: 1px solid #f1f1f1 !important;
+    transition: background 0.2s !important;
+    text-align: left !important;
+    margin: 0 !important;
+}
+
+/* 마지막 줄은 밑줄 제거 */
+.search-item:last-child {
+    border-bottom: none !important;
+}
+
+/* 마우스 올렸을 때 파란색 하이라이트 효과 */
+.search-item:hover {
+    background-color: #eef5ff !important;
+    color: #4A90E2 !important;
+    font-weight: bold !important;
 }
