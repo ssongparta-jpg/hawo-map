@@ -1,8 +1,20 @@
 const ShareApp = {
+    // 기본 색상 설정
+    hwFill: "#4A90E2",
+    osFill: "#FF6392",
+
     async init() {
+        // [버그 수정] 서버 커스텀 색상 불러오기 및 공유학교 모드 선언
+        if(MapConfig.loadCustomColors) await MapConfig.loadCustomColors();
+        MapConfig.isSharedMode = true; // map.js에서 공유학교용 테두리를 그리도록 플래그 설정
+
+        if (MapConfig.CustomColors && MapConfig.CustomColors.shared) {
+            this.hwFill = MapConfig.CustomColors.shared.hwaseongFill;
+            this.osFill = MapConfig.CustomColors.shared.osanFill;
+        }
+
         MapManager.init();
         DistanceManager.init(); 
-        await MapConfig.loadCustomColors();
         await AuthManager.checkAuth();
         
         const shareStyle = document.createElement('style');
@@ -41,7 +53,6 @@ const ShareApp = {
             });
         };
 
-        // [수정] 클러스터 해제 레벨(13)과 이름(라벨) 표시 레벨(13)을 완벽 동기화!
         MapManager.map.on('zoomend', () => {
             const zoom = MapManager.map.getZoom();
             const mapContainer = MapManager.map.getContainer();
@@ -77,9 +88,10 @@ const ShareApp = {
                 if (titleEl) titleEl.innerText = '화성오산 공유학교 지도';
             }
             
+            // [버그 수정] 불러온 색상 변수를 바탕으로 버튼 내부 색상(Fill) 적용
             MapConfig.DISTRICTS = {
-                "화성시": { pos: [37.185, 126.915], color: "#4A90E2", fullName: "화성시 전체", keywords: ['화성'], link: "https://gong-u.goe.go.kr/hwaseong/main/view" },
-                "오산시": { pos: [37.145, 127.080], color: "#FF6392", fullName: "오산시", keywords: ['오산'], link: "https://gong-u.goe.go.kr/osan/main/view" } 
+                "화성시": { pos: [37.185, 126.915], color: this.hwFill, fullName: "화성시 전체", keywords: ['화성'], link: "https://gong-u.goe.go.kr/hwaseong/main/view" },
+                "오산시": { pos: [37.145, 127.080], color: this.osFill, fullName: "오산시", keywords: ['오산'], link: "https://gong-u.goe.go.kr/osan/main/view" } 
             };
 
             const groupedSchools = {};
@@ -162,7 +174,6 @@ const ShareApp = {
         return marker;
     },
 
-    // [수정] 팝업 내부 '주요활동' 디자인 변경 (푸른색 네모 박스로 감싸서 깨짐 방지)
     makeSharedPopupHtml(p) {
         const isLoggedIn = AuthManager.userId !== null;
         const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
@@ -221,6 +232,7 @@ const ShareApp = {
             </div>`;
     },
 
+    // [버그 수정] 범례(Legend) 테두리 색상도 연동
     initLegend() {
         const container = document.createElement('div');
         container.id = 'share-legend';
@@ -234,12 +246,12 @@ const ShareApp = {
                     <div class="legend-reset-row" onclick="ShareApp.filterRegion('전체')">↺ 전체 보기</div>
                     
                     <div class="legend-row" onclick="ShareApp.filterRegion('화성시')">
-                        <img src="source/coco.png" style="width:20px; height:20px; border-radius:50%; border:2px solid #4A90E2; background:white;"/>
+                        <img src="source/coco.png" style="width:20px; height:20px; border-radius:50%; border:2px solid ${this.hwFill}; background:white;"/>
                         <span class="l-text" style="font-weight:bold;">화성 다(多)가치</span>
                     </div>
                     
                     <div class="legend-row" onclick="ShareApp.filterRegion('오산시')">
-                        <img src="source/caca.png" style="width:20px; height:20px; border-radius:50%; border:2px solid #FF6392; background:white;"/>
+                        <img src="source/caca.png" style="width:20px; height:20px; border-radius:50%; border:2px solid ${this.osFill}; background:white;"/>
                         <span class="l-text" style="font-weight:bold;">오산나래</span>
                     </div>
                 </div>
