@@ -1,0 +1,31 @@
+/* =========================================
+   share.css : 공유학교 전용 범례 및 스타일
+   ========================================= */
+
+#share-legend {
+    position: absolute;
+    top: 80px; 
+    left: 20px;
+    z-index: 1200;
+}
+
+/* 범례 카드 디자인 (legend.css 스타일 차용) */
+.legend-card { background: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); width: 140px; border: 1px solid #eaeaea; overflow: hidden; }
+.legend-header { padding: 10px 12px; background: #fdfdfd; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid #eee; user-select: none; }
+.legend-label { font-weight: bold; font-size: 13px; color: #333; display: flex; align-items: center; gap: 5px; margin: 0; }
+.arrow-icon { font-size: 10px; transition: transform 0.3s ease; color: #999; }
+.legend-content { max-height: 400px; overflow-y: auto; transition: max-height 0.3s ease; padding: 8px; }
+.legend-content.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; border: none; overflow: hidden; }
+.legend-row { display: flex; align-items: center; gap: 8px; padding: 6px 5px; font-size: 12px; cursor: pointer; border-radius: 4px; transition: background 0.2s; color: #555; margin: 0; }
+.legend-row:hover { background: #f0f7ff; color: #4A90E2; font-weight: bold; }
+.l-symbol { font-weight: bold; width: 16px; text-align: center; font-size: 14px; }
+.legend-reset-row { color: #4A90E2; font-weight: bold; font-size: 12px; padding-bottom: 8px; margin-bottom: 5px; border-bottom: 1px dashed #eee; cursor: pointer; text-align: center; }
+
+/* 팝업 내부 텍스트 스타일 최적화 */
+.popup-info-list .label { color: #7f8c8d !important; }
+.popup-info-list .value { color: #2c3e50 !important; }
+
+/* 모바일 전용 반응형 배치 */
+@media (max-width: 768px) {
+    #share-legend { top: 120px; left: 10px; }
+}

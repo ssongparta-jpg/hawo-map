@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>화성오산 공유학교 지도</title>
+  <title>경기도화성오산 공유학교 지도</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="css/auth.css" />
   <link rel="stylesheet" href="css/marker.css" />
   <link rel="stylesheet" href="css/popup.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/share.css" />
 </head>
 <body>
   <div class="container"> 
@@ -32,7 +34,7 @@
         </div>
 
         <div class="title-wrapper">
-          <span class="header_text" id="header-title">화성오산 공유학교 지도</span>
+          <span class="header_text" id="header-title">경기도화성오산 공유학교 지도</span>
           <a href="index.html" class="title-switch-btn" title="학교 지도로 전환">🔄</a>
         </div>
 
@@ -71,9 +73,18 @@
                 <span class="slider"></span>
             </label>
         </div>
+        <div class="control-row" style="margin-left: 15px;">
+            <span class="switch-label">즐겨찾기</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-favorite-only">
+                <span class="slider"></span>
+            </label>
+        </div>
     </div>
 
     <div id="map"></div>
+
+    <button id="btn-measure" onclick="DistanceManager.toggle()">📏 거리재기</button>
 
     <div id="admin-modal" class="dashboard-backdrop" style="display:none;">
         <div class="dashboard-window">
@@ -121,14 +132,15 @@
             <div id="helpContentInject"></div>
         </div>
     </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/map.js"></script>
-    <script src="js/share_main.js"></script>
   </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+  <script src="js/config.js" defer></script>
+  <script src="js/utils.js" defer></script> <script src="js/auth.js" defer></script>
+  <script src="js/map.js" defer></script>
+  <script src="js/share_main.js" defer></script>
 </body>
 </html>
