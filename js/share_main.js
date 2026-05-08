@@ -1,5 +1,11 @@
 const ShareApp = {
     async init() {
+        // [핵심] 공유학교에서는 하위 구(동탄구, 병점구 등)를 삭제하고 화성/오산 2개로만 묶음 처리
+        MapConfig.DISTRICTS = {
+            "화성시": { pos: [37.185, 126.915], color: "#4A90E2", fullName: "화성시 전체" },
+            "오산시": { pos: [37.16361, 127.06229], color: "#FF6392", fullName: "오산시" }
+        };
+
         MapManager.init();
         await AuthManager.checkAuth();
         
@@ -20,9 +26,9 @@ const ShareApp = {
                     type: '공유학교',
                     name: c[4]?.v || '이름 없음',
                     adrs: c[5]?.v || '',
-                    color: '#8E44AD', // 공유학교 전용 색상
+                    color: '#8E44AD', // 공유학교 전용 색상 (보라색)
                     url: c[13]?.v,
-                    program: c[6]?.v || '정보 없음' // 예시: 공유학교 프로그램 데이터 열
+                    program: c[6]?.v || '정보 없음' 
                 };
                 
                 const m = MapManager.createMarker(lat, lng, p);
@@ -31,6 +37,9 @@ const ShareApp = {
             });
             
             await MapManager.loadBoundaries();
+            // 행정구역 통계 버튼 (화성시, 오산시 딱 2개만 렌더링됨)
+            MapManager.addDistrictButtons(); 
+            
             this.initSearch();
         } catch (e) { console.error("데이터 로드 실패:", e); }
     },
@@ -52,18 +61,25 @@ const ShareApp = {
             const matches = MapManager.markers.filter(m => m.properties.name.includes(val));
             
             resultBox.innerHTML = '';
-            matches.slice(0, 5).forEach(m => {
+            matches.slice(0, 8).forEach(m => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
-                div.innerHTML = `<span>${m.properties.name}</span>`;
+                // 타입 뱃지 표시
+                div.innerHTML = `<span>${m.properties.name}</span> <span style="font-size:11px; color:#8E44AD; font-weight:bold;">${m.properties.type}</span>`;
                 div.onclick = () => {
                     MapManager.focusMarker(m);
                     resultBox.style.display = 'none';
                     input.value = m.properties.name;
+                    input.blur();
                 };
                 resultBox.appendChild(div);
             });
             resultBox.style.display = matches.length > 0 ? 'block' : 'none';
+        });
+
+        // 팝업 외부 클릭 시 검색창 닫힘 보장
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-wrapper')) resultBox.style.display = 'none';
         });
     }
 };

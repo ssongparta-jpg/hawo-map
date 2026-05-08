@@ -19,19 +19,25 @@
 </head>
 <body>
   <div class="container"> 
-    <header>
-    <div class="header-shape">
+    
+    <div class="pc-top-bar"></div>
+
+    <header class="header-center-group">
+      <div class="header-shape">
         <div class="logo-group">
-        <button class="help-button" id="helpBtn">?</button>
-        <a href="index.html" class="logo-area">
+          <button class="help-button" id="helpBtn">?</button>
+          <a href="share.html" class="logo-area">
             <img src="hwaologo.svg" alt="GOEHS" class="logo-img" />
-        </a>
+          </a>
         </div>
 
-        <h1 class="header_text" id="header-title">로딩 중...</h1>
+        <div class="title-wrapper">
+          <span class="header_text" id="header-title">화성오산 공유학교 지도</span>
+          <a href="index.html" class="title-switch-btn" title="학교 지도로 전환">🔄</a>
+        </div>
 
-        <a href="share.html" class="nav-switch-btn">공유학교 지도 ↗</a>
-    </div>
+        <div class="header-right-empty"></div>
+      </div>
     </header>
     
     <div class="search-container">
@@ -43,20 +49,81 @@
 
     <div id="auth-area">
       <div id="login-form">
-        <input type="text" id="user-id" placeholder="ID">
+        <input type="text" id="user-id" placeholder="ID" autocomplete="off">
         <input type="password" id="user-pw" placeholder="PW">
         <button onclick="AuthManager.login()" class="btn-login">로그인</button>
+        <button onclick="AuthManager.register()" class="btn-join">가입</button>
       </div>
+      
       <div id="user-info" style="display:none;">
-        <span id="welcome-msg"></span>
+        <span id="welcome-msg" style="font-weight:bold; margin-right:5px; font-size: 13px;"></span>
+        <button id="change-pw-btn" onclick="AuthManager.changePw()" style="display:none;">PW변경</button>
+        <button id="admin-panel-btn" onclick="AdminManager.open()" class="btn-admin" style="display: none;">관리자</button>
         <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
       </div>
     </div>
 
+    <div class="boundary-toggle-container">
+        <div class="control-row">
+            <span class="switch-label">행정구역 켜기/끄기</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-boundary" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
     <div id="map"></div>
 
+    <div id="admin-modal" class="dashboard-backdrop" style="display:none;">
+        <div class="dashboard-window">
+            <div class="dash-header" style="background: #e74c3c;">
+                <h3>관리자 패널</h3>
+                <button class="dash-close-btn" onclick="AdminManager.close()" style="margin-left: auto;">✕</button>
+            </div>
+            <div style="padding: 10px; display:flex; gap:10px; background:#f0f0f0;">
+                <button onclick="AdminManager.manageUsers()">회원 관리</button>
+                <button onclick="AdminManager.viewAllMemos()">전체 메모</button>
+                <button onclick="AdminManager.loadResetRequests()">PW 초기화</button>
+            </div>
+            <div id="admin-content" class="dash-body"></div>
+        </div>
+    </div>
+
+    <div id="admin-login-modal" class="dashboard-backdrop" style="display:none; z-index: 100001;">
+        <div class="dashboard-window" style="max-width: 350px; height: auto;">
+            <div class="dash-header" style="background: #333; color: white;">
+                <h3>관리자 계정 인증</h3>
+                <button class="dash-close-btn" onclick="AdminManager.closeLoginModal()" style="margin-left: auto; color:white;">✕</button>
+            </div>
+            <div class="dash-body" style="padding: 20px; text-align: center;">
+                <div id="admin-step-1">
+                    <p style="margin-bottom: 15px; color: #666;">인증 메일을 발송할 관리자를 선택하세요.</p>
+                    <div class="admin-select-btn-group">
+                        <button onclick="AdminManager.selectAdmin('spring')" class="admin-select-btn">🌸 관리자 1 (Spring)</button>
+                        <button onclick="AdminManager.selectAdmin('summer')" class="admin-select-btn">🌻 관리자 2 (Summer)</button>
+                        <button onclick="AdminManager.selectAdmin('autumn')" class="admin-select-btn">🍁 관리자 3 (Autumn)</button>
+                    </div>
+                </div>
+                
+                <div id="admin-step-2" style="display:none;">
+                    <p id="admin-step-2-msg" style="margin-bottom: 10px; font-weight: bold; color: #2ecc71;"></p>
+                    <input type="text" id="admin-otp-input" placeholder="인증코드 6자리" style="width: 100%; padding: 10px; font-size: 16px; text-align: center; margin-bottom: 10px;">
+                    <button onclick="AdminManager.submitCode()" class="admin-submit-btn">인증 확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="helpModal" class="help-modal-overlay" style="display:none;">
+        <div class="help-modal-content">
+            <span class="help-close-btn" onclick="document.getElementById('helpModal').style.display='none'">&times;</span>
+            <div id="helpContentInject"></div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
