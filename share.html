@@ -25,22 +25,24 @@
     <div class="pc-top-bar"></div>
 
     <header class="header-center-group">
-      <div class="header-shape">
-        <div class="logo-group">
+      <div class="header-shape" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        
+        <div class="logo-group" style="width: 40px; display: flex; justify-content: flex-start;">
           <button class="help-button" id="helpBtn">?</button>
-          <a href="share.html" class="logo-area">
-            <img src="source/share.png" alt="Share" class="logo-img" style="border-radius: 4px; background: white;" />
+        </div>
+
+        <div class="title-wrapper" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <a href="share.html" class="logo-area" style="display: flex; align-items: center;">
+            <img src="source/share.png" alt="Share" class="logo-img" style="height: 32px; width: auto; border-radius: 4px; background: white;" />
+          </a>
+          <span class="header_text" id="header-title" style="margin: 0;">화성오산 공유학교 지도</span>
+          <a href="index.html" class="title-switch-btn" title="학교 지도로 전환" style="overflow: hidden; background: white; padding: 0; display:flex; align-items:center; justify-content:center; width: 28px; height: 28px; flex-shrink: 0; margin-left: 2px;">
+            <img src="source/hwaologo.svg" alt="학교지도" style="width: 80%; height: 80%; object-fit: contain; margin-left: 2px;" />
           </a>
         </div>
 
-        <div class="title-wrapper">
-          <span class="header_text" id="header-title">화성오산 공유학교 지도</span>
-          <a href="index.html" class="title-switch-btn" title="학교 지도로 전환" style="overflow: hidden; background: white; padding: 0; display:flex; align-items:center; justify-content:center;">
-            <img src="source/hwaologo.svg" alt="학교지도" style="width: 75%; height: 75%; object-fit: contain; margin-left: 2px;" />
-          </a>
-        </div>
-
-        <div class="header-right-empty"></div>
+        <div class="header-right-empty" style="width: 40px;"></div>
+        
       </div>
     </header>
     
