@@ -16,7 +16,8 @@ const ShareApp = {
             this.hwBorder = MapConfig.CustomColors.shared.hwaseongBorder;
             this.osBorder = MapConfig.CustomColors.shared.osanBorder;
 
-            // [이중 방어 로직] map.js가 만약 일반 지도 색상 변수를 참조하려 해도 무조건 공유학교 테두리 색상이 적용되도록 덮어치기
+            // [테두리 버그 완벽 해결] 내부 테두리를 건드리지 않고 가장 바깥 테두리만 바뀌도록
+            // map.js가 무조건 공유학교 테두리 색상을 참조하도록 전역 변수를 덮어씌웁니다.
             if (!MapConfig.CustomColors.general) MapConfig.CustomColors.general = {};
             MapConfig.CustomColors.general.hwaseongBorder = this.hwBorder;
             MapConfig.CustomColors.general.osanBorder = this.osBorder;
@@ -35,6 +36,17 @@ const ShareApp = {
             .view-labels-mode .is-stacked .marker-label-box { transform: translateY(-50%) !important; }
         `;
         document.head.appendChild(shareStyle);
+
+        // [신규 로직] 이름 중복 버그를 해결하기 위한 고유 ID 기반 팝업 오픈 함수
+        window.openSharedPopup = function(uid) {
+            const marker = MapManager.markers.find(m => m.properties.uid === uid);
+            if (marker) {
+                if (MapManager.activeMarker) MapManager.activeMarker.setZIndexOffset(100);
+                marker.setZIndexOffset(10000);
+                MapManager.activeMarker = marker;
+                marker.openPopup();
+            }
+        };
 
         MapManager.showDistrictStats = function() {};
         
@@ -103,6 +115,7 @@ const ShareApp = {
             };
 
             const groupedSchools = {};
+            let uidCounter = 0; // 마커 고유 ID 생성용
 
             rows.forEach((row) => {
                 const c = row.c;
@@ -119,6 +132,7 @@ const ShareApp = {
                 if (adrs.includes('오산')) region = '오산시';
 
                 const p = {
+                    uid: 'share_school_' + (uidCounter++), // 중복 방지용 고유 ID 발급
                     type: c[2]?.v || '공유학교', name: c[3]?.v || '이름 없음', adrs: adrs,
                     duration: c[5]?.v || '-', target: c[6]?.v || '-', place: c[7]?.v || '-',
                     activity: c[8]?.v || '-', shape: c[9]?.v || '●', color: c[10]?.v || '#8E44AD',
@@ -139,28 +153,8 @@ const ShareApp = {
                 });
             });
             
-            // 경계선 그리기 대기
+            // 경계선 로드 (내부 하얀 테두리가 유지되며 바깥 테두리만 예쁘게 색칠됩니다)
             await MapManager.loadBoundaries();
-
-            // [핵심 해결] 경계선 데이터가 담긴 '폴더(LayerGroup)' 내부의 알맹이(Polygon)까지 파고들어가서 직접 테두리 색을 주입합니다.
-            if (MapManager.boundaryGroup) {
-                MapManager.boundaryGroup.eachLayer(layer => {
-                    // layer가 폴더(GeoJSON 그룹)일 경우 그 안의 도형들을 순회
-                    if (layer.eachLayer) {
-                        layer.eachLayer(subLayer => {
-                            if (subLayer.feature && subLayer.feature.properties) {
-                                const sgg = subLayer.feature.properties.sggnm;
-                                if (sgg === '화성시') {
-                                    subLayer.setStyle({ color: this.hwBorder }); // 화성시 테두리 변경
-                                } else if (sgg === '오산시') {
-                                    subLayer.setStyle({ color: this.osBorder }); // 오산시 테두리 변경
-                                }
-                            }
-                        });
-                    }
-                });
-            }
-
             MapManager.addDistrictButtons(); 
             
             this.initLegend();
@@ -179,11 +173,11 @@ const ShareApp = {
         const yOffset = count > 1 ? (stackIndex * 40) - ((count - 1) * 20) : 0; 
 
         const iconSrc = p.region === '화성시' ? 'source/coco.png' : (p.region === '오산시' ? 'source/caca.png' : '');
-        const safeName = p.name.replace(/'/g, "\\'");
         
+        // 고유 ID(uid)를 사용하여 팝업을 열도록 변경 (이름 중복 버그 원천 차단)
         const iconHtml = `
-            <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
-                <div class="marker-label-box" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">${p.name}</div>
+            <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="event.stopPropagation(); window.openSharedPopup('${p.uid}')">
+                <div class="marker-label-box">${p.name}</div>
                 <img src="${iconSrc}" class="marker-symbol" style="width:38px; height:38px; filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.5)); object-fit:contain;" onerror="this.style.display='none'" />
             </div>
         `;
@@ -195,11 +189,9 @@ const ShareApp = {
             });
             
         marker.properties = p;
-        marker.on('click', () => {
-             if (MapManager.activeMarker) MapManager.activeMarker.setZIndexOffset(100);
-             marker.setZIndexOffset(10000);
-             MapManager.activeMarker = marker;
-        });
+        // 마커 아이콘 자체를 눌러도 고유 ID로 팝업을 열도록 설정
+        marker.on('click', () => { window.openSharedPopup(p.uid); });
+        
         return marker;
     },
 
@@ -208,6 +200,7 @@ const ShareApp = {
         const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
         const delBtnBg = isLoggedIn ? '#e74c3c' : '#ccc';
         const btnDisabled = isLoggedIn ? '' : 'disabled';
+        const safeName = p.name.replace(/'/g, "\\'");
 
         return `
             <div class="popup-content compact-mode">
@@ -217,7 +210,7 @@ const ShareApp = {
                 <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
                     <div class="popup-title" style="margin: 0;">${p.name}</div>
                     <button id="fav-btn-${p.name}" class="fav-toggle-btn"
-                            onclick="MapManager.toggleFavorite('${p.name}', event)"
+                            onclick="MapManager.toggleFavorite('${safeName}', event)"
                             style="background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc;">
                         ☆
                     </button>
@@ -238,20 +231,20 @@ const ShareApp = {
 
                 <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
                     <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
-                    <textarea id="memo-${p.name}"
+                    <textarea id="memo-${safeName}"
                         style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
                         placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
                         disabled></textarea>
 
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
-                        <button id="btn-save-${p.name}" class="memo-save-btn"
-                            onclick="AuthManager.saveMemo('${p.name}', event)"
+                        <button id="btn-save-${safeName}" class="memo-save-btn"
+                            onclick="AuthManager.saveMemo('${safeName}', event)"
                             style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
                             ${btnDisabled}>
                             저장
                         </button>
-                        <button id="btn-del-${p.name}" class="memo-del-btn"
-                            onclick="AuthManager.deleteMemo('${p.name}', event)"
+                        <button id="btn-del-${safeName}" class="memo-del-btn"
+                            onclick="AuthManager.deleteMemo('${safeName}', event)"
                             style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
                             ${btnDisabled}>
                             삭제
@@ -323,10 +316,11 @@ const ShareApp = {
                 div.className = 'search-item';
                 div.innerHTML = `<span>${m.properties.name}</span> <span style="font-size:11px; color:#8E44AD; font-weight:bold;">${m.properties.type}</span>`;
                 div.onclick = () => {
-                    MapManager.focusMarker(m);
                     resultBox.style.display = 'none';
                     input.value = m.properties.name;
                     input.blur();
+                    // 고유 ID를 사용하여 정확한 마커의 팝업을 오픈
+                    window.openSharedPopup(m.properties.uid);
                 };
                 resultBox.appendChild(div);
             });
