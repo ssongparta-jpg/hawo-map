@@ -16,8 +16,6 @@ const ShareApp = {
             this.hwBorder = MapConfig.CustomColors.shared.hwaseongBorder;
             this.osBorder = MapConfig.CustomColors.shared.osanBorder;
 
-            // [테두리 버그 완벽 해결] 내부 테두리를 건드리지 않고 가장 바깥 테두리만 바뀌도록
-            // map.js가 무조건 공유학교 테두리 색상을 참조하도록 전역 변수를 덮어씌웁니다.
             if (!MapConfig.CustomColors.general) MapConfig.CustomColors.general = {};
             MapConfig.CustomColors.general.hwaseongBorder = this.hwBorder;
             MapConfig.CustomColors.general.osanBorder = this.osBorder;
@@ -32,12 +30,15 @@ const ShareApp = {
             .is-stacked .marker-label-box {
                 bottom: auto !important; top: 0 !important; left: 22px !important;
                 transform: translateY(-50%) !important; white-space: nowrap !important;
+                /* 왼쪽 띠가 잘 보이도록 패딩과 디자인 살짝 조정 */
+                padding: 4px 8px 4px 8px !important;
+                border-radius: 4px !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
             }
             .view-labels-mode .is-stacked .marker-label-box { transform: translateY(-50%) !important; }
         `;
         document.head.appendChild(shareStyle);
 
-        // [신규 로직] 이름 중복 버그를 해결하기 위한 고유 ID 기반 팝업 오픈 함수
         window.openSharedPopup = function(uid) {
             const marker = MapManager.markers.find(m => m.properties.uid === uid);
             if (marker) {
@@ -50,22 +51,41 @@ const ShareApp = {
 
         MapManager.showDistrictStats = function() {};
         
+        // [디자인 반영] 메인 바로가기 버튼 둥근 캡슐형 & 흰색 테두리 그림자 스타일 적용
         MapManager.addDistrictButtons = function() {
             Object.entries(MapConfig.DISTRICTS).forEach(([key, conf]) => {
                 if (!conf.pos) return;
                 const displayName = key === '화성시' ? '화성 다(多)가치' : '오산나래';
                 const imgSrc = key === '화성시' ? 'source/coco.png' : 'source/caca.png';
                 
+                // [비율 조정] 오산나래 까까 머리 크기만 확대
+                const imgScale = key === '오산시' ? 'transform: scale(1.3);' : '';
+
+                // [디자인 변경] 각진 테두리와 아래쪽 굵은 그림자가 있는 3D 스타일 버튼
+                const sharedBtnStyle = `
+                    background-color:${conf.color}!important; 
+                    color:#fff; 
+                    border-radius:4px;
+                    padding:10px 18px; 
+                    display:flex; 
+                    align-items:center; 
+                    gap:6px; 
+                    box-shadow: 0 4px 0px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.3); /* 3D 그림자 */
+                    border:none; 
+                    cursor:pointer;
+                    text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+                `;
+
                 const icon = L.divIcon({
                     className: 'district-stat-marker',
                     html: `
                         <div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" 
-                             style="background-color:${conf.color}!important; color:#fff; border-radius:30px; padding:6px 14px; display:flex; align-items:center; gap:8px; box-shadow:0 4px 10px rgba(0,0,0,0.3); border:2px solid white; cursor:pointer;">
-                            <img src="${imgSrc}" style="width:28px; height:28px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); object-fit:contain; margin-left:-4px;"/>
-                            <span style="font-weight:900; font-size:14px;">${displayName} ↗</span>
+                             style="${sharedBtnStyle}">
+                            <img src="${imgSrc}" style="width:24px; height:24px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4)); object-fit:contain; margin-left:-4px; ${imgScale}"/>
+                            <span style="font-weight:700; font-size:15px; letter-spacing: -0.5px;">${displayName} ↗</span>
                         </div>
                     `,
-                    iconSize: [180, 40]
+                    iconSize: [180, 50]
                 });
                 L.marker(conf.pos, { icon }).addTo(this.map).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
@@ -115,7 +135,7 @@ const ShareApp = {
             };
 
             const groupedSchools = {};
-            let uidCounter = 0; // 마커 고유 ID 생성용
+            let uidCounter = 0; 
 
             rows.forEach((row) => {
                 const c = row.c;
@@ -132,7 +152,7 @@ const ShareApp = {
                 if (adrs.includes('오산')) region = '오산시';
 
                 const p = {
-                    uid: 'share_school_' + (uidCounter++), // 중복 방지용 고유 ID 발급
+                    uid: 'share_school_' + (uidCounter++), 
                     type: c[2]?.v || '공유학교', name: c[3]?.v || '이름 없음', adrs: adrs,
                     duration: c[5]?.v || '-', target: c[6]?.v || '-', place: c[7]?.v || '-',
                     activity: c[8]?.v || '-', shape: c[9]?.v || '●', color: c[10]?.v || '#8E44AD',
@@ -153,7 +173,6 @@ const ShareApp = {
                 });
             });
             
-            // 경계선 로드 (내부 하얀 테두리가 유지되며 바깥 테두리만 예쁘게 색칠됩니다)
             await MapManager.loadBoundaries();
             MapManager.addDistrictButtons(); 
             
@@ -173,12 +192,21 @@ const ShareApp = {
         const yOffset = count > 1 ? (stackIndex * 40) - ((count - 1) * 20) : 0; 
 
         const iconSrc = p.region === '화성시' ? 'source/coco.png' : (p.region === '오산시' ? 'source/caca.png' : '');
+        const safeName = p.name.replace(/'/g, "\\'");
         
-        // 고유 ID(uid)를 사용하여 팝업을 열도록 변경 (이름 중복 버그 원천 차단)
+        // [디자인 반영] 이름표(라벨) 왼쪽에 지역 구분용 띠(Border) 추가
+        let labelBorderColor = '#cccccc'; // 기본색
+        if (p.region === '화성시') labelBorderColor = '#F8B62B'; // 화성시 주황색
+        if (p.region === '오산시') labelBorderColor = '#00A1E9'; // 오산시 파란색
+
+        // [핵심 변경] 오산시 까까 머리 크기를 화성시(38px) 대비 50px로 확대!
+        const imgSize = p.region === '오산시' ? 50 : 38;
+        const imgMargin = p.region === '오산시' ? 'margin-top: -6px;' : '';
+
         const iconHtml = `
             <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="event.stopPropagation(); window.openSharedPopup('${p.uid}')">
-                <div class="marker-label-box">${p.name}</div>
-                <img src="${iconSrc}" class="marker-symbol" style="width:38px; height:38px; filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.5)); object-fit:contain;" onerror="this.style.display='none'" />
+                <div class="marker-label-box" style="border-left: 5px solid ${labelBorderColor};">${p.name}</div>
+                <img src="${iconSrc}" class="marker-symbol" style="width:${imgSize}px; height:${imgSize}px; ${imgMargin} filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.5)); object-fit:contain;" onerror="this.style.display='none'" />
             </div>
         `;
         const icon = L.divIcon({ className: 'marker-container-icon', html: iconHtml, iconSize: [0, 0] });
@@ -189,7 +217,6 @@ const ShareApp = {
             });
             
         marker.properties = p;
-        // 마커 아이콘 자체를 눌러도 고유 ID로 팝업을 열도록 설정
         marker.on('click', () => { window.openSharedPopup(p.uid); });
         
         return marker;
@@ -272,7 +299,7 @@ const ShareApp = {
                     </div>
                     
                     <div class="legend-row" onclick="ShareApp.filterRegion('오산시')">
-                        <img src="source/caca.png" style="width:24px; height:24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); object-fit:contain;"/>
+                        <img src="source/caca.png" style="width:30px; height:30px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); object-fit:contain; margin-left:-3px; margin-right:-3px;"/>
                         <span class="l-text" style="font-weight:bold;">오산나래</span>
                     </div>
                 </div>
@@ -319,7 +346,6 @@ const ShareApp = {
                     resultBox.style.display = 'none';
                     input.value = m.properties.name;
                     input.blur();
-                    // 고유 ID를 사용하여 정확한 마커의 팝업을 오픈
                     window.openSharedPopup(m.properties.uid);
                 };
                 resultBox.appendChild(div);

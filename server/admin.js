@@ -274,23 +274,19 @@ const AdminApp = {
         // 1. 일반 지도 요소 적용
         const dFill = document.getElementById('general-dongtanFill-text')?.value;
         if (dFill) {
-            // 버튼 자체 색상 적용
             document.getElementById('prev-btn-dongtan').style.backgroundColor = dFill;
             document.getElementById('prev-btn-byeongjeom').style.backgroundColor = document.getElementById('general-byeongjeomFill-text').value;
             document.getElementById('prev-btn-hyohoeng').style.backgroundColor = document.getElementById('general-hyohoengFill-text').value;
             document.getElementById('prev-btn-manse').style.backgroundColor = document.getElementById('general-manseFill-text').value;
             
-            // [수정] 화성시 각 4개구 내부(Fill) 투명도 배경색 적용 (+33은 20% 투명도 헥스코드)
             document.getElementById('prev-fill-dongtan').style.backgroundColor = dFill + '33';
             document.getElementById('prev-fill-byeongjeom').style.backgroundColor = document.getElementById('general-byeongjeomFill-text').value + '33';
             document.getElementById('prev-fill-hyohoeng').style.backgroundColor = document.getElementById('general-hyohoengFill-text').value + '33';
             document.getElementById('prev-fill-manse').style.backgroundColor = document.getElementById('general-manseFill-text').value + '33';
 
-            // 화성시 큰 테두리 (안쪽 채우기는 투명하게 둠)
             document.getElementById('prev-area-hwaseong').style.borderColor = document.getElementById('general-hwaseongBorder-text').value;
             document.getElementById('prev-area-hwaseong').style.backgroundColor = "transparent"; 
             
-            // 오산시 적용
             const oFill = document.getElementById('general-osanFill-text').value;
             document.getElementById('prev-btn-osan').style.backgroundColor = oFill;
             document.getElementById('prev-area-osan').style.borderColor = document.getElementById('general-osanBorder-text').value;
@@ -305,7 +301,11 @@ const AdminApp = {
             document.getElementById('prev-area-shared-hw').style.backgroundColor = shFill + '33';
 
             const soFill = document.getElementById('shared-osanFill-text').value;
-            document.getElementById('prev-btn-shared-os').style.backgroundColor = soFill;
+            const sharedOsanBtn = document.getElementById('prev-btn-shared-os');
+            sharedOsanBtn.style.backgroundColor = soFill;
+            // [수정] 오산 까까 머리가 커진 만큼 왼쪽 여백을 늘려 글자와 겹치지 않게 합니다.
+            sharedOsanBtn.style.paddingLeft = '20px'; 
+
             document.getElementById('prev-area-shared-os').style.borderColor = document.getElementById('shared-osanBorder-text').value;
             document.getElementById('prev-area-shared-os').style.backgroundColor = soFill + '33';
         }

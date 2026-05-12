@@ -169,3 +169,27 @@ input:checked + .slider:before { transform: translateX(16px); }
     color: white !important; 
     border-color: #c0392b !important; 
 }
+
+/* ==========================================
+   1. 학교 리스트 지역별 왼쪽 테두리 (줄) 색상
+   ========================================== */
+/* 오산시: 파란색 */
+.border-osan {
+  border-left: 5px solid #2563eb !important; 
+}
+/* 화성시: 주황색 */
+.border-hwaseong {
+  border-left: 5px solid #f97316 !important;
+}
+
+/* ==========================================
+   2. 공유학교 바로가기 버튼 네모낳게 변경
+   ========================================== */
+/* ※ 버튼의 실제 ID나 Class명(예: #shared-school-btn)으로 맞춰주세요 */
+#shared-school-btn, .btn-shared {
+  border-radius: 12px !important; /* 0으로 설정하면 완전히 각진 네모가 됩니다 */
+  padding: 12px 20px !important;
+  width: auto !important;         /* 기존에 동그라미를 위해 고정된 width가 있다면 해제 */
+  height: auto !important;        /* 기존에 동그라미를 위해 고정된 height가 있다면 해제 */
+  aspect-ratio: auto !important;
+}

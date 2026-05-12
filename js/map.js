@@ -392,53 +392,127 @@ const MapManager = {
     },
 
     addDistrictButtons() {
-        Object.entries(MapConfig.DISTRICTS).forEach(([shortName, conf]) => {
+        Object.entries(MapConfig.DISTRICTS).forEach(([key, conf]) => {
             if (!conf.pos) return;
+            
+            // 화성시 4개 구는 '화성시' 글자 제외하고 구 이름만 표시
+            let labelName = conf.fullName;
+            if (['동탄구', '병점구', '효행구', '만세구'].includes(key)) {
+                labelName = key; 
+            }
+            
+            const generalBtnStyle = `
+                background-color:${conf.color}!important; 
+                color:#fff; 
+                border-radius:4px; 
+                padding:8px 12px; 
+                display:flex; 
+                align-items:center; 
+                justify-content:center;
+                box-shadow: 0 3px 0px rgba(0,0,0,0.15), 0 3px 8px rgba(0,0,0,0.3); 
+                border:none; 
+                cursor:pointer;
+                text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+                min-width: 80px;
+                transition: transform 0.1s;
+            `;
+
             const icon = L.divIcon({
                 className: 'district-stat-marker',
-                html: `<div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="background-color:${conf.color}!important;color:#fff;">${shortName}</div>`,
-                iconSize: [80, 32]
+                html: `
+                    <div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="${generalBtnStyle}" 
+                         onmousedown="this.style.transform='translateY(2px)'; this.style.boxShadow='0 1px 0px rgba(0,0,0,0.15)'"
+                         onmouseup="this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 0px rgba(0,0,0,0.15)'">
+                        <span style="font-weight:700; font-size:13px; letter-spacing: -0.5px;">${labelName} ↗</span>
+                    </div>
+                `,
+                iconSize: [120, 36]
             });
+
             L.marker(conf.pos, { icon }).addTo(this.map).on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                this.showDistrictStats(conf.fullName || shortName, conf.pos);
+                this.showDistrictStats(key, conf);
             });
         });
     },
 
-    showDistrictStats(fullName, latlng) {
-        let keyword = fullName.replace('화성시 ', '').replace(' 전체', '').trim();
+    // 2. 통계 말풍선 및 데이터 합산 (0명 버그 완벽 해결)
+    showDistrictStats(regionKey, config) {
+        const keywords = config.keywords || [];
         
-        // [수정] 학교가 아닌 것(교육지원청, 도서관 등 type에 '교육'이 들어간 것) 제외 필터링
-        const targets = this.markers.filter(m => {
-            const p = m.properties;
-            const isSchool = !p.type.includes('교육') && !p.name.includes('교육지원청'); // 학교만 필터
-            if (!isSchool) return false;
-
-            const adrs = p.adrs || '';
-            if (fullName === '화성시 전체') return adrs.includes('화성시');
-            if (fullName === '오산시') return adrs.includes('오산시');
-            return MapConfig.DISTRICTS[keyword]?.keywords?.some(k => adrs.includes(k));
+        // 해당 구역의 마커들을 주소 기반으로 필터링
+        const regionMarkers = this.markers.filter(m => {
+            const p = m.properties || {};
+            let adrs = String(p.adrs || p.address || p['주소'] || p['학교주소'] || "");
+            if (!adrs.trim()) adrs = Object.values(p).join(" ");
+            
+            if (regionKey === '화성시') return adrs.includes('화성');
+            if (regionKey === '오산시') return adrs.includes('오산');
+            return keywords.some(kw => adrs.includes(kw));
         });
 
-        // 통계 계산
-        const stats = targets.reduce((acc, m) => {
-            acc.s += parseInt(m.properties.stdnt_cnt) || 0;
-            acc.c += parseInt(m.properties.class_cnt) || 0;
-            acc.t += parseInt(m.properties.tchr_cnt) || 0;
-            return acc;
-        }, { s: 0, c: 0, t: 0 });
+        const totalSchools = regionMarkers.length;
+        let totalStudents = 0;
+        let totalTeachers = 0;
 
-        L.popup({ className: 'custom-popup stat-popup', pane: 'ultraTopPane' }).setLatLng(latlng).setContent(`
-            <div class="popup-content">
-                <div class="popup-title" style="color:#4A90E2;">${fullName}</div>
-                <hr class="popup-hr">
-                <ul class="popup-info-list">
-                    <li><span class="label">학교 수</span> <span class="value"><strong>${targets.length}</strong>개교</span></li>
-                    <li><span class="label">총 학생 수</span> <span class="value"><strong>${stats.s.toLocaleString()}</strong>명</span></li>
-                    <li><span class="label">총 교사 수</span> <span class="value"><strong>${stats.t.toLocaleString()}</strong>명</span></li>
-                </ul>
+        // [버그 해결] main.js에서 파싱해둔 stdnt_cnt(학생 수), tchr_cnt(교사 수)를 정확히 가져옵니다.
+        regionMarkers.forEach(m => {
+            const p = m.properties || {};
+            totalStudents += (p.stdnt_cnt || 0);
+            totalTeachers += (p.tchr_cnt || 0);
+        });
+
+        const fmt = (num) => num.toLocaleString('ko-KR');
+
+        const popupContent = `
+            <div class="stat-popup-card" style="min-width:230px; padding:5px; font-family:'Noto Sans KR', sans-serif;">
+                <div style="border-bottom:2px solid ${config.color}; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:15px; font-weight:900; color:#333;">${config.fullName}</span>
+                    <span style="background:${config.color}; color:white; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold;">총 ${fmt(totalSchools)}개교</span>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; border-radius:6px; border-left:4px solid #FF9F43;">
+                        <span style="font-size:12px; font-weight:bold; color:#666;">학교 수</span>
+                        <span style="font-size:14px; font-weight:900; color:#333;">${fmt(totalSchools)}<span style="font-size:11px; font-weight:normal; margin-left:2px;">개교</span></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; border-radius:6px; border-left:4px solid #28C76F;">
+                        <span style="font-size:12px; font-weight:bold; color:#666;">총 학생 수</span>
+                        <span style="font-size:14px; font-weight:900; color:#333;">${fmt(totalStudents)}<span style="font-size:11px; font-weight:normal; margin-left:2px;">명</span></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; border-radius:6px; border-left:4px solid #00CFE8;">
+                        <span style="font-size:12px; font-weight:bold; color:#666;">총 교사 수</span>
+                        <span style="font-size:14px; font-weight:900; color:#333;">${fmt(totalTeachers)}<span style="font-size:11px; font-weight:normal; margin-left:2px;">명</span></span>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px; text-align:center;">
+                    <button onclick="MapManager.focusRegion('${regionKey}')" 
+                            style="background:none; border:1px solid #ddd; color:#888; padding:6px 15px; border-radius:20px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.2s; width:100%;"
+                            onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+                        이 지역으로 지도 이동 🔍
+                    </button>
+                </div>
             </div>
-        `).openOn(this.map);
+        `;
+
+        L.popup({
+            className: 'custom-stat-popup',
+            closeButton: true, 
+            offset: L.point(0, -10),
+            autoPan: true
+        })
+        .setLatLng(config.pos)
+        .setContent(popupContent)
+        .openOn(this.map);
+    },
+
+    // 3. 팝업 내부의 "지역 이동" 버튼 클릭 시 실행되는 함수
+    focusRegion(key) {
+        const conf = MapConfig.DISTRICTS[key];
+        if (conf && conf.pos) {
+            this.map.setView(conf.pos, 14);
+            this.map.closePopup();
+        }
     }
 };
