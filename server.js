@@ -24,7 +24,7 @@ const ADMINS = {
 };
 
 app.use(bodyParser.json());
-app.use(express.static(__dirname)); 
+app.use(express.static(__dirname, { extensions: ['html'] }));
 app.use(session({
     secret: 'hwao-secret-key',
     resave: false,
