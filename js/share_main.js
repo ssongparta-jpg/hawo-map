@@ -2,8 +2,8 @@ const ShareApp = {
     // 기본 색상 설정
     hwFill: "#4A90E2",
     osFill: "#FF6392",
-    hwBorder: "#0047AB", // 테두리 변수 추가
-    osBorder: "#e7733d", // 테두리 변수 추가
+    hwBorder: "#0047AB", 
+    osBorder: "#e7733d", 
 
     async init() {
         // 커스텀 색상 불러오기
@@ -15,6 +15,11 @@ const ShareApp = {
             this.osFill = MapConfig.CustomColors.shared.osanFill;
             this.hwBorder = MapConfig.CustomColors.shared.hwaseongBorder;
             this.osBorder = MapConfig.CustomColors.shared.osanBorder;
+
+            // [이중 방어 로직] map.js가 만약 일반 지도 색상 변수를 참조하려 해도 무조건 공유학교 테두리 색상이 적용되도록 덮어치기
+            if (!MapConfig.CustomColors.general) MapConfig.CustomColors.general = {};
+            MapConfig.CustomColors.general.hwaseongBorder = this.hwBorder;
+            MapConfig.CustomColors.general.osanBorder = this.osBorder;
         }
 
         MapManager.init();
@@ -39,7 +44,6 @@ const ShareApp = {
                 const displayName = key === '화성시' ? '화성 다(多)가치' : '오산나래';
                 const imgSrc = key === '화성시' ? 'source/coco.png' : 'source/caca.png';
                 
-                // [디자인 수정] 대형 버튼 안의 아이콘도 배경 제거 및 그림자 적용
                 const icon = L.divIcon({
                     className: 'district-stat-marker',
                     html: `
@@ -135,19 +139,24 @@ const ShareApp = {
                 });
             });
             
-            // 경계선 로드
+            // 경계선 그리기 대기
             await MapManager.loadBoundaries();
 
-            // [핵심 버그 수정] map.js에 의존하지 않고, 이곳에서 공유학교 전용 테두리 색상을 최우선으로 강제 덮어쓰기!
+            // [핵심 해결] 경계선 데이터가 담긴 '폴더(LayerGroup)' 내부의 알맹이(Polygon)까지 파고들어가서 직접 테두리 색을 주입합니다.
             if (MapManager.boundaryGroup) {
                 MapManager.boundaryGroup.eachLayer(layer => {
-                    if (layer.feature && layer.feature.properties) {
-                        const sgg = layer.feature.properties.sggnm;
-                        if (sgg === '화성시') {
-                            layer.setStyle({ color: this.hwBorder });
-                        } else if (sgg === '오산시') {
-                            layer.setStyle({ color: this.osBorder });
-                        }
+                    // layer가 폴더(GeoJSON 그룹)일 경우 그 안의 도형들을 순회
+                    if (layer.eachLayer) {
+                        layer.eachLayer(subLayer => {
+                            if (subLayer.feature && subLayer.feature.properties) {
+                                const sgg = subLayer.feature.properties.sggnm;
+                                if (sgg === '화성시') {
+                                    subLayer.setStyle({ color: this.hwBorder }); // 화성시 테두리 변경
+                                } else if (sgg === '오산시') {
+                                    subLayer.setStyle({ color: this.osBorder }); // 오산시 테두리 변경
+                                }
+                            }
+                        });
                     }
                 });
             }
@@ -167,13 +176,11 @@ const ShareApp = {
 
     createSharedMarker(lat, lng, p, stackIndex = 0, count = 1) {
         const stackedClass = count > 1 ? 'is-stacked' : '';
-        // 아이콘이 커졌으므로 겹침 간격 넓힘
         const yOffset = count > 1 ? (stackIndex * 40) - ((count - 1) * 20) : 0; 
 
         const iconSrc = p.region === '화성시' ? 'source/coco.png' : (p.region === '오산시' ? 'source/caca.png' : '');
         const safeName = p.name.replace(/'/g, "\\'");
         
-        // [디자인 수정] 원형 배경, 테두리 제거 / 크기 확대(38px) / 입체 그림자(drop-shadow) 적용
         const iconHtml = `
             <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
                 <div class="marker-label-box" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">${p.name}</div>
@@ -257,7 +264,6 @@ const ShareApp = {
     initLegend() {
         const container = document.createElement('div');
         container.id = 'share-legend';
-        // [디자인 수정] 범례 안의 아이콘도 배경 제거 및 그림자 적용
         container.innerHTML = `
             <div class="legend-card">
                 <div class="legend-header" id="shareLegendToggle">
