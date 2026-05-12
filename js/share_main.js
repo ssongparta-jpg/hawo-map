@@ -2,15 +2,19 @@ const ShareApp = {
     // 기본 색상 설정
     hwFill: "#4A90E2",
     osFill: "#FF6392",
+    hwBorder: "#0047AB", // 테두리 변수 추가
+    osBorder: "#e7733d", // 테두리 변수 추가
 
     async init() {
-        // [버그 수정] 서버 커스텀 색상 불러오기 및 공유학교 모드 선언
+        // 커스텀 색상 불러오기
         if(MapConfig.loadCustomColors) await MapConfig.loadCustomColors();
-        MapConfig.isSharedMode = true; // map.js에서 공유학교용 테두리를 그리도록 플래그 설정
+        MapConfig.isSharedMode = true; 
 
         if (MapConfig.CustomColors && MapConfig.CustomColors.shared) {
             this.hwFill = MapConfig.CustomColors.shared.hwaseongFill;
             this.osFill = MapConfig.CustomColors.shared.osanFill;
+            this.hwBorder = MapConfig.CustomColors.shared.hwaseongBorder;
+            this.osBorder = MapConfig.CustomColors.shared.osanBorder;
         }
 
         MapManager.init();
@@ -20,7 +24,7 @@ const ShareApp = {
         const shareStyle = document.createElement('style');
         shareStyle.innerHTML = `
             .is-stacked .marker-label-box {
-                bottom: auto !important; top: 0 !important; left: 18px !important;
+                bottom: auto !important; top: 0 !important; left: 22px !important;
                 transform: translateY(-50%) !important; white-space: nowrap !important;
             }
             .view-labels-mode .is-stacked .marker-label-box { transform: translateY(-50%) !important; }
@@ -35,12 +39,13 @@ const ShareApp = {
                 const displayName = key === '화성시' ? '화성 다(多)가치' : '오산나래';
                 const imgSrc = key === '화성시' ? 'source/coco.png' : 'source/caca.png';
                 
+                // [디자인 수정] 대형 버튼 안의 아이콘도 배경 제거 및 그림자 적용
                 const icon = L.divIcon({
                     className: 'district-stat-marker',
                     html: `
                         <div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" 
                              style="background-color:${conf.color}!important; color:#fff; border-radius:30px; padding:6px 14px; display:flex; align-items:center; gap:8px; box-shadow:0 4px 10px rgba(0,0,0,0.3); border:2px solid white; cursor:pointer;">
-                            <img src="${imgSrc}" style="width:22px; height:22px; border-radius:50%; background:white; object-fit:cover;"/>
+                            <img src="${imgSrc}" style="width:28px; height:28px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); object-fit:contain; margin-left:-4px;"/>
                             <span style="font-weight:900; font-size:14px;">${displayName} ↗</span>
                         </div>
                     `,
@@ -88,7 +93,6 @@ const ShareApp = {
                 if (titleEl) titleEl.innerText = '화성오산 공유학교 지도';
             }
             
-            // [버그 수정] 불러온 색상 변수를 바탕으로 버튼 내부 색상(Fill) 적용
             MapConfig.DISTRICTS = {
                 "화성시": { pos: [37.185, 126.915], color: this.hwFill, fullName: "화성시 전체", keywords: ['화성'], link: "https://gong-u.goe.go.kr/hwaseong/main/view" },
                 "오산시": { pos: [37.145, 127.080], color: this.osFill, fullName: "오산시", keywords: ['오산'], link: "https://gong-u.goe.go.kr/osan/main/view" } 
@@ -131,7 +135,23 @@ const ShareApp = {
                 });
             });
             
+            // 경계선 로드
             await MapManager.loadBoundaries();
+
+            // [핵심 버그 수정] map.js에 의존하지 않고, 이곳에서 공유학교 전용 테두리 색상을 최우선으로 강제 덮어쓰기!
+            if (MapManager.boundaryGroup) {
+                MapManager.boundaryGroup.eachLayer(layer => {
+                    if (layer.feature && layer.feature.properties) {
+                        const sgg = layer.feature.properties.sggnm;
+                        if (sgg === '화성시') {
+                            layer.setStyle({ color: this.hwBorder });
+                        } else if (sgg === '오산시') {
+                            layer.setStyle({ color: this.osBorder });
+                        }
+                    }
+                });
+            }
+
             MapManager.addDistrictButtons(); 
             
             this.initLegend();
@@ -147,15 +167,17 @@ const ShareApp = {
 
     createSharedMarker(lat, lng, p, stackIndex = 0, count = 1) {
         const stackedClass = count > 1 ? 'is-stacked' : '';
-        const yOffset = count > 1 ? (stackIndex * 28) - ((count - 1) * 14) : 0; 
+        // 아이콘이 커졌으므로 겹침 간격 넓힘
+        const yOffset = count > 1 ? (stackIndex * 40) - ((count - 1) * 20) : 0; 
 
         const iconSrc = p.region === '화성시' ? 'source/coco.png' : (p.region === '오산시' ? 'source/caca.png' : '');
         const safeName = p.name.replace(/'/g, "\\'");
         
+        // [디자인 수정] 원형 배경, 테두리 제거 / 크기 확대(38px) / 입체 그림자(drop-shadow) 적용
         const iconHtml = `
             <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
                 <div class="marker-label-box" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">${p.name}</div>
-                <img src="${iconSrc}" class="marker-symbol" style="width:28px; height:28px; border-radius:50%; border:2px solid ${p.color}; background:white; object-fit:cover; box-shadow:0 2px 5px rgba(0,0,0,0.3);" onerror="this.style.display='none'" />
+                <img src="${iconSrc}" class="marker-symbol" style="width:38px; height:38px; filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.5)); object-fit:contain;" onerror="this.style.display='none'" />
             </div>
         `;
         const icon = L.divIcon({ className: 'marker-container-icon', html: iconHtml, iconSize: [0, 0] });
@@ -232,10 +254,10 @@ const ShareApp = {
             </div>`;
     },
 
-    // [버그 수정] 범례(Legend) 테두리 색상도 연동
     initLegend() {
         const container = document.createElement('div');
         container.id = 'share-legend';
+        // [디자인 수정] 범례 안의 아이콘도 배경 제거 및 그림자 적용
         container.innerHTML = `
             <div class="legend-card">
                 <div class="legend-header" id="shareLegendToggle">
@@ -246,12 +268,12 @@ const ShareApp = {
                     <div class="legend-reset-row" onclick="ShareApp.filterRegion('전체')">↺ 전체 보기</div>
                     
                     <div class="legend-row" onclick="ShareApp.filterRegion('화성시')">
-                        <img src="source/coco.png" style="width:20px; height:20px; border-radius:50%; border:2px solid ${this.hwFill}; background:white;"/>
+                        <img src="source/coco.png" style="width:24px; height:24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); object-fit:contain;"/>
                         <span class="l-text" style="font-weight:bold;">화성 다(多)가치</span>
                     </div>
                     
                     <div class="legend-row" onclick="ShareApp.filterRegion('오산시')">
-                        <img src="source/caca.png" style="width:20px; height:20px; border-radius:50%; border:2px solid ${this.osFill}; background:white;"/>
+                        <img src="source/caca.png" style="width:24px; height:24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); object-fit:contain;"/>
                         <span class="l-text" style="font-weight:bold;">오산나래</span>
                     </div>
                 </div>
