@@ -89,3 +89,35 @@
 .stat-popup-footer { margin-top:12px; text-align:center; }
 .btn-focus-region { background:none; border:1px solid #ddd; color:#888; padding:6px 15px; border-radius:20px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.2s; width:100%; }
 .btn-focus-region:hover { background:#f0f0f0; color:#333; }
+
+/* --- 공유학교 팝업 내부 요소 스타일 --- */
+.mb-12 { margin-bottom: 12px; }
+.w-65 { width: 65px; display: inline-block; }
+.fw-bold { font-weight: bold; }
+
+.block-list { display: block; }
+.block-list li { margin-bottom: 6px; }
+
+.shared-activity-box {
+    background: #e3f2fd; 
+    padding: 12px; 
+    border-radius: 8px; 
+    text-align: center; 
+    margin-top: 12px; 
+    border: 1px solid #bbdefb;
+}
+.activity-label {
+    font-size: 12px; 
+    color: #555; 
+    display: block; 
+    margin-bottom: 4px; 
+    font-weight: bold;
+}
+.activity-desc {
+    font-size: 13.5px; 
+    color: #0d47a1; 
+    line-height: 1.5; 
+    word-break: keep-all; 
+    display: block; 
+    white-space: pre-wrap;
+}

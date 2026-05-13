@@ -1,12 +1,10 @@
 const ShareApp = {
-    // 기본 색상 설정
     hwFill: "#4A90E2",
     osFill: "#FF6392",
     hwBorder: "#0047AB", 
     osBorder: "#e7733d", 
 
     async init() {
-        // 커스텀 색상 불러오기
         if(MapConfig.loadCustomColors) await MapConfig.loadCustomColors();
         MapConfig.isSharedMode = true; 
 
@@ -25,21 +23,10 @@ const ShareApp = {
         DistanceManager.init(); 
         await AuthManager.checkAuth();
         
-        const shareStyle = document.createElement('style');
-        shareStyle.innerHTML = `
-            .is-stacked .marker-label-box {
-                bottom: auto !important; top: 0 !important; left: 22px !important;
-                transform: translateY(-50%) !important; white-space: nowrap !important;
-                /* 왼쪽 띠가 잘 보이도록 패딩과 디자인 살짝 조정 */
-                padding: 4px 8px 4px 8px !important;
-                border-radius: 4px !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
-            }
-            .view-labels-mode .is-stacked .marker-label-box { transform: translateY(-50%) !important; }
-        `;
-        document.head.appendChild(shareStyle);
+        // [리팩토링] 하드코딩으로 style 태그를 만들어 넣던 로직 제거 (CSS로 이관)
 
-        window.openSharedPopup = function(uid) {
+        // 전역 함수 오염 방지를 위해 MapManager 객체 내부로 함수 이동
+        MapManager.openSharedPopup = function(uid) {
             const marker = MapManager.markers.find(m => m.properties.uid === uid);
             if (marker) {
                 if (MapManager.activeMarker) MapManager.activeMarker.setZIndexOffset(100);
@@ -51,38 +38,20 @@ const ShareApp = {
 
         MapManager.showDistrictStats = function() {};
         
-        // [디자인 반영] 메인 바로가기 버튼 둥근 캡슐형 & 흰색 테두리 그림자 스타일 적용
         MapManager.addDistrictButtons = function() {
             Object.entries(MapConfig.DISTRICTS).forEach(([key, conf]) => {
                 if (!conf.pos) return;
                 const displayName = key === '화성시' ? '화성 다(多)가치' : '오산나래';
                 const imgSrc = key === '화성시' ? 'source/coco.png' : 'source/caca.png';
-                
-                // [비율 조정] 오산나래 까까 머리 크기만 확대
-                const imgScale = key === '오산시' ? 'transform: scale(1.3);' : '';
+                const imgClass = key === '오산시' ? 'shared-dist-img osan-img' : 'shared-dist-img';
 
-                // [디자인 변경] 각진 테두리와 아래쪽 굵은 그림자가 있는 3D 스타일 버튼
-                const sharedBtnStyle = `
-                    background-color:${conf.color}!important; 
-                    color:#fff; 
-                    border-radius:4px;
-                    padding:10px 18px; 
-                    display:flex; 
-                    align-items:center; 
-                    gap:6px; 
-                    box-shadow: 0 4px 0px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.3); /* 3D 그림자 */
-                    border:none; 
-                    cursor:pointer;
-                    text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
-                `;
-
+                // [리팩토링] 인라인 스타일을 .shared-dist-btn 등의 클래스로 깔끔하게 교체
                 const icon = L.divIcon({
                     className: 'district-stat-marker',
                     html: `
-                        <div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" 
-                             style="${sharedBtnStyle}">
-                            <img src="${imgSrc}" style="width:24px; height:24px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4)); object-fit:contain; margin-left:-4px; ${imgScale}"/>
-                            <span style="font-weight:700; font-size:15px; letter-spacing: -0.5px;">${displayName} ↗</span>
+                        <div class="dist-stat-btn shared-dist-btn zoom-lv-${this.map.getZoom()}" style="background-color:${conf.color} !important;">
+                            <img src="${imgSrc}" class="${imgClass}" />
+                            <span class="shared-dist-label">${displayName} ↗</span>
                         </div>
                     `,
                     iconSize: [180, 50]
@@ -194,19 +163,16 @@ const ShareApp = {
         const iconSrc = p.region === '화성시' ? 'source/coco.png' : (p.region === '오산시' ? 'source/caca.png' : '');
         const safeName = p.name.replace(/'/g, "\\'");
         
-        // [디자인 반영] 이름표(라벨) 왼쪽에 지역 구분용 띠(Border) 추가
-        let labelBorderColor = '#cccccc'; // 기본색
-        if (p.region === '화성시') labelBorderColor = '#F8B62B'; // 화성시 주황색
-        if (p.region === '오산시') labelBorderColor = '#00A1E9'; // 오산시 파란색
+        let labelBorderColor = '#cccccc';
+        if (p.region === '화성시') labelBorderColor = '#F8B62B';
+        if (p.region === '오산시') labelBorderColor = '#00A1E9';
 
-        // [핵심 변경] 오산시 까까 머리 크기를 화성시(38px) 대비 50px로 확대!
-        const imgSize = p.region === '오산시' ? 50 : 38;
-        const imgMargin = p.region === '오산시' ? 'margin-top: -6px;' : '';
+        const imgClass = p.region === '오산시' ? 'shared-marker-img osan-img' : 'shared-marker-img';
 
         const iconHtml = `
-            <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="event.stopPropagation(); window.openSharedPopup('${p.uid}')">
+            <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="event.stopPropagation(); MapManager.openSharedPopup('${p.uid}')">
                 <div class="marker-label-box" style="border-left: 5px solid ${labelBorderColor};">${p.name}</div>
-                <img src="${iconSrc}" class="marker-symbol" style="width:${imgSize}px; height:${imgSize}px; ${imgMargin} filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.5)); object-fit:contain;" onerror="this.style.display='none'" />
+                <img src="${iconSrc}" class="${imgClass}" onerror="this.style.display='none'" />
             </div>
         `;
         const icon = L.divIcon({ className: 'marker-container-icon', html: iconHtml, iconSize: [0, 0] });
@@ -217,65 +183,47 @@ const ShareApp = {
             });
             
         marker.properties = p;
-        marker.on('click', () => { window.openSharedPopup(p.uid); });
+        marker.on('click', () => { MapManager.openSharedPopup(p.uid); });
         
         return marker;
     },
 
     makeSharedPopupHtml(p) {
         const isLoggedIn = AuthManager.userId !== null;
-        const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
-        const delBtnBg = isLoggedIn ? '#e74c3c' : '#ccc';
         const btnDisabled = isLoggedIn ? '' : 'disabled';
         const safeName = p.name.replace(/'/g, "\\'");
 
+        // [리팩토링] 하드코딩 스타일을 시맨틱 클래스로 대거 교체
         return `
             <div class="popup-content compact-mode">
                 <div class="popup-header">
                     <div class="popup-category" style="color:${p.color}">${p.type}</div>
                 </div>
-                <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
-                    <div class="popup-title" style="margin: 0;">${p.name}</div>
-                    <button id="fav-btn-${p.name}" class="fav-toggle-btn"
-                            onclick="MapManager.toggleFavorite('${safeName}', event)"
-                            style="background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc;">
-                        ☆
-                    </button>
+                <div class="popup-title-row">
+                    <h3 class="popup-title">${p.name}</h3>
+                    <button id="fav-btn-${safeName}" class="fav-toggle-btn" onclick="MapManager.toggleFavorite('${safeName}', event)">☆</button>
                 </div>
-                <div class="popup-adrs" style="margin-bottom: 12px;">${p.adrs}</div>
+                <div class="popup-adrs mb-12">${p.adrs}</div>
                 <hr class="popup-hr">
                 
-                <ul class="popup-info-list" style="display:block;">
-                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">진행장소</span> <span class="value" style="font-weight:bold;">${p.place}</span></li>
-                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">모집대상</span> <span class="value">${p.target}</span></li>
-                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">운영기간</span> <span class="value">${p.duration}</span></li>
+                <ul class="popup-info-list block-list">
+                    <li><span class="label w-65">진행장소</span> <span class="value fw-bold">${p.place}</span></li>
+                    <li><span class="label w-65">모집대상</span> <span class="value">${p.target}</span></li>
+                    <li><span class="label w-65">운영기간</span> <span class="value">${p.duration}</span></li>
                 </ul>
 
-                <div style="background:#e3f2fd; padding:12px; border-radius:8px; text-align:center; margin-top:12px; border:1px solid #bbdefb;">
-                    <span style="font-size:12px; color:#555; display:block; margin-bottom:4px; font-weight:bold;">주요활동</span>
-                    <strong style="font-size:13.5px; color:#0d47a1; line-height:1.5; word-break:keep-all; display:block; white-space:pre-wrap;">${p.activity}</strong>
+                <div class="shared-activity-box">
+                    <span class="activity-label">주요활동</span>
+                    <strong class="activity-desc">${p.activity}</strong>
                 </div>
 
-                <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
-                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
-                    <textarea id="memo-${safeName}"
-                        style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
-                        placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
-                        disabled></textarea>
+                <div class="memo-section">
+                    <div class="memo-title">🏫 개인 메모</div>
+                    <textarea id="memo-${safeName}" class="memo-textarea" placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}" disabled></textarea>
 
-                    <div style="display: flex; gap: 5px; margin-top: 5px;">
-                        <button id="btn-save-${safeName}" class="memo-save-btn"
-                            onclick="AuthManager.saveMemo('${safeName}', event)"
-                            style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
-                            ${btnDisabled}>
-                            저장
-                        </button>
-                        <button id="btn-del-${safeName}" class="memo-del-btn"
-                            onclick="AuthManager.deleteMemo('${safeName}', event)"
-                            style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
-                            ${btnDisabled}>
-                            삭제
-                        </button>
+                    <div class="memo-btn-group">
+                        <button id="btn-save-${safeName}" class="memo-btn memo-save-btn ${isLoggedIn ? '' : 'disabled-btn'}" onclick="AuthManager.saveMemo('${safeName}', event)" ${btnDisabled}>저장</button>
+                        <button id="btn-del-${safeName}" class="memo-btn memo-del-btn ${isLoggedIn ? '' : 'disabled-btn'}" onclick="AuthManager.deleteMemo('${safeName}', event)" ${btnDisabled}>삭제</button>
                     </div>
                 </div>
             </div>`;
@@ -294,13 +242,13 @@ const ShareApp = {
                     <div class="legend-reset-row" onclick="ShareApp.filterRegion('전체')">↺ 전체 보기</div>
                     
                     <div class="legend-row" onclick="ShareApp.filterRegion('화성시')">
-                        <img src="source/coco.png" style="width:24px; height:24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); object-fit:contain;"/>
-                        <span class="l-text" style="font-weight:bold;">화성 다(多)가치</span>
+                        <img src="source/coco.png" class="legend-region-img" />
+                        <span class="l-text fw-bold">화성 다(多)가치</span>
                     </div>
                     
                     <div class="legend-row" onclick="ShareApp.filterRegion('오산시')">
-                        <img src="source/caca.png" style="width:30px; height:30px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); object-fit:contain; margin-left:-3px; margin-right:-3px;"/>
-                        <span class="l-text" style="font-weight:bold;">오산나래</span>
+                        <img src="source/caca.png" class="legend-region-img osan-legend-img" />
+                        <span class="l-text fw-bold">오산나래</span>
                     </div>
                 </div>
             </div>
@@ -341,12 +289,12 @@ const ShareApp = {
             matches.slice(0, 5).forEach(m => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
-                div.innerHTML = `<span>${m.properties.name}</span> <span style="font-size:11px; color:#8E44AD; font-weight:bold;">${m.properties.type}</span>`;
+                div.innerHTML = `<span>${m.properties.name}</span> <span class="search-item-type type-shared">${m.properties.type}</span>`;
                 div.onclick = () => {
                     resultBox.style.display = 'none';
                     input.value = m.properties.name;
                     input.blur();
-                    window.openSharedPopup(m.properties.uid);
+                    MapManager.openSharedPopup(m.properties.uid);
                 };
                 resultBox.appendChild(div);
             });
@@ -359,24 +307,21 @@ const ShareApp = {
     }
 };
 
+// [리팩토링] 인라인 스타일 주입을 걷어낸 깔끔한 DistanceManager
 const DistanceManager = {
     active: false, isPaused: false, points: [], lines: [], markers: [], tempLine: null, totalDistance: 0, hoverTimer: null,
     init() {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            #btn-pause-measure { position: absolute; bottom: 30px; right: 120px; z-index: 1200; background: white; color: #333; border: 1px solid #ccc; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: all 0.2s; display: none; }
-            #btn-pause-measure.paused { background: #f39c12; color: white; border-color: #e67e22; }
-            .dist-tooltip { pointer-events: auto !important; cursor: pointer !important; border: 1px solid #e74c3c !important; background: white !important; color: #e74c3c !important; font-weight: bold !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; }
-            @media (max-width: 768px) { #btn-pause-measure { bottom: 70px; right: 105px; padding: 8px 12px; font-size: 12px; } }
-        `;
-        document.head.appendChild(style);
         const pauseBtn = document.createElement('button');
-        pauseBtn.id = 'btn-pause-measure'; pauseBtn.innerHTML = '⏸ 일시정지';
+        pauseBtn.id = 'btn-pause-measure'; 
+        pauseBtn.className = 'btn-pause-measure';
+        pauseBtn.innerHTML = '⏸ 일시정지';
         (document.querySelector('.container') || document.body).appendChild(pauseBtn);
+        
         document.addEventListener('click', (e) => {
             const pBtn = e.target.closest('#btn-pause-measure');
             if (pBtn) { e.preventDefault(); this.togglePause(); }
         });
+        
         if (MapManager && MapManager.map) {
             MapManager.map.on('click', (e) => { if (this.active && !this.isPaused) this.addPoint(e.latlng); });
             MapManager.map.on('mousemove', (e) => { if (this.active && !this.isPaused && this.points.length > 0) this.drawTempLine(e.latlng); });
@@ -423,23 +368,28 @@ const DistanceManager = {
         }
         const marker = L.circleMarker(latlng, { radius: 7, color: '#c0392b', fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(MapManager.map);
         const distStr = this.formatDistance(this.totalDistance);
+        
         const popupHtml = `
-            <div id="route-popup-${pIndex}" style="text-align:center; padding:8px; min-width:180px;">
-                <div style="font-weight:bold; font-size:13px; margin-bottom:8px; color:#333;">이 지점까지 길 찾기</div>
-                <button onclick="DistanceManager.openNaverUpTo(${pIndex})" style="background:#03c75a; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%;">네이버 지도 열기 ↗</button>
-                <div style="color:#e74c3c; font-size:11px; margin-top:8px; font-weight:bold;">※ 경유지는 최대 5개 설정 가능합니다</div>
+            <div id="route-popup-${pIndex}" class="route-popup-box">
+                <div class="route-popup-title">이 지점까지 길 찾기</div>
+                <button class="btn-naver-route" onclick="DistanceManager.openNaverUpTo(${pIndex})">네이버 지도 열기 ↗</button>
+                <div class="route-popup-warning">※ 경유지는 최대 5개 설정 가능합니다</div>
             </div>`;
         marker.bindPopup(popupHtml, { closeButton: false, autoClose: false, offset: [0, -5] });
+        
         const tooltip = marker.bindTooltip(`<div class="tooltip-inner">${this.points.length === 1 ? '출발지' : distStr}</div>`, {
             permanent: true, direction: 'right', className: 'dist-tooltip', interactive: true
         }).openTooltip();
+        
         const openAction = () => { clearTimeout(this.hoverTimer); marker.openPopup(); };
         const closeAction = () => { this.hoverTimer = setTimeout(() => { marker.closePopup(); }, 600); };
         marker.on('mouseover', openAction).on('mouseout', closeAction);
+        
         setTimeout(() => {
             const tooltipEl = tooltip.getTooltip().getElement();
             if (tooltipEl) { tooltipEl.addEventListener('mouseenter', openAction); tooltipEl.addEventListener('mouseleave', closeAction); }
         }, 50);
+        
         marker.on('popupopen', (e) => {
             const node = e.popup.getElement();
             node.addEventListener('mouseenter', openAction); node.addEventListener('mouseleave', closeAction);
