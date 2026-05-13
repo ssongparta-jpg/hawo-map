@@ -362,14 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const helpBtn = document.getElementById('helpBtn');
     if (helpBtn) {
     helpBtn.onclick = () => {
-        // HelpManager 객체 자체와 show 함수가 존재하는지 안전하게 체크
-        if (typeof HelpManager !== 'undefined' && typeof HelpManager.show === 'function') {
-            HelpManager.show(); // (과거 코드에 따라 open이 아닌 show일 확률이 높습니다)
-        } else if (typeof HelpManager !== 'undefined' && typeof HelpManager.open === 'function') {
-            HelpManager.open(); 
+        // utils.js가 정상 로드되었는지 확인 후 올바른 함수 호출
+        if (typeof HelpManager !== 'undefined') {
+            if (typeof HelpManager.showModal === 'function') {
+                HelpManager.showModal();
+            } else if (typeof HelpManager.open === 'function') {
+                HelpManager.open();
+            }
         } else {
-            console.error("HelpManager 로드 오류: 팝업을 열 수 없습니다.");
-            alert("도움말 데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+            console.warn("도움말 데이터를 아직 불러오고 있습니다.");
         }
     };
 }
