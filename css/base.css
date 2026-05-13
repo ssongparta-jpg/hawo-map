@@ -1,13 +1,22 @@
+/* =========================================
+   base.css : 앱 전체 기본 레이아웃 및 폰트
+   ========================================= */
 html, body { 
     width: 100%; height: 100%; margin: 0; padding: 0; 
-    overflow: hidden; background-color: #e0e0e0; 
+    overflow: hidden; background-color: #f3f3f3; 
+    font-family: 'Noto Sans KR', sans-serif;
     display: flex; justify-content: center; align-items: center;
 }
+
+* { box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; }
+
 .container { 
     position: relative; width: 100%; height: 100%; max-width: 1400px; 
-    background: #fff; box-shadow: 0 0 50px rgba(0,0,0,0.15); overflow: hidden;
+    background: #fcfcfc; box-shadow: 0 0 50px rgba(0,0,0,0.15); overflow: hidden;
+    z-index: 1200;
 }
-#map { width: 100%; height: 100%; background: #fdfdfd; }
+
+#map { width: 100%; height: 100%; background: #fdfdfd; z-index: 10; }
 .leaflet-tile { filter: grayscale(100%) brightness(105%); }
 .cursor-crosshair { cursor: crosshair !important; }
 

@@ -1,54 +1,39 @@
 /* =========================================
-   legend.css : 원본 디자인 유지 및 접기 추가
+   legend.css : 지도 범례 공통 스타일
    ========================================= */
-#legend {
+
+/* 일반 학교 범례 & 공유학교 범례 공통 위치 */
+#legend, #share-legend {
     position: absolute;
-    top: 80px; /* 흰색 띠 바로 아래 여백 */
+    top: 80px; 
     left: 20px;
-    z-index: 1200;
+    z-index: 1100; /* 검색창(1500)보다 낮게 설정 */
 }
 
+/* 범례 카드 레이아웃 */
 .legend-card {
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    width: 140px;
-    border: 1px solid #eaeaea;
-    overflow: hidden;
+    background: #ffffff; border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15); width: 140px;
+    border: 1px solid #eaeaea; overflow: hidden;
 }
 
 .legend-header {
-    padding: 10px 12px;
-    background: #fdfdfd;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
+    padding: 10px 12px; background: #fdfdfd; display: flex;
+    justify-content: space-between; align-items: center;
+    cursor: pointer; border-bottom: 1px solid #eee; user-select: none;
 }
 
 .legend-label { font-weight: bold; font-size: 13px; color: #333; display: flex; align-items: center; gap: 5px; margin: 0; }
 .arrow-icon { font-size: 10px; transition: transform 0.3s ease; color: #999; }
 
-.legend-content {
-    max-height: 400px;
-    overflow-y: auto;
-    transition: max-height 0.3s ease;
-    padding: 8px;
-}
+/* 접기/펴기 애니메이션 */
+.legend-content { max-height: 400px; overflow-y: auto; transition: max-height 0.3s ease; padding: 8px; }
+.legend-content.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; border: none; overflow: hidden; }
 
-/* 접혔을 때 상태 */
-.legend-content.collapsed {
-    max-height: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    border: none;
-}
-
+/* 항목(Row) 디자인 */
 .legend-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 5px; font-size: 12px; cursor: pointer;
-    border-radius: 4px; transition: background 0.2s; color: #555;
+    display: flex; align-items: center; gap: 8px; padding: 6px 5px; font-size: 12px; 
+    cursor: pointer; border-radius: 4px; transition: background 0.2s; color: #555; margin: 0;
 }
 .legend-row:hover { background: #f0f7ff; color: #4A90E2; font-weight: bold; }
 .l-symbol { font-weight: bold; width: 16px; text-align: center; font-size: 14px; }
@@ -56,5 +41,5 @@
 
 /* 모바일 전용 */
 @media (max-width: 768px) {
-    #legend { top: 120px; left: 10px; } /* 검색창에 겹치지 않게 더 아래로 */
+    #legend, #share-legend { top: 115px; left: 10px; } 
 }

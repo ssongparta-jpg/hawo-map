@@ -1,93 +1,49 @@
 /* =========================================
-   ui.css : 검색, 로그인, 범례, 컨트롤 전체
+   ui.css : 메인 화면의 각종 UI 컨트롤
    ========================================= */
 
-/* 1. 검색창 (겹침 현상 완벽 해결) */
+/* 1. 검색창 및 자동완성 드롭다운 */
 .search-container {
-    position: absolute;
-    top: 11px; 
-    left: 20px;
-    z-index: 1500 !important; /* 👈 여기를 1500으로 수정 */
-    display: flex; 
-    align-items: center;
-    gap: 8px; 
-    width: 360px; 
+    position: absolute; top: 11px; left: 20px;
+    z-index: 1500; display: flex; align-items: center; gap: 8px; width: 360px; 
 }
 .search-wrapper { flex: 1; position: relative; }
 .search-input-box {
-    width: 100%; height: 38px; padding: 0 15px;
-    border-radius: 19px; border: 1px solid #ccc;
-    outline: none; font-size: 13px; box-sizing: border-box;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    width: 100%; height: 38px; padding: 0 15px; border-radius: 19px; border: 1px solid #ccc;
+    outline: none; font-size: 13px; box-sizing: border-box; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 .advanced-search-btn {
-    flex-shrink: 0; /* 버튼이 찌그러지는 현상 방지! */
-    height: 38px; padding: 0 15px; border-radius: 19px;
+    flex-shrink: 0; height: 38px; padding: 0 15px; border-radius: 19px;
     background: #00427a; color: white; border: none; font-weight: bold;
     cursor: pointer; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* 2. 로그인 창 */
-#auth-area {
-    position: absolute;
-    top: 12px;
-    right: 20px;
-    z-index: 1200;
-    display: flex; align-items: center; gap: 5px;
+.search-results-list {
+    position: absolute; top: calc(100% + 5px); left: 0; width: 100%;
+    background-color: #ffffff; border: 1px solid #ddd; border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15); z-index: 9999;
+    max-height: 250px; overflow-y: auto; padding: 0; margin: 0;
 }
-#login-form, #user-info { display: flex; align-items: center; gap: 5px; }
-#auth-area input { width: 90px; height: 34px; border: 1px solid #ccc; border-radius: 4px; padding: 0 8px; font-size: 12px; box-sizing: border-box; }
-#auth-area button { height: 34px; padding: 0 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 12px;}
-.btn-login { background-color: #4A90E2; }
-.btn-join { background-color: #2ECC71; }
-.btn-logout { background-color: #666; }
+.search-item {
+    background-color: #ffffff; padding: 10px 15px; font-size: 13px; color: #333;
+    cursor: pointer; border-bottom: 1px solid #f1f1f1; transition: background 0.2s; text-align: left; margin: 0;
+}
+.search-item:last-child { border-bottom: none; }
+.search-item:hover { background-color: #eef5ff; color: #4A90E2; font-weight: bold; }
 
-/* 3. 범례 카드 (사라진 디자인 복구 및 검색창 아래로 롤백) */
-#legend {
-    position: absolute;
-    top: 80px; 
-    left: 20px;
-    z-index: 1100 !important; 
-}
-.legend-card {
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    width: 140px;
-    border: 1px solid #eaeaea;
-    overflow: hidden;
-}
-.legend-header {
-    padding: 10px 12px; background: #fdfdfd; display: flex;
-    justify-content: space-between; align-items: center;
-    cursor: pointer; border-bottom: 1px solid #eee; user-select: none;
-}
-.legend-label { font-weight: bold; font-size: 13px; color: #333; display: flex; align-items: center; gap: 5px; margin: 0; }
-.arrow-icon { font-size: 10px; transition: transform 0.3s ease; color: #999; }
-.legend-content {
-    max-height: 400px; overflow-y: auto; transition: max-height 0.3s ease; padding: 8px;
-}
-.legend-content.collapsed { max-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; border: none; overflow: hidden; }
-.legend-row {
-    display: flex; align-items: center; gap: 8px; padding: 6px 5px; font-size: 12px; 
-    cursor: pointer; border-radius: 4px; transition: background 0.2s; color: #555; margin: 0;
-}
-.legend-row:hover { background: #f0f7ff; color: #4A90E2; font-weight: bold; }
-.l-symbol { font-weight: bold; width: 16px; text-align: center; font-size: 14px; }
-.legend-reset-row { color: #4A90E2; font-weight: bold; font-size: 12px; padding-bottom: 8px; margin-bottom: 5px; border-bottom: 1px dashed #eee; cursor: pointer; text-align: center; }
+/* 검색 결과 글자색 */
+.search-item-type { font-size: 11px; font-weight: bold; }
+.search-item-type.type-elem { color: #2ECC71; }
+.search-item-type.type-mid { color: #F1C40F; }
+.search-item-type.type-high { color: #E74C3C; }
+.search-item-type.type-kinder { color: #4A90E2; }
+.search-item-type.type-shared { color: #8E44AD; }
+.search-item-type.type-default { color: #333; }
 
-/* 4. 하단 컨트롤러 */
-#btn-measure {
-    position: absolute; bottom: 30px; right: 20px; z-index: 1200;
-    background: white; color: #333; border: 1px solid #ccc; padding: 8px 14px;
-    border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px;
-}
-#btn-measure:hover { background: #f0f0f0; }
+/* 2. 하단 컨트롤러 (행정구역/즐겨찾기 토글) */
 .boundary-toggle-container {
-    position: absolute; bottom: 30px; left: 20px; z-index: 1200;
-    display: flex; align-items: center; background: rgba(255, 255, 255, 0.9);
-    padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); gap: 15px;
+    position: absolute; bottom: 30px; left: 20px; z-index: 1200; display: flex; align-items: center; 
+    background: rgba(255, 255, 255, 0.9); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); gap: 15px;
 }
 .control-row { display: flex; align-items: center; gap: 5px; }
 .switch-label { font-size: 12px; font-weight: bold; margin: 0; }
@@ -98,204 +54,34 @@
 input:checked + .slider { background: #4A90E2; }
 input:checked + .slider:before { transform: translateX(16px); }
 
-/* 5. 모바일 전용 */
+/* 3. 거리재기 메인 & 서브 UI */
+#btn-measure {
+    position: absolute; bottom: 30px; right: 20px; z-index: 1200;
+    background: white; color: #333; border: 1px solid #ccc; padding: 8px 14px;
+    border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px;
+}
+#btn-measure:hover { background: #f0f0f0; }
+#btn-measure.active { background: #e74c3c; color: white; border-color: #c0392b; }
+
+.btn-pause-measure {
+    position: absolute; bottom: 30px; right: 120px; z-index: 1200; background: white; color: #333; 
+    border: 1px solid #ccc; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; 
+    cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: all 0.2s; display: none;
+}
+.btn-pause-measure.paused { background: #f39c12; color: white; border-color: #e67e22; }
+
+/* 길찾기 안내 미니 팝업 */
+.route-popup-box { text-align: center; padding: 8px; min-width: 180px; }
+.route-popup-title { font-weight: bold; font-size: 13px; margin-bottom: 8px; color: #333; }
+.btn-naver-route { background: #03c75a; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
+.btn-naver-route:hover { background: #02b350; }
+.route-popup-warning { color: #e74c3c; font-size: 11px; margin-top: 8px; font-weight: bold; }
+
+/* 4. 모바일 화면 대응 */
 @media (max-width: 768px) {
     .search-container { top: 65px; left: 50%; transform: translateX(-50%); width: 92%; }
-    #legend { top: 115px; left: 10px; } /* 검색창과 안 겹치게 내림 */
-    #auth-area { top: auto; bottom: 0; left: 0; right: 0; width: 100%; justify-content: center; background: white; padding: 10px 0; border-top: 1px solid #ddd; }
     .boundary-toggle-container { bottom: 70px; left: 10px; flex-direction: column; align-items: flex-start; gap: 8px; }
     #btn-measure { bottom: 70px; right: 10px; }
-}
-
-/* =========================================
-   검색 자동완성(드롭다운) 결과창 완벽 복구
-   ========================================= */
-
-/* 검색결과 목록을 감싸는 전체 박스 */
-.search-results-list {
-    position: absolute !important;
-    top: calc(100% + 5px) !important; /* 검색창에서 5px 정도 예쁘게 띄움 */
-    left: 0 !important;
-    width: 100% !important;
-    background-color: #ffffff !important; /* 하얀 배경 강제 적용! */
-    border: 1px solid #ddd !important;
-    border-radius: 12px !important;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
-    z-index: 9999 !important; /* 지도, 헤더, 범례 모두 뚫고 무조건 최상단 */
-    max-height: 250px !important;
-    overflow-y: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* 검색결과 항목(줄) 디자인 */
-.search-item {
-    background-color: #ffffff !important; /* 항목 배경도 확실하게 하얀색으로 칠함 */
-    padding: 10px 15px !important;
-    font-size: 13px !important;
-    color: #333 !important;
-    cursor: pointer !important;
-    border-bottom: 1px solid #f1f1f1 !important;
-    transition: background 0.2s !important;
-    text-align: left !important;
-    margin: 0 !important;
-}
-
-/* 마지막 줄은 밑줄 제거 */
-.search-item:last-child {
-    border-bottom: none !important;
-}
-
-/* 마우스 올렸을 때 파란색 하이라이트 효과 */
-.search-item:hover {
-    background-color: #eef5ff !important;
-    color: #4A90E2 !important;
-    font-weight: bold !important;
-}
-
-/* 거리재기 툴팁 디자인 */
-.dist-tooltip {
-    background-color: rgba(255, 255, 255, 0.9) !important;
-    border: 1px solid #e74c3c !important;
-    border-radius: 6px !important;
-    color: #e74c3c !important;
-    padding: 2px 8px !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
-}
-.dist-tooltip::before { display: none !important; } /* 기본 꼬리 제거 */
-
-#btn-measure.active { 
-    background: #e74c3c !important; 
-    color: white !important; 
-    border-color: #c0392b !important; 
-}
-
-/* ==========================================
-   1. 학교 리스트 지역별 왼쪽 테두리 (줄) 색상
-   ========================================== */
-/* 오산시: 파란색 */
-.border-osan {
-  border-left: 5px solid #2563eb !important; 
-}
-/* 화성시: 주황색 */
-.border-hwaseong {
-  border-left: 5px solid #f97316 !important;
-}
-
-/* ==========================================
-   2. 공유학교 바로가기 버튼 네모낳게 변경
-   ========================================== */
-/* ※ 버튼의 실제 ID나 Class명(예: #shared-school-btn)으로 맞춰주세요 */
-#shared-school-btn, .btn-shared {
-  border-radius: 12px !important; /* 0으로 설정하면 완전히 각진 네모가 됩니다 */
-  padding: 12px 20px !important;
-  width: auto !important;         /* 기존에 동그라미를 위해 고정된 width가 있다면 해제 */
-  height: auto !important;        /* 기존에 동그라미를 위해 고정된 height가 있다면 해제 */
-  aspect-ratio: auto !important;
-}
-
-/* --- 거리재기 및 네이버 길찾기 관련 스타일 --- */
-
-/* 일시정지 플로팅 버튼 */
-.btn-pause-measure {
-    position: absolute; 
-    bottom: 30px; 
-    right: 120px; 
-    z-index: 1200;
-    background: white; 
-    color: #333; 
-    border: 1px solid #ccc; 
-    padding: 8px 14px;
-    border-radius: 20px; 
-    font-size: 13px; 
-    font-weight: bold; 
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2); 
-    transition: all 0.2s; 
-    display: none;
-}
-.btn-pause-measure.paused { 
-    background: #f39c12; 
-    color: white; 
-    border-color: #e67e22; 
-}
-
-/* 거리재기 툴팁 (빨간 박스) */
-.dist-tooltip { 
-    pointer-events: auto !important; 
-    cursor: pointer !important;
-    border: 1px solid #e74c3c !important;
-    background: white !important;
-    color: #e74c3c !important;
-    font-weight: bold !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-}
-
-/* 경로 팝업창 공통 스타일 */
-.route-popup-box {
-    text-align: center; 
-    padding: 8px; 
-    min-width: 180px;
-}
-.route-popup-title {
-    font-weight: bold; 
-    font-size: 13px; 
-    margin-bottom: 8px; 
-    color: #333;
-}
-.btn-naver-route {
-    background: #03c75a; 
-    color: white; 
-    border: none; 
-    padding: 8px 12px; 
-    border-radius: 6px; 
-    font-weight: bold; 
-    cursor: pointer; 
-    width: 100%;
-    transition: background 0.2s;
-}
-.btn-naver-route:hover {
-    background: #02b350;
-}
-.route-popup-warning {
-    color: #e74c3c; 
-    font-size: 11px; 
-    margin-top: 8px; 
-    font-weight: bold;
-}
-
-/* 모바일 화면 대응 */
-@media (max-width: 768px) { 
-    .btn-pause-measure { 
-        bottom: 70px; 
-        right: 105px; 
-        padding: 8px 12px; 
-        font-size: 12px; 
-    } 
-}
-
-/* --- search.js 드롭다운 검색 결과 색상 --- */
-.search-item-type { font-size: 11px; font-weight: bold; }
-.search-item-type.type-elem { color: #2ECC71; }
-.search-item-type.type-mid { color: #F1C40F; }
-.search-item-type.type-high { color: #E74C3C; }
-.search-item-type.type-kinder { color: #4A90E2; }
-.search-item-type.type-default { color: #333; }
-
-/* --- utils.js 도움말 팝업창 스타일 --- */
-.help-title {
-    font-size: 22px; 
-    margin-bottom: 15px; 
-    font-weight: 900; 
-    color: #333;
-}
-.help-desc {
-    font-size: 14px; 
-    line-height: 1.6; 
-    color: #555; 
-    margin-bottom: 25px; 
-    background: #f9f9f9; 
-    padding: 15px; 
-    border-radius: 8px;
-    word-break: keep-all;
+    .btn-pause-measure { bottom: 70px; right: 105px; padding: 8px 12px; font-size: 12px; } 
 }

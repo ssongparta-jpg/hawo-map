@@ -2,60 +2,43 @@
    header.css : 중앙 파란색 헤더 & 하얀색 띠
    ========================================= */
 
-/* 1. 상단 하얀색 전체 띠 */
+/* 상단 하얀색 전체 띠 (PC 전용) */
 .pc-top-bar {
-    position: absolute; 
-    top: 0; left: 0; 
-    width: 100%; height: 60px;
-    background: #ffffff;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    z-index: 1000;
+    position: absolute; top: 0; left: 0; width: 100%; height: 60px;
+    background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000;
 }
 
-/* 2. 중앙 파란색 헤더 */
+/* 중앙 파란색 헤더 컨테이너 */
 .header-center-group {
-    position: absolute;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
-    z-index: 1500;
-    display: flex;
-    justify-content: center;
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    z-index: 1500; display: flex; justify-content: center;
 }
 
 .header-shape {
-    background-color: #00427a;
-    color: #ffffff;
-    border-radius: 0 0 20px 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    height: 60px;
-    padding: 0 25px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    white-space: nowrap;
+    background-color: #00427a; color: #ffffff; border-radius: 0 0 20px 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2); height: 60px; padding: 0 25px;
+    display: flex; align-items: center; gap: 15px; white-space: nowrap;
 }
 
-/* 로고 및 도움말 */
+/* 로고 및 도움말 버튼 */
 .logo-group { display: flex; align-items: center; gap: 8px; }
-.logo-img { height: 28px; width: auto; } /* 로고 오리지널 컬러 */
+.logo-img { height: 28px; width: auto; }
 .help-button {
     width: 24px; height: 24px; border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.5);
-    background: transparent; color: white;
-    font-weight: bold; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.5); background: transparent; color: white;
+    font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    display: flex; align-items: center; justify-content: center; transition: background 0.2s;
 }
+.help-button:hover { background: rgba(255,255,255,0.2); }
 
-/* 제목 및 전환 버튼 (새로고침 아이콘) */
+/* 제목 및 전환 버튼 */
 .title-wrapper { display: flex; align-items: center; gap: 8px; }
 .header_text { font-size: 18px; font-weight: 800; margin: 0; color: #ffffff; }
 .title-switch-btn {
     width: 26px; height: 26px; border-radius: 50%;
-    background: #4A90E2; color: white !important;
+    background: #4A90E2; color: white !important; text-decoration: none; font-size: 13px;
     display: flex; align-items: center; justify-content: center;
-    text-decoration: none; font-size: 13px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
 }
 .title-switch-btn:hover { transform: rotate(180deg); background: #357ABD; }
 
