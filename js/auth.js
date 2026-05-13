@@ -228,12 +228,58 @@ const AdminManager = {
         if (modal) modal.style.display = 'none';
     },
 
-    // 2단계용 캡챠 생성 로직
+    // [핵심 변경] 실제 타 사이트형 이미지 캡챠 생성 로직 (Canvas 활용)
     generateCaptcha() {
-        const num1 = Math.floor(Math.random() * 9) + 1;
-        const num2 = Math.floor(Math.random() * 9) + 1;
-        this.captchaAnswer = num1 + num2;
-        document.getElementById('captcha-question').innerText = `${num1} + ${num2} = `;
+        const canvas = document.getElementById('captcha-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        // 1. 랜덤 문자 5개 생성 (가독성을 위해 헷갈리는 글자 0, O, I, 1, l 등 제외)
+        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        let captchaStr = '';
+        for (let i = 0; i < 5; i++) {
+            captchaStr += chars[Math.floor(Math.random() * chars.length)];
+        }
+        this.captchaAnswer = captchaStr;
+
+        // 2. 배경 칠하기
+        ctx.fillStyle = '#f8f9fa';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 3. 방해 선 그리기 (노이즈)
+        for(let i = 0; i < 7; i++) {
+            ctx.strokeStyle = `rgba(${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, 0.5)`;
+            ctx.lineWidth = Math.random() * 2 + 1;
+            ctx.beginPath();
+            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.stroke();
+        }
+
+        // 4. 글자 그리기 (약간씩 비틀고 삐뚤빼뚤하게)
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i < captchaStr.length; i++) {
+            const x = 30 + i * 30;
+            const y = canvas.height / 2 + (Math.random() * 10 - 5); // 위아래 흔들기
+            const angle = (Math.random() * 0.4 - 0.2); // 좌우 회전
+            
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.font = `bold ${Math.floor(Math.random() * 8 + 24)}px "Noto Sans KR", sans-serif`; // 크기도 들쭉날쭉하게
+            ctx.fillStyle = '#333';
+            ctx.fillText(captchaStr[i], 0, 0);
+            ctx.restore();
+        }
+
+        // 5. 방해 점 찍기 (노이즈)
+        for(let i = 0; i < 50; i++) {
+            ctx.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2})`;
+            ctx.beginPath();
+            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
         document.getElementById('admin-captcha-input').value = '';
     },
 
@@ -263,19 +309,18 @@ const AdminManager = {
             if (data.success) {
                 this.selectedAdminId = adminId;
                 
-                // [수정] 성공 팝업의 '확인' 버튼을 누르고 창이 완전히 닫힌 뒤에 화면이 2단계로 넘어가도록 순차 보장
                 Swal.fire({ 
                     icon: 'success', 
                     title: '발송 완료!', 
                     text: '인증 메일이 성공적으로 발송되었습니다.', 
                     confirmButtonColor: '#2ecc71',
-                    allowOutsideClick: false // 바깥 여백 눌러서 꺼짐 방지
+                    allowOutsideClick: false 
                 }).then(() => {
                     document.getElementById('admin-step-1').style.display = 'none';
                     document.getElementById('admin-step-2').style.display = 'block';
                     document.getElementById('admin-step-2-msg').innerText = data.message;
                     
-                    this.generateCaptcha(); // 2단계로 넘어올 때 캡챠 출제
+                    this.generateCaptcha(); // 2단계 켜지면 캔버스에 캡챠 그림 그리기
                     document.getElementById('admin-otp-input').focus();
                 });
             } else {
@@ -289,21 +334,22 @@ const AdminManager = {
     // 2단계: 코드 & 캡챠 검증 후 로그인
     async submitCode() {
         const code = document.getElementById('admin-otp-input').value.trim();
-        const captchaInput = document.getElementById('admin-captcha-input').value.trim();
+        // 사용자가 소문자로 입력해도 대문자로 변환해서 검사 (편의성)
+        const captchaInput = document.getElementById('admin-captcha-input').value.trim().toUpperCase();
 
         if(!code) {
             Swal.fire({ icon: 'warning', title: '확인 필요', text: '인증 코드를 입력해주세요.', confirmButtonColor: '#3498db' });
             return;
         }
 
-        if (parseInt(captchaInput) !== this.captchaAnswer) {
-            Swal.fire({ icon: 'error', title: '캡챠 오류', text: '자동화 방지 캡챠 정답이 틀렸습니다.', confirmButtonColor: '#e74c3c' });
-            this.generateCaptcha(); // 틀리면 새로운 캡챠 문제 출제
+        // 캡챠 정답 검사
+        if (captchaInput !== this.captchaAnswer.toUpperCase()) {
+            Swal.fire({ icon: 'error', title: '캡챠 오류', text: '그림의 문자와 입력한 문자가 일치하지 않습니다.', confirmButtonColor: '#e74c3c' });
+            this.generateCaptcha(); // 틀리면 곧바로 새로운 그림 생성!
             document.getElementById('admin-captcha-input').focus();
             return;
         }
 
-        // 서버 인증 대기 팝업
         Swal.fire({
             title: '인증 확인 중...',
             allowOutsideClick: false,
@@ -331,7 +377,7 @@ const AdminManager = {
                 });
             } else {
                 Swal.fire({ icon: 'error', title: '인증 실패', text: data.message, confirmButtonColor: '#e74c3c' });
-                this.generateCaptcha(); // 코드 인증 실패 시에도 캡챠 새로고침
+                this.generateCaptcha(); 
             }
         } catch (e) {
             Swal.fire({ icon: 'error', title: '서버 오류', text: '인증 실패: 서버에 연결할 수 없습니다.', confirmButtonColor: '#e74c3c' });

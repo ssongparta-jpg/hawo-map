@@ -183,7 +183,7 @@
         </div>
     </div>
 
-    <div id="admin-login-modal" class="dashboard-backdrop" style="display:none; z-index: 100001;">
+    <div id="admin-login-modal" class="dashboard-backdrop" style="display:none; z-index: 1050;">
         <div class="dashboard-window" style="width: 450px; max-width: 90%; height: auto; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
             <div class="dash-header" style="background: #2c3e50; color: white; padding: 15px 20px;">
                 <h3 style="margin:0; font-size: 18px;">🛡️ 관리자 인증 시스템</h3>
@@ -203,10 +203,13 @@
                     <input type="text" id="admin-otp-input" placeholder="인증코드 6자리" style="width: 100%; padding: 14px; font-size: 18px; text-align: center; border: 1px solid #ccd1d9; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; letter-spacing: 2px; font-weight: bold;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); document.getElementById('admin-captcha-input').focus(); }">
                     
                     <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                        <p style="margin: 0 0 10px 0; font-size: 13px; color: #e74c3c; font-weight: bold;">🤖 자동화 공격 방지 캡챠</p>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                            <span id="captcha-question" style="font-size: 20px; font-weight: 900; color: #333; background: #fdf2f0; padding: 6px 15px; border-radius: 4px; letter-spacing: 1px;">? + ? =</span>
-                            <input type="number" id="admin-captcha-input" placeholder="정답" style="width: 90px; padding: 12px; font-size: 16px; text-align: center; border: 1px solid #ccc; border-radius: 6px;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); AdminManager.submitCode(); }">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <p style="margin: 0; font-size: 13px; color: #e74c3c; font-weight: bold;">🤖 사람 확인 캡챠</p>
+                            <button type="button" onclick="AdminManager.generateCaptcha()" style="background: none; border: none; color: #3498db; font-size: 12px; cursor: pointer; padding: 0; font-weight: bold;">↻ 이미지 새로고침</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                            <canvas id="captcha-canvas" width="200" height="60" style="border: 1px solid #ddd; border-radius: 4px; background: #fdf2f0; letter-spacing: 2px;"></canvas>
+                            <input type="text" id="admin-captcha-input" placeholder="위 그림의 문자를 입력하세요" style="width: 100%; padding: 12px; font-size: 14px; text-align: center; border: 1px solid #ccc; border-radius: 6px;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); AdminManager.submitCode(); }">
                         </div>
                     </div>
 
