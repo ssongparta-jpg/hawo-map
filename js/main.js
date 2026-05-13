@@ -358,20 +358,4 @@ const DistanceManager = {
     
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    const helpBtn = document.getElementById('helpBtn');
-    if (helpBtn) {
-    helpBtn.onclick = () => {
-        // utils.js가 정상 로드되었는지 확인 후 올바른 함수 호출
-        if (typeof HelpManager !== 'undefined') {
-            if (typeof HelpManager.showModal === 'function') {
-                HelpManager.showModal();
-            } else if (typeof HelpManager.open === 'function') {
-                HelpManager.open();
-            }
-        } else {
-            console.warn("도움말 데이터를 아직 불러오고 있습니다.");
-        }
-    };
-}
-});
+document.addEventListener('DOMContentLoaded', () => App.init());
