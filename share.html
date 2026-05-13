@@ -64,20 +64,8 @@
         </div>
     </div>
 
-    <div id="auth-area">
-      <div id="login-form">
-        <input type="text" id="user-id" placeholder="ID" autocomplete="off">
-        <input type="password" id="user-pw" placeholder="PW">
-        <button onclick="AuthManager.login()" class="btn-login">로그인</button>
-        <button onclick="AuthManager.register()" class="btn-join">가입</button>
-      </div>
-      
-      <div id="user-info" style="display:none;">
-        <span id="welcome-msg" style="font-weight:bold; margin-right:5px; font-size: 13px;"></span>
-        <button id="change-pw-btn" onclick="AuthManager.changePw()" style="display:none;">PW변경</button>
-        <button id="admin-panel-btn" onclick="AdminManager.open()" class="btn-admin" style="display: none;">관리자</button>
-        <button onclick="AuthManager.logout()" class="btn-logout">로그아웃</button>
-      </div>
+    <div id="header-user-status" style="position: absolute; right: 20px; top: 15px; display: flex; align-items: center; z-index: 1000;">
+        <button onclick="location.href='/login'" style="background: #2563eb; color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: background 0.2s;">로그인 / 가입</button>
     </div>
 
     <div class="boundary-toggle-container">
@@ -159,7 +147,8 @@
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
   <script src="js/config.js" defer></script>
-  <script src="js/utils.js" defer></script> <script src="js/auth.js" defer></script>
+  <script src="js/utils.js" defer></script> 
+  <script src="/login/auth.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/share_main.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

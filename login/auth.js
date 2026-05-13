@@ -14,19 +14,21 @@ const AuthManager = {
                 this.userId = data.userId;
                 this.isAdmin = data.isAdmin;
                 
-                // 로그인 상태일 때 헤더 모양 변경
-                let html = `<span style="font-size: 13px; font-weight: bold; margin-right: 10px; color: #333;">${this.userId}님</span>`;
+                // 로그인 상태일 때 헤더 모양
+                let html = `<span style="font-size: 14px; font-weight: bold; margin-right: 12px; color: #333;">${this.userId}님</span>`;
+                
                 if (this.isAdmin) {
-                    html += `<button onclick="window.open('/admin.html', '_blank')" style="background: #2ecc71; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; margin-right: 5px; cursor: pointer;">⚙️ 관리자</button>`;
+                    html += `<button onclick="window.open('/admin.html', '_blank')" style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; margin-right: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ 관리자</button>`;
                 }
-                html += `<button onclick="AuthManager.logout()" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">로그아웃</button>`;
+                
+                html += `<button onclick="AuthManager.logout()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">로그아웃</button>`;
                 
                 statusArea.innerHTML = html;
             } else {
                 this.userId = null;
                 this.isAdmin = false;
-                // 비로그인 상태일 때
-                statusArea.innerHTML = `<button onclick="location.href='/login'" style="background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">로그인</button>`;
+                // 비로그인 상태일 때 통합 버튼
+                statusArea.innerHTML = `<button onclick="location.href='/login'" style="background: #2563eb; color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">로그인 / 가입</button>`;
             }
         } catch (e) {
             console.error("Auth Check Error");
@@ -38,7 +40,7 @@ const AuthManager = {
         location.reload();
     },
 
-    // 메모 기능 로직은 그대로 유지
+    // 메모 저장/삭제 로직
     async saveMemo(schoolName, event) {
         event.stopPropagation();
         if (!this.userId) return alert("로그인이 필요합니다.");
