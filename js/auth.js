@@ -234,47 +234,60 @@ const AdminManager = {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
-        // 1. 랜덤 문자 5개 생성 (가독성을 위해 헷갈리는 글자 0, O, I, 1, l 등 제외)
+        // 1. 글자 6개로 증가 & 헷갈리는 글자 제외
         const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
         let captchaStr = '';
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 6; i++) {
             captchaStr += chars[Math.floor(Math.random() * chars.length)];
         }
         this.captchaAnswer = captchaStr;
 
-        // 2. 배경 칠하기
-        ctx.fillStyle = '#f8f9fa';
+        // 2. 약간 탁한 무작위 배경색
+        ctx.fillStyle = `rgb(${220 + Math.random()*30}, ${220 + Math.random()*30}, ${220 + Math.random()*30})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 3. 방해 선 그리기 (노이즈)
-        for(let i = 0; i < 7; i++) {
-            ctx.strokeStyle = `rgba(${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, 0.5)`;
-            ctx.lineWidth = Math.random() * 2 + 1;
+        // 3. 방해 곡선 그리기 (구불구불한 베지어 곡선)
+        for(let i = 0; i < 8; i++) {
+            ctx.strokeStyle = `rgba(${Math.random()*150}, ${Math.random()*150}, ${Math.random()*150}, 0.6)`;
+            ctx.lineWidth = Math.random() * 3 + 1;
             ctx.beginPath();
             ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.bezierCurveTo(
+                Math.random() * canvas.width, Math.random() * canvas.height,
+                Math.random() * canvas.width, Math.random() * canvas.height,
+                Math.random() * canvas.width, Math.random() * canvas.height
+            );
             ctx.stroke();
         }
 
-        // 4. 글자 그리기 (약간씩 비틀고 삐뚤빼뚤하게)
+        // 4. 글자 렌더링 (폰트 랜덤, 회전, 찌그러뜨리기, 겹치기)
         ctx.textBaseline = 'middle';
+        const fonts = ['Arial', 'Verdana', 'Georgia', 'Courier New', 'Impact']; // 폰트 다양화
+        
         for (let i = 0; i < captchaStr.length; i++) {
-            const x = 30 + i * 30;
-            const y = canvas.height / 2 + (Math.random() * 10 - 5); // 위아래 흔들기
-            const angle = (Math.random() * 0.4 - 0.2); // 좌우 회전
+            // 글자 간격을 좁혀서 살짝 겹치게 (20 시작, 28씩 증가)
+            const x = 20 + i * 28; 
+            const y = canvas.height / 2 + (Math.random() * 16 - 8); // 위아래 요동치기
+            const angle = (Math.random() * 0.8 - 0.4); // 회전 각도 증가
+            const scaleX = 0.8 + Math.random() * 0.5; // 가로로 찌그러뜨리기
+            const scaleY = 0.8 + Math.random() * 0.5; // 세로로 찌그러뜨리기
             
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(angle);
-            ctx.font = `bold ${Math.floor(Math.random() * 8 + 24)}px "Noto Sans KR", sans-serif`; // 크기도 들쭉날쭉하게
-            ctx.fillStyle = '#333';
+            ctx.scale(scaleX, scaleY);
+            
+            ctx.font = `bold ${Math.floor(Math.random() * 10 + 26)}px ${fonts[Math.floor(Math.random() * fonts.length)]}`; 
+            
+            // 무작위 어두운 텍스트 색상
+            ctx.fillStyle = `rgb(${Math.random()*100}, ${Math.random()*100}, ${Math.random()*100})`;
             ctx.fillText(captchaStr[i], 0, 0);
             ctx.restore();
         }
 
-        // 5. 방해 점 찍기 (노이즈)
-        for(let i = 0; i < 50; i++) {
-            ctx.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2})`;
+        // 5. 방해 점 찍기 (글자 위를 덮는 노이즈)
+        for(let i = 0; i < 100; i++) {
+            ctx.fillStyle = `rgba(${Math.random()*200}, ${Math.random()*200}, ${Math.random()*200}, 0.7)`;
             ctx.beginPath();
             ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 2, 0, Math.PI * 2);
             ctx.fill();
