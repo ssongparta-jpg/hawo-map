@@ -29,6 +29,9 @@ if (process.env.ADMIN_EMAILS) {
 
 app.use(bodyParser.json());
 app.use(express.static(__dirname, { extensions: ['html'] }));
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
 app.use(session({
     secret: 'hwao-secret-key',
     resave: false,

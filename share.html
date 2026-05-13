@@ -25,8 +25,8 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="화성오산 학교 & 공유학교 지도">
   <meta property="og:description" content="경기도 화성시, 오산시의 학교 및 공유학교 위치를 한눈에 확인하세요. 회원가입 후 메모도 가능합니다!">
-  <meta property="og:image" content="https://goehsmap.o-r.kr/source/share.png"> <meta property="og:url" content="https://goehsmap.o-r.kr/share">
-
+  <meta property="og:image" content="https://goehsmap.o-r.kr/source/share.png"> 
+  <meta property="og:url" content="https://goehsmap.o-r.kr/share">
 </head>
 <body>
   <div class="container"> 
@@ -50,9 +50,7 @@
           </a>
         </div>
 
-        <div id="header-user-status" style="display: flex; align-items: center; justify-content: flex-end; min-width: 80px;">
-            <button onclick="location.href='/login'" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; cursor: pointer;">로그인</button>
-        </div>
+        <div style="min-width: 80px;"></div>
         
       </div>
     </header>
@@ -89,50 +87,6 @@
 
     <button id="btn-measure" onclick="DistanceManager.toggle()">📏 거리재기</button>
 
-    <div id="admin-modal" class="dashboard-backdrop" style="display:none;">
-        <div class="dashboard-window">
-            <div class="dash-header" style="background: #e74c3c;">
-                <h3>관리자 패널</h3>
-                <button class="dash-close-btn" onclick="AdminManager.close()" style="margin-left: auto;">✕</button>
-            </div>
-            <div style="padding: 10px; display:flex; gap:10px; background:#f0f0f0;">
-                <button onclick="AdminManager.manageUsers()">회원 관리</button>
-                <button onclick="AdminManager.viewAllMemos()">전체 메모</button>
-                <button onclick="AdminManager.loadResetRequests()">PW 초기화</button>
-            </div>
-            <div id="admin-content" class="dash-body"></div>
-        </div>
-    </div>
-
-    <div id="admin-login-modal" class="dashboard-backdrop" style="display:none; z-index: 1050;">
-        <div class="dashboard-window" style="width: 450px; max-width: 90%; height: auto; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <div class="dash-header" style="background: #2c3e50; color: white; padding: 15px 20px;">
-                <h3 style="margin:0; font-size: 18px;">🛡️ 관리자 인증 시스템</h3>
-                <button type="button" class="dash-close-btn" onclick="AdminManager.closeLoginModal()" style="margin-left: auto; color:white; font-size:20px; border:none; background:none; cursor:pointer;">✕</button>
-            </div>
-            <div class="dash-body" style="padding: 30px; text-align: center; background: #f8f9fa;">
-                
-                <div id="admin-step-1">
-                    <p style="margin-bottom: 20px; color: #555; font-weight: 500; font-size: 15px;">부여받은 관리자 ID를 입력해주세요.</p>
-                    <input type="text" id="admin-id-input" placeholder="관리자 ID" style="width: 100%; padding: 14px; font-size: 16px; border: 1px solid #ccd1d9; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; text-align: center;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); AdminManager.requestEmail(); }">
-                    <button type="button" onclick="event.preventDefault(); event.stopPropagation(); AdminManager.requestEmail();" style="width: 100%; background: #3498db; color: white; border: none; padding: 14px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">인증 메일 발송</button>
-                </div>
-                
-                <div id="admin-step-2" style="display:none;">
-                    <p id="admin-step-2-msg" style="margin-bottom: 20px; font-weight: bold; color: #27ae60; font-size: 14px;"></p>
-                    
-                    <input type="text" id="admin-otp-input" placeholder="인증코드 6자리" style="width: 100%; padding: 14px; font-size: 18px; text-align: center; border: 1px solid #ccd1d9; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; letter-spacing: 2px; font-weight: bold;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); AdminManager.submitCode(); }">
-                    
-                    <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-                        <div class="g-recaptcha" data-sitekey="6Lf2q-csAAAAAAYzpCTLVDJY2Ez64JN7gYbwq1lX"></div>
-                    </div>
-
-                    <button type="button" onclick="event.preventDefault(); event.stopPropagation(); AdminManager.submitCode();" style="width: 100%; background: #2ecc71; color: white; border: none; padding: 14px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">인증 확인 및 로그인</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div id="helpModal" class="help-modal-overlay" style="display:none;">
         <div class="help-modal-content">
             <span class="help-close-btn" onclick="document.getElementById('helpModal').style.display='none'">&times;</span>
@@ -144,13 +98,12 @@
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script src="js/config.js" defer></script>
   <script src="js/utils.js" defer></script> 
   <script src="/login/auth.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/share_main.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
 </html>
