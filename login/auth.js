@@ -14,13 +14,18 @@ const AuthManager = {
                 this.userId = data.userId;
                 this.isAdmin = data.isAdmin;
                 
-                // 로그인 상태일 때 헤더 모양
+                // 로그인 상태일 때 헤더 모양 (아이디 표시)
                 let html = `<span style="font-size: 14px; font-weight: bold; margin-right: 12px; color: #333;">${this.userId}님</span>`;
                 
+                // [추가] 비밀번호 변경 버튼 (로그아웃 왼쪽에 배치)
+                html += `<button onclick="location.href='/pw_change'" style="background: #95a5a6; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; margin-right: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background 0.2s;">비밀번호 변경</button>`;
+                
+                // 관리자일 경우 톱니바퀴 버튼
                 if (this.isAdmin) {
                     html += `<button onclick="window.open('/admin.html', '_blank')" style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; margin-right: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ 관리자</button>`;
                 }
                 
+                // 로그아웃 버튼
                 html += `<button onclick="AuthManager.logout()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">로그아웃</button>`;
                 
                 statusArea.innerHTML = html;
@@ -40,7 +45,7 @@ const AuthManager = {
         location.reload();
     },
 
-    // 메모 저장/삭제 로직
+    // 메모 저장/삭제 로직 유지
     async saveMemo(schoolName, event) {
         event.stopPropagation();
         if (!this.userId) return alert("로그인이 필요합니다.");

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>비밀번호 변경 - 화성오산 학교지도</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/login/login.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h2>비밀번호 변경</h2>
+                <p style="margin-top: 10px;">안전을 위해 새로운 비밀번호를 설정해주세요.</p>
+            </div>
+
+            <div class="form-area active" style="margin-top: 20px;">
+                <div class="input-group">
+                    <input type="password" id="new-pw" placeholder="새 비밀번호 (4자 이상)" onkeydown="if(event.key==='Enter') document.getElementById('new-pw-confirm').focus();">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="new-pw-confirm" placeholder="새 비밀번호 한 번 더 입력" onkeydown="if(event.key==='Enter') changePassword();">
+                </div>
+                
+                <button class="btn-primary" onclick="changePassword()" style="margin-top: 15px;">비밀번호 변경 완료</button>
+            </div>
+
+            <div class="back-link">
+                <a href="/">&#8592; 지도로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function changePassword() {
+            const newPw = document.getElementById('new-pw').value.trim();
+            const confirmPw = document.getElementById('new-pw-confirm').value.trim();
+
+            if (!newPw) return Swal.fire({ icon: 'warning', text: '새 비밀번호를 입력해주세요.', confirmButtonColor: '#3498db' });
+            if (newPw !== confirmPw) return Swal.fire({ icon: 'error', text: '비밀번호가 서로 일치하지 않습니다.', confirmButtonColor: '#e74c3c' });
+            if (newPw.length < 4) return Swal.fire({ icon: 'warning', text: '비밀번호는 보안을 위해 최소 4자 이상이어야 합니다.', confirmButtonColor: '#3498db' });
+
+            Swal.fire({ title: '처리 중...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+            try {
+                // 이미 server.js에 만든 /api/change-pw 라우트로 전송
+                const res = await fetch('/api/change-pw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPw })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: '변경 완료!', text: '비밀번호가 안전하게 변경되었습니다.', confirmButtonColor: '#2ecc71' })
+                    .then(() => {
+                        location.href = '/'; 
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: '변경 실패', text: data.message || '시간이 초과되어 로그인이 풀렸습니다. 다시 로그인해주세요.', confirmButtonColor: '#e74c3c' });
+                }
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: '서버 오류', text: '서버 통신에 실패했습니다.', confirmButtonColor: '#e74c3c' });
+            }
+        }
+    </script>
+</body>
+</html>
