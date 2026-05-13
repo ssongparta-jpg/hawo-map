@@ -423,7 +423,7 @@ const MapManager = {
                     <div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="${generalBtnStyle}" 
                          onmousedown="this.style.transform='translateY(2px)'; this.style.boxShadow='0 1px 0px rgba(0,0,0,0.15)'"
                          onmouseup="this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 0px rgba(0,0,0,0.15)'">
-                        <span style="font-weight:700; font-size:13px; letter-spacing: -0.5px;">${labelName} ↗</span>
+                        <span style="font-weight:700; font-size:13px; letter-spacing: -0.5px;">${labelName} </span>
                     </div>
                 `,
                 iconSize: [120, 36]
