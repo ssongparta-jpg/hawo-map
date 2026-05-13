@@ -31,6 +31,17 @@
                 <div class="input-group">
                     <input type="password" id="user-pw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter') LoginApp.userLogin();">
                 </div>
+
+                <div id="user-captcha-container" style="display: none; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <p style="margin: 0; font-size: 13px; color: #e74c3c; font-weight: bold;">🤖 봇 방지 캡챠</p>
+                        <button type="button" onclick="LoginApp.generateUserCaptcha()" style="background: none; border: none; color: #3498db; font-size: 12px; cursor: pointer; padding: 0; font-weight: bold;">↻ 그림 새로고침</button>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                        <canvas id="user-captcha-canvas" width="200" height="60" style="border: 1px solid #ddd; border-radius: 4px; background: #fdf2f0; letter-spacing: 2px;"></canvas>
+                        <input type="text" id="user-captcha-input" placeholder="위 그림의 문자를 입력하세요" style="width: 100%; padding: 12px; font-size: 14px; text-align: center; border: 1px solid #ccc; border-radius: 6px;" onkeydown="if(event.key === 'Enter') LoginApp.userLogin();">
+                    </div>
+                </div>
                 <button class="btn-primary" onclick="LoginApp.userLogin()">로그인</button>
                 <div class="form-footer">
                     <span onclick="LoginApp.showRegisterForm()">아직 계정이 없으신가요? <strong>회원가입</strong></span>

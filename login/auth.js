@@ -22,7 +22,7 @@ const AuthManager = {
                 
                 // 관리자일 경우 톱니바퀴 버튼
                 if (this.isAdmin) {
-                    html += `<button onclick="window.open('/admin.html', '_blank')" style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; margin-right: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ 관리자</button>`;
+                    html += `<button onclick="window.open('/admin', '_blank')" style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; margin-right: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">⚙️ 관리자</button>`;
                 }
                 
                 // 로그아웃 버튼

@@ -1,10 +1,14 @@
 const LoginApp = {
     isIdChecked: false,
     adminIdTemp: null,
+    
+    // [추가] 일반 로그인 실패 횟수 및 캡챠 정답 기록
+    userLoginFails: 0,
+    userCaptchaAnswer: null,
 
     // --- 탭 및 화면 전환 로직 ---
     switchTab(tabName) {
-        this.isIdChecked = false; // 탭 이동 시 회원가입 중복검사 상태 초기화
+        this.isIdChecked = false; 
         
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.form-area').forEach(area => {
@@ -34,12 +38,84 @@ const LoginApp = {
         setTimeout(() => document.getElementById('user-register-area').classList.add('active'), 10);
     },
 
-    // --- 일반 유저 기능 ---
+    // [추가] 일반 유저용 자체 캔버스 캡챠 생성기
+    generateUserCaptcha() {
+        const canvas = document.getElementById('user-captcha-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        let captchaStr = '';
+        for (let i = 0; i < 6; i++) {
+            captchaStr += chars[Math.floor(Math.random() * chars.length)];
+        }
+        this.userCaptchaAnswer = captchaStr;
+
+        ctx.fillStyle = `rgb(${220 + Math.random()*30}, ${220 + Math.random()*30}, ${220 + Math.random()*30})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for(let i = 0; i < 8; i++) {
+            ctx.strokeStyle = `rgba(${Math.random()*150}, ${Math.random()*150}, ${Math.random()*150}, 0.6)`;
+            ctx.lineWidth = Math.random() * 3 + 1;
+            ctx.beginPath();
+            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.bezierCurveTo(
+                Math.random() * canvas.width, Math.random() * canvas.height,
+                Math.random() * canvas.width, Math.random() * canvas.height,
+                Math.random() * canvas.width, Math.random() * canvas.height
+            );
+            ctx.stroke();
+        }
+
+        ctx.textBaseline = 'middle';
+        const fonts = ['Arial', 'Verdana', 'Georgia', 'Courier New', 'Impact'];
+        
+        for (let i = 0; i < captchaStr.length; i++) {
+            const x = 20 + i * 28; 
+            const y = canvas.height / 2 + (Math.random() * 16 - 8); 
+            const angle = (Math.random() * 0.8 - 0.4); 
+            const scaleX = 0.8 + Math.random() * 0.5; 
+            const scaleY = 0.8 + Math.random() * 0.5; 
+            
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(scaleX, scaleY);
+            ctx.font = `bold ${Math.floor(Math.random() * 10 + 26)}px ${fonts[Math.floor(Math.random() * fonts.length)]}`; 
+            ctx.fillStyle = `rgb(${Math.random()*100}, ${Math.random()*100}, ${Math.random()*100})`;
+            ctx.fillText(captchaStr[i], 0, 0);
+            ctx.restore();
+        }
+
+        for(let i = 0; i < 100; i++) {
+            ctx.fillStyle = `rgba(${Math.random()*200}, ${Math.random()*200}, ${Math.random()*200}, 0.7)`;
+            ctx.beginPath();
+            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        document.getElementById('user-captcha-input').value = '';
+    },
+
+    // --- 일반 유저 기능 (로그인 방어 강화) ---
     async userLogin() {
         const id = document.getElementById('user-id').value.trim();
         const pw = document.getElementById('user-pw').value.trim();
         
         if (!id || !pw) return Swal.fire({ icon: 'warning', title: '입력 오류', text: '아이디와 비밀번호를 모두 입력해주세요.' });
+
+        // [추가] 1번 이상 실패했다면 캡챠 확인 필수
+        if (this.userLoginFails > 0) {
+            const captchaInput = document.getElementById('user-captcha-input').value.trim().toUpperCase();
+            if (!captchaInput) return Swal.fire({ icon: 'warning', text: '봇 방지용 그림 문자를 입력해주세요.' });
+            
+            if (captchaInput !== this.userCaptchaAnswer.toUpperCase()) {
+                Swal.fire({ icon: 'error', title: '캡챠 오류', text: '그림의 문자와 일치하지 않습니다.' });
+                this.generateUserCaptcha(); // 틀리면 새 그림 출제
+                document.getElementById('user-captcha-input').focus();
+                return;
+            }
+        }
 
         try {
             const res = await fetch('/api/login', {
@@ -51,7 +127,17 @@ const LoginApp = {
             if (data.success) {
                 location.href = '/'; 
             } else {
-                Swal.fire({ icon: 'error', title: '로그인 실패', text: data.message });
+                // [추가] 로그인 실패 시 카운터 증가 및 캡챠 창 표시
+                this.userLoginFails++;
+                document.getElementById('user-pw').value = ''; // 비밀번호 비워주기
+                
+                Swal.fire({ icon: 'error', title: '로그인 실패', text: data.message }).then(() => {
+                    if (this.userLoginFails > 0) {
+                        document.getElementById('user-captcha-container').style.display = 'block';
+                        this.generateUserCaptcha();
+                        document.getElementById('user-pw').focus();
+                    }
+                });
             }
         } catch (e) {
             Swal.fire({ icon: 'error', title: '오류', text: '서버와 통신할 수 없습니다.' });
@@ -70,7 +156,6 @@ const LoginApp = {
             });
             const data = await res.json();
             
-            // 비밀번호 찾기 API에서 성공(true)이 떨어지면 계정이 존재한다는 의미
             if (data.success) {
                 Swal.fire({ icon: 'error', title: '사용 불가', text: '이미 존재하는 아이디입니다.' });
                 this.isIdChecked = false;
@@ -191,7 +276,8 @@ const LoginApp = {
             if (data.success) {
                 Swal.fire({ icon: 'success', title: '인증 성공', text: '관리자 권한으로 접속합니다.', showConfirmButton: false, timer: 1500 })
                 .then(() => {
-                    location.href = '/admin.html';
+                    // [수정] 관리자 URL 깔끔하게 변경
+                    location.href = '/admin';
                 });
             } else {
                 Swal.fire({ icon: 'error', title: '인증 실패', text: data.message });
