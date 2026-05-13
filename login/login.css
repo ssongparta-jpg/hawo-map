@@ -80,3 +80,70 @@ body, html {
 .back-link { text-align: center; margin-top: 30px; }
 .back-link a { color: #888; text-decoration: none; font-size: 13px; font-weight: bold; }
 .back-link a:hover { color: #333; }
+
+/* --- 리팩토링으로 추출된 공통 클래스 모음 --- */
+.flex-group { display: flex; gap: 6px; }
+.flex-input { flex: 1; }
+
+.mt-10 { margin-top: 10px; }
+.mt-15 { margin-top: 15px; }
+.mt-20 { margin-top: 20px; }
+
+.otp-input {
+    letter-spacing: 3px; 
+    text-align: center; 
+    font-weight: bold; 
+    font-size: 18px;
+}
+
+/* 봇 방지 캡챠 박스 디자인 */
+.captcha-container {
+    background: #fff; 
+    border: 1px solid #e0e0e0; 
+    border-radius: 6px; 
+    padding: 15px; 
+    margin-bottom: 15px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.captcha-header {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 10px;
+}
+.captcha-title {
+    margin: 0; 
+    font-size: 13px; 
+    color: #e74c3c; 
+    font-weight: bold;
+}
+.captcha-refresh-btn {
+    background: none; 
+    border: none; 
+    color: #3498db; 
+    font-size: 12px; 
+    cursor: pointer; 
+    padding: 0; 
+    font-weight: bold;
+}
+.captcha-body {
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    gap: 10px;
+}
+.captcha-canvas {
+    border: 1px solid #ddd; 
+    border-radius: 4px; 
+    background: #fdf2f0; 
+    letter-spacing: 2px;
+}
+.captcha-input {
+    width: 100%; 
+    padding: 12px; 
+    font-size: 14px; 
+    text-align: center; 
+    border: 1px solid #ccc; 
+    border-radius: 6px; 
+    box-sizing: border-box;
+}
