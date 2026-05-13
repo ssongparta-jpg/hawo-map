@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>로그인 - 화성오산 학교지도</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="/login/login.css">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -25,7 +24,7 @@
                 <button class="tab-btn" onclick="LoginApp.switchTab('admin')">관리자 인증</button>
             </div>
 
-            <div id="user-form-area" class="form-area active">
+            <div id="user-login-area" class="form-area active">
                 <div class="input-group">
                     <input type="text" id="user-id" placeholder="아이디를 입력하세요" autocomplete="off" onkeydown="if(event.key==='Enter') document.getElementById('user-pw').focus();">
                 </div>
@@ -34,14 +33,36 @@
                 </div>
                 <button class="btn-primary" onclick="LoginApp.userLogin()">로그인</button>
                 <div class="form-footer">
-                    <span onclick="LoginApp.userRegister()">아직 계정이 없으신가요? <strong>회원가입</strong></span>
+                    <span onclick="LoginApp.showRegisterForm()">아직 계정이 없으신가요? <strong>회원가입</strong></span>
+                </div>
+                
+                <button id="admin-reset-btn" onclick="LoginApp.requestAdminReset()">관리자 비밀번호 초기화 요청</button>
+            </div>
+
+            <div id="user-register-area" class="form-area" style="display: none;">
+                <div class="info-box">회원정보를 입력해주세요.</div>
+                
+                <div class="input-group" style="display: flex; gap: 6px;">
+                    <input type="text" id="reg-id" placeholder="아이디" style="flex: 1;" onkeydown="if(event.key==='Enter') LoginApp.checkId();">
+                    <button onclick="LoginApp.checkId()" class="btn-check-id">중복확인</button>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-pw" placeholder="비밀번호 (4자 이상)" onkeydown="if(event.key==='Enter') document.getElementById('reg-pw-confirm').focus();">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-pw-confirm" placeholder="비밀번호 확인" onkeydown="if(event.key==='Enter') LoginApp.userRegister();">
+                </div>
+                
+                <button class="btn-primary" onclick="LoginApp.userRegister()">가입하기</button>
+                <div class="form-footer">
+                    <span onclick="LoginApp.switchTab('user')">&#8592; 로그인으로 돌아가기</span>
                 </div>
             </div>
 
             <div id="admin-step1-area" class="form-area" style="display: none;">
-                <div class="info-box">부여받은 관리자 계정 ID를 입력해주세요.</div>
+                <div class="info-box">부여받은 관리자 ID를 입력해주세요.</div>
                 <div class="input-group">
-                    <input type="text" id="admin-id" placeholder="관리자 ID (예: spring)" onkeydown="if(event.key==='Enter') LoginApp.requestAdminEmail();">
+                    <input type="text" id="admin-id" placeholder="관리자 ID (예: admin)" onkeydown="if(event.key==='Enter') LoginApp.requestAdminEmail();">
                 </div>
                 <button class="btn-primary admin-btn" onclick="LoginApp.requestAdminEmail()">인증 메일 발송</button>
             </div>

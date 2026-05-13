@@ -51,9 +51,23 @@ body, html {
 .btn-primary.admin-btn { background: #2ecc71; }
 .btn-primary.admin-btn:hover { background: #27ae60; }
 
+.btn-check-id {
+    width: 85px; font-size: 13px; font-weight: bold; color: #555;
+    background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px;
+    cursor: pointer; transition: background 0.2s;
+}
+.btn-check-id:hover { background: #e0e0e0; }
+
 .form-footer { text-align: center; margin-top: 20px; font-size: 13.5px; color: #666; }
 .form-footer span { cursor: pointer; }
 .form-footer strong { color: #2563eb; margin-left: 5px; }
+
+#admin-reset-btn {
+    width: 100%; margin-top: 15px; background: none; border: 1px solid #ddd; 
+    color: #777; padding: 10px; border-radius: 8px; font-size: 12px; 
+    cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+#admin-reset-btn:hover { background: #f8f9fa; border-color: #ccc; color: #333; }
 
 .info-box {
     background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px;

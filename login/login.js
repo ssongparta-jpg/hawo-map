@@ -1,8 +1,11 @@
 const LoginApp = {
+    isIdChecked: false,
     adminIdTemp: null,
 
-    // 탭 전환 기능
+    // --- 탭 및 화면 전환 로직 ---
     switchTab(tabName) {
+        this.isIdChecked = false; // 탭 이동 시 회원가입 중복검사 상태 초기화
+        
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.form-area').forEach(area => {
             area.classList.remove('active');
@@ -11,18 +14,27 @@ const LoginApp = {
 
         if (tabName === 'user') {
             document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.getElementById('user-form-area').style.display = 'block';
-            setTimeout(() => document.getElementById('user-form-area').classList.add('active'), 10);
+            document.getElementById('user-login-area').style.display = 'block';
+            setTimeout(() => document.getElementById('user-login-area').classList.add('active'), 10);
         } else {
             document.querySelectorAll('.tab-btn')[1].classList.add('active');
             document.getElementById('admin-step1-area').style.display = 'block';
             setTimeout(() => document.getElementById('admin-step1-area').classList.add('active'), 10);
-            document.getElementById('admin-step2-area').style.display = 'none';
+            
             if (window.grecaptcha) grecaptcha.reset();
         }
     },
 
-    // --- 일반 유저 로그인 & 회원가입 ---
+    showRegisterForm() {
+        document.querySelectorAll('.form-area').forEach(area => {
+            area.classList.remove('active');
+            area.style.display = 'none';
+        });
+        document.getElementById('user-register-area').style.display = 'block';
+        setTimeout(() => document.getElementById('user-register-area').classList.add('active'), 10);
+    },
+
+    // --- 일반 유저 기능 ---
     async userLogin() {
         const id = document.getElementById('user-id').value.trim();
         const pw = document.getElementById('user-pw').value.trim();
@@ -37,7 +49,7 @@ const LoginApp = {
             const data = await res.json();
             
             if (data.success) {
-                location.href = '/'; // 로그인 성공 시 메인 지도로 이동
+                location.href = '/'; 
             } else {
                 Swal.fire({ icon: 'error', title: '로그인 실패', text: data.message });
             }
@@ -46,26 +58,82 @@ const LoginApp = {
         }
     },
 
+    // 아이디 중복 검사
+    async checkId() {
+        const id = document.getElementById('reg-id').value.trim();
+        if (!id) return Swal.fire({ icon: 'warning', text: '검사할 아이디를 입력하세요.' });
+
+        try {
+            const res = await fetch('/api/find-pw', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id})
+            });
+            const data = await res.json();
+            
+            // 비밀번호 찾기 API에서 성공(true)이 떨어지면 계정이 존재한다는 의미
+            if (data.success) {
+                Swal.fire({ icon: 'error', title: '사용 불가', text: '이미 존재하는 아이디입니다.' });
+                this.isIdChecked = false;
+            } else {
+                Swal.fire({ icon: 'success', title: '사용 가능', text: '사용 가능한 아이디입니다.' });
+                this.isIdChecked = true;
+            }
+        } catch(e) {
+            Swal.fire({ icon: 'error', title: '오류', text: '서버와 통신할 수 없습니다.' });
+        }
+    },
+
+    // 회원 가입
     async userRegister() {
-        const id = document.getElementById('user-id').value.trim();
-        const pw = document.getElementById('user-pw').value.trim();
-        
-        if (!id || !pw) return Swal.fire({ icon: 'info', title: '안내', text: '위의 빈칸에 원하는 아이디와 비밀번호를 적은 뒤 회원가입을 눌러주세요.' });
+        const id = document.getElementById('reg-id').value.trim();
+        const pw = document.getElementById('reg-pw').value.trim();
+        const pwConfirm = document.getElementById('reg-pw-confirm').value.trim();
+
+        if (!this.isIdChecked) return Swal.fire({ icon: 'warning', text: '아이디 중복 확인을 먼저 진행해주세요.' });
+        if (!pw) return Swal.fire({ icon: 'warning', text: '비밀번호를 입력해주세요.' });
+        if (pw !== pwConfirm) return Swal.fire({ icon: 'error', text: '두 비밀번호가 일치하지 않습니다.' });
+        if (pw.length < 4) return Swal.fire({ icon: 'warning', text: '비밀번호는 보안을 위해 4자 이상 입력해주세요.' });
 
         try {
             const res = await fetch('/api/register', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ id, pw })
             });
             const data = await res.json();
+            
             if (data.success) {
-                Swal.fire({ icon: 'success', title: '가입 완료!', text: '이제 로그인 버튼을 눌러 접속해주세요.' });
+                Swal.fire({ icon: 'success', title: '가입 완료!', text: '로그인 페이지로 이동합니다.' })
+                .then(() => location.reload());
             } else {
                 Swal.fire({ icon: 'error', title: '가입 실패', text: data.message });
             }
-        } catch (e) {
-            Swal.fire({ icon: 'error', title: '오류', text: '서버 오류가 발생했습니다.' });
+        } catch(e) { 
+            Swal.fire({ icon: 'error', title: '서버 오류', text: '가입 중 오류가 발생했습니다.' }); 
         }
+    },
+
+    // 관리자 비밀번호 초기화 요청
+    requestAdminReset() {
+        const id = document.getElementById('user-id').value.trim();
+        if(!id) return Swal.fire({ icon: 'info', text: '비밀번호를 초기화할 아이디를 위 칸에 입력한 뒤 눌러주세요.' });
+
+        Swal.fire({
+            title: '관리자 비밀번호 초기화 요청',
+            html: "기획경영과 담당 관리자가 확인 후 승인 시<br>비밀번호가 <b>1234</b>로 초기화됩니다.<br><br>요청하시겠습니까?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#e74c3c',
+            confirmButtonText: '요청하기',
+            cancelButtonText: '취소'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/api/request-reset-pw', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id})
+                }).then(() => Swal.fire({ icon: 'success', title: '요청 완료', text: '담당자 확인을 기다려주세요.' }));
+            }
+        });
     },
 
     // --- 관리자 인증 흐름 ---
@@ -123,7 +191,7 @@ const LoginApp = {
             if (data.success) {
                 Swal.fire({ icon: 'success', title: '인증 성공', text: '관리자 권한으로 접속합니다.', showConfirmButton: false, timer: 1500 })
                 .then(() => {
-                    location.href = '/admin.html'; // 관리자는 성공 시 어드민 페이지로 바로 이동
+                    location.href = '/admin.html';
                 });
             } else {
                 Swal.fire({ icon: 'error', title: '인증 실패', text: data.message });
