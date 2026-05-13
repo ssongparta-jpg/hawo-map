@@ -100,27 +100,27 @@ input:checked + .slider:before { transform: translateX(16px); }
     #header-user-status button { padding: 5px 8px !important; font-size: 11px !important; margin: 0 0 0 4px !important; }
     #header-user-status span { font-size: 12px !important; margin: 0 4px 0 0 !important; color: #333 !important; font-weight: 800 !important; }
 
-    /* 좌측 하단 행정구역/즐겨찾기 토글 (하단 바 좌측에 콤팩트하게 몰아넣기) */
+    /* 👇 [수정됨] 좌측 하단 행정구역/즐겨찾기 토글 (중앙 정렬 및 오밀조밀하게) 👇 */
     .boundary-toggle-container {
-        bottom: 0 !important; left: 8px !important; height: 50px !important;
-        flex-direction: column !important; justify-content: center !important; align-items: flex-start !important; 
+        bottom: 5px !important; left: 8px !important; height: 40px !important;
+        flex-direction: column !important; justify-content: center !important; align-items: center !important; 
         gap: 6px !important; background: transparent !important; box-shadow: none !important; border: none !important; 
         padding: 0 !important; transform: none !important; opacity: 1 !important; visibility: visible !important;
         z-index: 1500 !important;
     }
     .boundary-toggle-container::after, .boundary-toggle-container::before { display: none !important; }
     
-    .control-row { gap: 6px !important; margin: 0 !important; }
-    .switch-label { font-size: 10px !important; font-weight: 800 !important; color: #555; }
-    .toggle-switch { width: 26px !important; height: 14px !important; }
-    .slider:before { height: 10px !important; width: 10px !important; left: 2px !important; bottom: 2px !important; }
+    .control-row { gap: 6px !important; margin: 0 !important; display: flex; justify-content: space-between; width: 105px; align-items: center; }
+    .switch-label { font-size: 10.5px !important; font-weight: 800 !important; color: #555; text-align: left; flex: 1; }
+    .toggle-switch { width: 28px !important; height: 16px !important; }
+    .slider:before { height: 12px !important; width: 12px !important; left: 2px !important; bottom: 2px !important; }
     input:checked + .slider:before { transform: translateX(12px) !important; }
     
     /* 거리재기 버튼 (하단 바 위, 우측) */
     #btn-measure { bottom: 60px !important; right: 10px !important; }
     .btn-pause-measure { bottom: 60px !important; right: 105px !important; padding: 8px 12px !important; font-size: 12px !important; }
     
-    /* 검색창과 범례 위치 */
-    .search-container { top: 60px; left: 50%; transform: translateX(-50%); width: 92%; }
-    #legend, #share-legend { top: 110px; left: 10px; } 
+    /* 👇 [수정됨] 검색창이 파란색 헤더와 겹치지 않게 간격 띄움 👇 */
+    .search-container { top: 75px; left: 50%; transform: translateX(-50%); width: 92%; }
+    #legend, #share-legend { top: 125px; left: 10px; } 
 }

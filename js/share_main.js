@@ -38,6 +38,8 @@ const ShareApp = {
 
         MapManager.showDistrictStats = function() {};
         
+        // share_main.js 파일 내부의 addDistrictButtons 함수를 아래 내용으로 교체해주세요!
+        
         MapManager.addDistrictButtons = function() {
             Object.entries(MapConfig.DISTRICTS).forEach(([key, conf]) => {
                 if (!conf.pos) return;
@@ -45,7 +47,7 @@ const ShareApp = {
                 const imgSrc = key === '화성시' ? 'source/coco.png' : 'source/caca.png';
                 const imgClass = key === '오산시' ? 'shared-dist-img osan-img' : 'shared-dist-img';
 
-                // [리팩토링] 인라인 스타일을 .shared-dist-btn 등의 클래스로 깔끔하게 교체
+                // [수정됨] 충돌을 일으키던 인라인 스타일과 이벤트를 완전히 제거
                 const icon = L.divIcon({
                     className: 'district-stat-marker',
                     html: `
@@ -56,6 +58,8 @@ const ShareApp = {
                     `,
                     iconSize: [180, 50]
                 });
+                
+                // 마커를 생성하고 이벤트 바인딩
                 L.marker(conf.pos, { icon }).addTo(this.map).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     if (conf.link) window.open(conf.link, '_blank');

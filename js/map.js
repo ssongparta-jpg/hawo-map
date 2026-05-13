@@ -365,7 +365,7 @@ const MapManager = {
         } catch (e) { console.error('경계 로드 실패'); }
     },
 
-    addDistrictButtons() {
+addDistrictButtons() {
         Object.entries(MapConfig.DISTRICTS).forEach(([key, conf]) => {
             if (!conf.pos) return;
             
@@ -374,7 +374,7 @@ const MapManager = {
                 labelName = key; 
             }
             
-            // [리팩토링] 하드코딩된 onmousedown 이벤트와 복잡한 인라인 스타일 제거
+            // [수정됨] 에러를 유발하던 마우스 인라인 이벤트를 제거하고 CSS에 100% 위임
             const icon = L.divIcon({
                 className: 'district-stat-marker',
                 html: `
@@ -385,14 +385,17 @@ const MapManager = {
                 iconSize: [120, 36]
             });
 
-            L.marker(conf.pos, { icon }).addTo(this.map).on('click', (e) => {
+            // [수정됨] 팝업이 안전하게 열릴 수 있도록 marker 객체를 넘겨줍니다.
+            const marker = L.marker(conf.pos, { icon }).addTo(this.map);
+            marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                this.showDistrictStats(key, conf);
+                this.showDistrictStats(key, conf, marker);
             });
         });
     },
 
-    showDistrictStats(regionKey, config) {
+    // [수정됨] 매개변수에 marker 추가 및 팝업 렌더링 로직 안정화
+    showDistrictStats(regionKey, config, marker) {
         const keywords = config.keywords || [];
         
         const regionMarkers = this.markers.filter(m => {
@@ -417,7 +420,6 @@ const MapManager = {
 
         const fmt = (num) => num.toLocaleString('ko-KR');
 
-        // [리팩토링] 복잡한 인라인 스타일을 직관적인 클래스로 분리
         const popupContent = `
             <div class="stat-popup-card">
                 <div class="stat-popup-header" style="border-bottom-color: ${config.color};">
@@ -448,15 +450,18 @@ const MapManager = {
             </div>
         `;
 
-        L.popup({
-            className: 'custom-stat-popup',
-            closeButton: true, 
-            offset: L.point(0, -10),
-            autoPan: true
-        })
-        .setLatLng(config.pos)
-        .setContent(popupContent)
-        .openOn(this.map);
+        // [수정됨] 마커가 증발하는 버그를 막기 위해 지도에 직접 띄우지 않고 마커에 bind 합니다!
+        if (!marker.getPopup()) {
+            marker.bindPopup(popupContent, {
+                className: 'custom-stat-popup',
+                closeButton: true,
+                offset: L.point(0, -10),
+                autoPan: true
+            });
+        } else {
+            marker.setPopupContent(popupContent);
+        }
+        marker.openPopup();
     },
 
     focusRegion(key) {

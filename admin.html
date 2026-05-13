@@ -12,13 +12,13 @@
     <header class="admin-header">
       <h1>⚙️ 화성오산 지도 관리자 대시보드</h1>
       <div class="user-info">
-        <span id="admin-name" class="admin-name-text"></span>
+        <span id="admin-name" style="margin-right: 15px; font-weight: bold;"></span>
         <button onclick="location.href='/'" class="btn-return">지도 돌아가기</button>
         <button onclick="AdminApp.logout()" class="btn-logout">로그아웃</button>
       </div>
     </header>
 
-    <main class="admin-container">
+    <div class="admin-container">
       <nav class="admin-sidebar">
         <button onclick="AdminApp.loadResetRequests()" class="nav-btn" id="nav-reset">🔑 PW 초기화 요청</button>
         <button onclick="AdminApp.manageUsers()" class="nav-btn" id="nav-users">👥 전체 회원 관리</button>
@@ -26,12 +26,21 @@
         <button onclick="AdminApp.manageColors()" class="nav-btn" id="nav-colors">🎨 지도 색상 관리</button>
       </nav>
       
-      <section class="admin-content" id="admin-content">
-        <h2 class="loading-text">데이터를 불러오는 중입니다...</h2>
-      </section>
-    </main>
+      <main class="admin-content" id="admin-content">
+        <h2 style="color:#666;">데이터를 불러오는 중입니다...</h2>
+      </main>
+    </div>
   </div>
 
   <script src="/server/admin.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            const firstTab = document.getElementById('nav-reset') || document.getElementById('nav-users');
+            if(firstTab) firstTab.click();
+        }, 400);
+    });
+  </script>
 </body>
 </html>
