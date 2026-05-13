@@ -87,7 +87,6 @@ const loginAttempts = {};
 app.post('/api/admin/send-code', (req, res) => {
     const { id } = req.body;
 
-    // 등록된 관리자 ID인지 확인
     if (!ADMINS[id]) {
         return res.status(400).json({ success: false, message: "등록되지 않은 관리자 ID입니다." });
     }
@@ -95,18 +94,19 @@ app.post('/api/admin/send-code', (req, res) => {
     const targetEmail = ADMINS[id];
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6자리 코드 생성
     
-    // 코드 저장 (유효시간 3분)
+    // [수정] 코드 발급 시 시도 횟수(attempts)를 0으로 초기화
     adminOtpStore = {
         userId: id,
         code: code,
-        expires: Date.now() + 3 * 60 * 1000
+        expires: Date.now() + 3 * 60 * 1000,
+        attempts: 0 
     };
 
     const mailOptions = {
         from: process.env.MAIL_USER,
         to: targetEmail,
         subject: '[화성오산 학교지도] 관리자 인증 코드',
-        text: `관리자(${id}) 로그인 인증 코드: [ ${code} ]\n3분 내에 입력해주세요.`
+        text: `관리자(${id}) 로그인 인증 코드: [ ${code} ]\n3분 내에 입력해주세요. (5회 오류 시 파기됩니다)`
     };
 
     transporter.sendMail(mailOptions, (error) => {
@@ -114,34 +114,49 @@ app.post('/api/admin/send-code', (req, res) => {
             console.error(error);
             return res.status(500).json({ success: false, message: "메일 발송 실패" });
         }
-        // 이메일 주소 마스킹하여 응답
         const maskedEmail = targetEmail.replace(/(.{2})(.*)(@.*)/, '$1*****$3');
-        res.json({ success: true, message: `${maskedEmail}로 인증코드를 보냈습니다.` });
+        res.json({ success: true, message: `${maskedEmail}로 인증코드를 보냈습니다. (제한: 5회)` });
     });
 });
 
 // 2. 인증 코드 검증 및 로그인
-app.post('/api/admin/verify-code', (req, res) => {
+pp.post('/api/admin/verify-code', (req, res) => {
     const { code } = req.body;
 
     if (!adminOtpStore.code || Date.now() > adminOtpStore.expires) {
-        return res.status(400).json({ success: false, message: "인증 코드가 만료되었거나 없습니다." });
+        return res.status(400).json({ success: false, message: "인증 코드가 만료되었거나 존재하지 않습니다. 다시 요청해주세요." });
     }
 
     if (adminOtpStore.code === code) {
-        const adminId = adminOtpStore.userId;
-        
         // 인증 성공: 정보 파기 후 세션 생성
-        adminOtpStore = { userId: null, code: null, expires: null };
+        const adminId = adminOtpStore.userId;
+        adminOtpStore = { userId: null, code: null, expires: null, attempts: 0 };
         
         req.session.userId = adminId;
-        req.session.isAdminAuth = true; // 관리자 인증 플래그 설정
+        req.session.isAdminAuth = true; 
         
         req.session.save(() => {
             res.json({ success: true, userId: adminId });
         });
     } else {
-        res.status(401).json({ success: false, message: "인증 코드가 일치하지 않습니다." });
+        // [핵심 해킹 방어] 인증 실패 시 카운트 증가
+        adminOtpStore.attempts += 1;
+        const maxAttempts = 5;
+
+        // 5회 이상 틀렸을 경우: OTP 즉시 파기 및 차단
+        if (adminOtpStore.attempts >= maxAttempts) {
+            adminOtpStore = { userId: null, code: null, expires: null, attempts: 0 };
+            return res.status(403).json({ 
+                success: false, 
+                message: "입력 시도 횟수(5회)를 초과하여 보안상 인증 코드가 파기되었습니다. 코드를 다시 발급받아주세요." 
+            });
+        }
+
+        // 5회 미만 틀렸을 경우: 남은 횟수 안내
+        res.status(401).json({ 
+            success: false, 
+            message: `인증 코드가 일치하지 않습니다. (남은 기회: ${maxAttempts - adminOtpStore.attempts}번)` 
+        });
     }
 });
 
