@@ -190,40 +190,57 @@ const ShareApp = {
 
     makeSharedPopupHtml(p) {
         const isLoggedIn = AuthManager.userId !== null;
+        const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
+        const delBtnBg = isLoggedIn ? '#e74c3c' : '#ccc';
         const btnDisabled = isLoggedIn ? '' : 'disabled';
         const safeName = p.name.replace(/'/g, "\\'");
 
-        // [리팩토링] 하드코딩 스타일을 시맨틱 클래스로 대거 교체
         return `
             <div class="popup-content compact-mode">
                 <div class="popup-header">
                     <div class="popup-category" style="color:${p.color}">${p.type}</div>
                 </div>
-                <div class="popup-title-row">
-                    <h3 class="popup-title">${p.name}</h3>
-                    <button id="fav-btn-${safeName}" class="fav-toggle-btn" onclick="MapManager.toggleFavorite('${safeName}', event)">☆</button>
+                <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div class="popup-title" style="margin: 0;">${p.name}</div>
+                    <button id="fav-btn-${p.name}" class="fav-toggle-btn"
+                            onclick="MapManager.toggleFavorite('${safeName}', event)">
+                        ☆
+                    </button>
                 </div>
-                <div class="popup-adrs mb-12">${p.adrs}</div>
+                <div class="popup-adrs" style="margin-bottom: 12px;">${p.adrs}</div>
                 <hr class="popup-hr">
                 
-                <ul class="popup-info-list block-list">
-                    <li><span class="label w-65">진행장소</span> <span class="value fw-bold">${p.place}</span></li>
-                    <li><span class="label w-65">모집대상</span> <span class="value">${p.target}</span></li>
-                    <li><span class="label w-65">운영기간</span> <span class="value">${p.duration}</span></li>
+                <ul class="popup-info-list" style="display:block;">
+                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">진행장소</span> <span class="value" style="font-weight:bold;">${p.place}</span></li>
+                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">모집대상</span> <span class="value">${p.target}</span></li>
+                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">운영기간</span> <span class="value">${p.duration}</span></li>
                 </ul>
 
                 <div class="shared-activity-box">
-                    <span class="activity-label">주요활동</span>
+                    <span class="activity-label">✨ 주요활동</span>
                     <strong class="activity-desc">${p.activity}</strong>
                 </div>
 
-                <div class="memo-section">
-                    <div class="memo-title">🏫 개인 메모</div>
-                    <textarea id="memo-${safeName}" class="memo-textarea" placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}" disabled></textarea>
+                <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
+                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
+                    <textarea id="memo-${safeName}"
+                        style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
+                        placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
+                        disabled></textarea>
 
-                    <div class="memo-btn-group">
-                        <button id="btn-save-${safeName}" class="memo-btn memo-save-btn ${isLoggedIn ? '' : 'disabled-btn'}" onclick="AuthManager.saveMemo('${safeName}', event)" ${btnDisabled}>저장</button>
-                        <button id="btn-del-${safeName}" class="memo-btn memo-del-btn ${isLoggedIn ? '' : 'disabled-btn'}" onclick="AuthManager.deleteMemo('${safeName}', event)" ${btnDisabled}>삭제</button>
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button id="btn-save-${safeName}" class="memo-save-btn"
+                            onclick="AuthManager.saveMemo('${safeName}', event)"
+                            style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
+                            ${btnDisabled}>
+                            저장
+                        </button>
+                        <button id="btn-del-${safeName}" class="memo-del-btn"
+                            onclick="AuthManager.deleteMemo('${safeName}', event)"
+                            style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
+                            ${btnDisabled}>
+                            삭제
+                        </button>
                     </div>
                 </div>
             </div>`;

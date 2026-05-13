@@ -79,3 +79,34 @@
 }
 .district-stat-marker .zoom-lv-12 .dist-stat-label { font-size: 13.5px !important; }
 .district-stat-marker .zoom-lv-12 .shared-dist-img { width: 21px !important; height: 21px !important; }
+
+/* --- 최초 등장 시 통통 튀며 나타나는 페이드인 애니메이션 --- */
+@keyframes markerPopIn {
+    0% { opacity: 0; transform: translateY(15px) scale(0.8); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.district-stat-marker {
+    animation: markerPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* --- 지도 축소/확대 시 크기 조절 및 저배율 투명도 적용 --- */
+.district-stat-marker .zoom-lv-10 { display: none !important; }
+
+/* 저배율 (11~12레벨): 투명도 적용 및 크기 축소 */
+.district-stat-marker .zoom-lv-11 { opacity: 0.4 !important; }
+.district-stat-marker .zoom-lv-11 .dist-stat-btn { padding: 6px 10px !important; min-width: 65px !important; }
+.district-stat-marker .zoom-lv-11 .dist-stat-label { font-size: 12px !important; }
+.district-stat-marker .zoom-lv-11 .shared-dist-img { width: 18px !important; height: 18px !important; }
+
+.district-stat-marker .zoom-lv-12 { opacity: 0.7 !important; }
+.district-stat-marker .zoom-lv-12 .dist-stat-btn { padding: 8px 12px !important; min-width: 75px !important; }
+.district-stat-marker .zoom-lv-12 .dist-stat-label { font-size: 13.5px !important; }
+.district-stat-marker .zoom-lv-12 .shared-dist-img { width: 21px !important; height: 21px !important; }
+
+/* 고배율 (13레벨 이상): 불투명도 100% 및 원본 크기 유지 */
+.district-stat-marker .zoom-lv-13, 
+.district-stat-marker .zoom-lv-14, 
+.district-stat-marker .zoom-lv-15, 
+.district-stat-marker .zoom-lv-16, 
+.district-stat-marker .zoom-lv-17, 
+.district-stat-marker .zoom-lv-18 { opacity: 1 !important; }
