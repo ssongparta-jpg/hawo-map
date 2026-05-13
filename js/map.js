@@ -71,17 +71,12 @@ const MapManager = {
             }
         }
         const safeName = p.name.replace(/'/g, "\\'");
+        
+        // z-index와 동적 색상만 인라인으로 남김 (나머지는 클래스 처리)
         const html = `
-            <div class="custom-combined-marker ${typeClass} ${posClass}"
-                 style="z-index: ${500 - stackIndex};"
-                 onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
-                <div class="marker-label-box ${labelPosClass}" 
-                     onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
-                     ${p.name}
-                </div>
-                <div class="marker-symbol" style="color:${symbolColor};">
-                    ${symbolChar}
-                </div>
+            <div class="custom-combined-marker ${typeClass} ${posClass}" style="z-index: ${500 - stackIndex};" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">
+                <div class="marker-label-box ${labelPosClass}" onclick="MapManager.triggerMarkerPopup(event, '${safeName}')">${p.name}</div>
+                <div class="marker-symbol" style="color:${symbolColor};">${symbolChar}</div>
             </div>
         `;
         return L.divIcon({ className: 'marker-container-icon', html, iconSize: [0, 0] });
@@ -125,14 +120,13 @@ const MapManager = {
 
                 textarea.disabled = !isLoggedIn;
                 saveBtn.disabled = !isLoggedIn;
-                saveBtn.style.backgroundColor = isLoggedIn ? '#4A90E2' : '#ccc';
-                
-                if (delBtn) {
-                    delBtn.disabled = !isLoggedIn;
-                    delBtn.style.backgroundColor = isLoggedIn ? '#e74c3c' : '#ccc';
-                }
+                if (delBtn) delBtn.disabled = !isLoggedIn;
 
+                // [리팩토링] 하드코딩 스타일 대신 클래스로 제어
                 if (isLoggedIn) {
+                    saveBtn.classList.remove('disabled-btn');
+                    if (delBtn) delBtn.classList.remove('disabled-btn');
+                    
                     if (favBtn) {
                         fetch(`/api/favorite/${encodeURIComponent(schoolName)}`)
                             .then(res => res.json())
@@ -150,6 +144,8 @@ const MapManager = {
                         textarea.placeholder = "메모 로드 실패"; 
                     }
                 } else {
+                    saveBtn.classList.add('disabled-btn');
+                    if (delBtn) delBtn.classList.add('disabled-btn');
                     textarea.value = ""; 
                     textarea.placeholder = "로그인 후 이용 가능합니다";
                 }
@@ -211,7 +207,9 @@ const MapManager = {
         const favBtn = document.getElementById(`fav-btn-${schoolName}`);
         if (favBtn) {
             favBtn.innerText = isFavorite ? "★": "☆";
-            favBtn.style.color = isFavorite ? "gold": "#ccc";
+            // [리팩토링] 하드코딩 색상 대신 active 클래스 사용
+            if (isFavorite) favBtn.classList.add('active');
+            else favBtn.classList.remove('active');
         }
     },
 
@@ -266,22 +264,17 @@ const MapManager = {
             ? `<a href="${p.url}" target="_blank" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>` 
             : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
             
-        const isLoggedIn = AuthManager.userId !== null;
-        const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
-        const delBtnBg = isLoggedIn ? '#e74c3c' : '#ccc';
-        const btnDisabled = isLoggedIn ? '' : 'disabled';
         const estBadge = p.establish ? `<span class="badge-est">${p.establish}</span>` : '';
         
+        // [리팩토링] 인라인 스타일 걷어내고 시맨틱 태그 및 클래스 적용
         let bodyContent = '';
         if (isEduOffice) {
             bodyContent = `
-                <div style="background:#e3f2fd; padding:12px; border-radius:8px; text-align:center; margin-bottom:15px; border:1px solid #bbdefb;">
-                    <span style="font-size:12px; color:#555; display:block; margin-bottom:4px;">교육장</span>
-                    <strong style="font-size:18px; color:#0d47a1;">${principalName}</strong>
+                <div class="edu-office-box">
+                    <span class="edu-office-label">교육장</span>
+                    <strong class="edu-office-name">${principalName}</strong>
                 </div>
-                <div style="text-align:center; color:#555; margin-bottom:15px; font-weight:bold; font-size:13px; line-height:1.5;">
-                    행복한 성장, 함께하는 화성오산 교육
-                </div>`;
+                <div class="edu-office-slogan">행복한 성장, 함께하는 화성오산 교육</div>`;
         } else {
             const vicePrincipal = p.vice_principal || '-';
             const chiefAdmin = p.chief_of_administration || '-';
@@ -306,37 +299,20 @@ const MapManager = {
                     <div class="popup-category">${p.type || '교육기관'} ${estBadge}</div>
                     ${linkHtml}
                 </div>
-                <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
-                    <div class="popup-title" style="margin: 0;">${p.name || ''}</div>
-                    <button id="fav-btn-${p.name}" class="fav-toggle-btn" 
-                            onclick="MapManager.toggleFavorite('${p.name}', event)"
-                            style="background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc;">
-                        ☆
-                    </button>
+                <div class="popup-title-row">
+                    <h3 class="popup-title">${p.name || ''}</h3>
+                    <button id="fav-btn-${p.name}" class="fav-toggle-btn" onclick="MapManager.toggleFavorite('${p.name}', event)">☆</button>
                 </div>
                 <div class="popup-adrs">${p.adrs || ''}</div>
                 <hr class="popup-hr">
                 ${bodyContent}
-                <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
-                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
-                    <textarea id="memo-${p.name}" 
-                        style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
-                        placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
-                        disabled></textarea>
-                    
-                    <div style="display: flex; gap: 5px; margin-top: 5px;">
-                        <button id="btn-save-${p.name}" class="memo-save-btn"
-                            onclick="AuthManager.saveMemo('${p.name}', event)" 
-                            style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
-                            ${btnDisabled}>
-                            저장
-                        </button>
-                        <button id="btn-del-${p.name}" class="memo-del-btn"
-                            onclick="AuthManager.deleteMemo('${p.name}', event)" 
-                            style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
-                            ${btnDisabled}>
-                            삭제
-                        </button>
+                
+                <div class="memo-section">
+                    <div class="memo-title">🏫 개인 메모</div>
+                    <textarea id="memo-${p.name}" class="memo-textarea" disabled></textarea>
+                    <div class="memo-btn-group">
+                        <button id="btn-save-${p.name}" class="memo-btn memo-save-btn disabled-btn" onclick="AuthManager.saveMemo('${p.name}', event)" disabled>저장</button>
+                        <button id="btn-del-${p.name}" class="memo-btn memo-del-btn disabled-btn" onclick="AuthManager.deleteMemo('${p.name}', event)" disabled>삭제</button>
                     </div>
                 </div>
             </div>`;
@@ -370,12 +346,10 @@ const MapManager = {
                     return { fillColor, fillOpacity: 0.35, color: '#ffffff', weight: 2.5, dashArray: '20,5,2,5', pane: 'boundaryPane' };
                 }
             }).addTo(this.boundaryGroup);
-            // map.js 파일 내 loadBoundaries() 안의 geoJson 그리는 부분 (약 250번째 줄 부근)
+
             L.geoJson(boundaryData, {
                 style: (f) => {
                     const sgg = f.properties.sggnm;
-                    
-                    // 저장된 테두리 색상이 있으면 쓰고, 없으면 기본값 사용
                     let hwaseongBorder = '#0047AB';
                     let osanBorder = '#e7733d';
                     
@@ -395,35 +369,17 @@ const MapManager = {
         Object.entries(MapConfig.DISTRICTS).forEach(([key, conf]) => {
             if (!conf.pos) return;
             
-            // 화성시 4개 구는 '화성시' 글자 제외하고 구 이름만 표시
             let labelName = conf.fullName;
             if (['동탄구', '병점구', '효행구', '만세구'].includes(key)) {
                 labelName = key; 
             }
             
-            const generalBtnStyle = `
-                background-color:${conf.color}!important; 
-                color:#fff; 
-                border-radius:4px; 
-                padding:8px 12px; 
-                display:flex; 
-                align-items:center; 
-                justify-content:center;
-                box-shadow: 0 3px 0px rgba(0,0,0,0.15), 0 3px 8px rgba(0,0,0,0.3); 
-                border:none; 
-                cursor:pointer;
-                text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
-                min-width: 80px;
-                transition: transform 0.1s;
-            `;
-
+            // [리팩토링] 하드코딩된 onmousedown 이벤트와 복잡한 인라인 스타일 제거
             const icon = L.divIcon({
                 className: 'district-stat-marker',
                 html: `
-                    <div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="${generalBtnStyle}" 
-                         onmousedown="this.style.transform='translateY(2px)'; this.style.boxShadow='0 1px 0px rgba(0,0,0,0.15)'"
-                         onmouseup="this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 0px rgba(0,0,0,0.15)'">
-                        <span style="font-weight:700; font-size:13px; letter-spacing: -0.5px;">${labelName} </span>
+                    <div class="dist-stat-btn zoom-lv-${this.map.getZoom()}" style="background-color:${conf.color} !important;">
+                        <span class="dist-stat-label">${labelName}</span>
                     </div>
                 `,
                 iconSize: [120, 36]
@@ -436,11 +392,9 @@ const MapManager = {
         });
     },
 
-    // 2. 통계 말풍선 및 데이터 합산 (0명 버그 완벽 해결)
     showDistrictStats(regionKey, config) {
         const keywords = config.keywords || [];
         
-        // 해당 구역의 마커들을 주소 기반으로 필터링
         const regionMarkers = this.markers.filter(m => {
             const p = m.properties || {};
             let adrs = String(p.adrs || p.address || p['주소'] || p['학교주소'] || "");
@@ -455,7 +409,6 @@ const MapManager = {
         let totalStudents = 0;
         let totalTeachers = 0;
 
-        // [버그 해결] main.js에서 파싱해둔 stdnt_cnt(학생 수), tchr_cnt(교사 수)를 정확히 가져옵니다.
         regionMarkers.forEach(m => {
             const p = m.properties || {};
             totalStudents += (p.stdnt_cnt || 0);
@@ -464,32 +417,31 @@ const MapManager = {
 
         const fmt = (num) => num.toLocaleString('ko-KR');
 
+        // [리팩토링] 복잡한 인라인 스타일을 직관적인 클래스로 분리
         const popupContent = `
-            <div class="stat-popup-card" style="min-width:230px; padding:5px; font-family:'Noto Sans KR', sans-serif;">
-                <div style="border-bottom:2px solid ${config.color}; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:15px; font-weight:900; color:#333;">${config.fullName}</span>
-                    <span style="background:${config.color}; color:white; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold;">총 ${fmt(totalSchools)}개교</span>
+            <div class="stat-popup-card">
+                <div class="stat-popup-header" style="border-bottom-color: ${config.color};">
+                    <span class="stat-popup-title">${config.fullName}</span>
+                    <span class="stat-popup-badge" style="background:${config.color};">총 ${fmt(totalSchools)}개교</span>
                 </div>
                 
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; border-radius:6px; border-left:4px solid #FF9F43;">
-                        <span style="font-size:12px; font-weight:bold; color:#666;">학교 수</span>
-                        <span style="font-size:14px; font-weight:900; color:#333;">${fmt(totalSchools)}<span style="font-size:11px; font-weight:normal; margin-left:2px;">개교</span></span>
+                <div class="stat-popup-body">
+                    <div class="stat-row border-orange">
+                        <span class="stat-label">학교 수</span>
+                        <span class="stat-value">${fmt(totalSchools)}<span class="stat-unit">개교</span></span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; border-radius:6px; border-left:4px solid #28C76F;">
-                        <span style="font-size:12px; font-weight:bold; color:#666;">총 학생 수</span>
-                        <span style="font-size:14px; font-weight:900; color:#333;">${fmt(totalStudents)}<span style="font-size:11px; font-weight:normal; margin-left:2px;">명</span></span>
+                    <div class="stat-row border-green">
+                        <span class="stat-label">총 학생 수</span>
+                        <span class="stat-value">${fmt(totalStudents)}<span class="stat-unit">명</span></span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; padding:8px 12px; border-radius:6px; border-left:4px solid #00CFE8;">
-                        <span style="font-size:12px; font-weight:bold; color:#666;">총 교사 수</span>
-                        <span style="font-size:14px; font-weight:900; color:#333;">${fmt(totalTeachers)}<span style="font-size:11px; font-weight:normal; margin-left:2px;">명</span></span>
+                    <div class="stat-row border-blue">
+                        <span class="stat-label">총 교사 수</span>
+                        <span class="stat-value">${fmt(totalTeachers)}<span class="stat-unit">명</span></span>
                     </div>
                 </div>
 
-                <div style="margin-top:12px; text-align:center;">
-                    <button onclick="MapManager.focusRegion('${regionKey}')" 
-                            style="background:none; border:1px solid #ddd; color:#888; padding:6px 15px; border-radius:20px; font-size:11px; font-weight:bold; cursor:pointer; transition:all 0.2s; width:100%;"
-                            onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+                <div class="stat-popup-footer">
+                    <button class="btn-focus-region" onclick="MapManager.focusRegion('${regionKey}')">
                         이 지역으로 지도 이동 🔍
                     </button>
                 </div>
@@ -507,7 +459,6 @@ const MapManager = {
         .openOn(this.map);
     },
 
-    // 3. 팝업 내부의 "지역 이동" 버튼 클릭 시 실행되는 함수
     focusRegion(key) {
         const conf = MapConfig.DISTRICTS[key];
         if (conf && conf.pos) {
