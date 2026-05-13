@@ -209,7 +209,6 @@ const AuthManager = {
 // 관리자 인증 로그인 & 화면 이동 매니저
 const AdminManager = {
     selectedAdminId: null,
-    captchaAnswer: null,
 
     openLoginModal() {
         const modal = document.getElementById('admin-login-modal');
@@ -220,80 +219,13 @@ const AdminManager = {
             document.getElementById('admin-id-input').value = '';
             document.getElementById('admin-otp-input').value = '';
             this.selectedAdminId = null;
+            if (window.grecaptcha) grecaptcha.reset(); // 모달 열 때 캡챠 초기화
         }
     },
 
     closeLoginModal() {
         const modal = document.getElementById('admin-login-modal');
         if (modal) modal.style.display = 'none';
-    },
-
-    // [핵심 변경] 실제 타 사이트형 이미지 캡챠 생성 로직 (Canvas 활용)
-    generateCaptcha() {
-        const canvas = document.getElementById('captcha-canvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        
-        // 1. 글자 6개로 증가 & 헷갈리는 글자 제외
-        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-        let captchaStr = '';
-        for (let i = 0; i < 6; i++) {
-            captchaStr += chars[Math.floor(Math.random() * chars.length)];
-        }
-        this.captchaAnswer = captchaStr;
-
-        // 2. 약간 탁한 무작위 배경색
-        ctx.fillStyle = `rgb(${220 + Math.random()*30}, ${220 + Math.random()*30}, ${220 + Math.random()*30})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 3. 방해 곡선 그리기 (구불구불한 베지어 곡선)
-        for(let i = 0; i < 8; i++) {
-            ctx.strokeStyle = `rgba(${Math.random()*150}, ${Math.random()*150}, ${Math.random()*150}, 0.6)`;
-            ctx.lineWidth = Math.random() * 3 + 1;
-            ctx.beginPath();
-            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-            ctx.bezierCurveTo(
-                Math.random() * canvas.width, Math.random() * canvas.height,
-                Math.random() * canvas.width, Math.random() * canvas.height,
-                Math.random() * canvas.width, Math.random() * canvas.height
-            );
-            ctx.stroke();
-        }
-
-        // 4. 글자 렌더링 (폰트 랜덤, 회전, 찌그러뜨리기, 겹치기)
-        ctx.textBaseline = 'middle';
-        const fonts = ['Arial', 'Verdana', 'Georgia', 'Courier New', 'Impact']; // 폰트 다양화
-        
-        for (let i = 0; i < captchaStr.length; i++) {
-            // 글자 간격을 좁혀서 살짝 겹치게 (20 시작, 28씩 증가)
-            const x = 20 + i * 28; 
-            const y = canvas.height / 2 + (Math.random() * 16 - 8); // 위아래 요동치기
-            const angle = (Math.random() * 0.8 - 0.4); // 회전 각도 증가
-            const scaleX = 0.8 + Math.random() * 0.5; // 가로로 찌그러뜨리기
-            const scaleY = 0.8 + Math.random() * 0.5; // 세로로 찌그러뜨리기
-            
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.scale(scaleX, scaleY);
-            
-            ctx.font = `bold ${Math.floor(Math.random() * 10 + 26)}px ${fonts[Math.floor(Math.random() * fonts.length)]}`; 
-            
-            // 무작위 어두운 텍스트 색상
-            ctx.fillStyle = `rgb(${Math.random()*100}, ${Math.random()*100}, ${Math.random()*100})`;
-            ctx.fillText(captchaStr[i], 0, 0);
-            ctx.restore();
-        }
-
-        // 5. 방해 점 찍기 (글자 위를 덮는 노이즈)
-        for(let i = 0; i < 100; i++) {
-            ctx.fillStyle = `rgba(${Math.random()*200}, ${Math.random()*200}, ${Math.random()*200}, 0.7)`;
-            ctx.beginPath();
-            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        document.getElementById('admin-captcha-input').value = '';
     },
 
     // 1단계: ID 입력받아 메일 발송
@@ -333,7 +265,7 @@ const AdminManager = {
                     document.getElementById('admin-step-2').style.display = 'block';
                     document.getElementById('admin-step-2-msg').innerText = data.message;
                     
-                    this.generateCaptcha(); // 2단계 켜지면 캔버스에 캡챠 그림 그리기
+                    if (window.grecaptcha) grecaptcha.reset(); // 2단계 진입 시 캡챠 초기화
                     document.getElementById('admin-otp-input').focus();
                 });
             } else {
@@ -344,22 +276,20 @@ const AdminManager = {
         }
     },
 
-    // 2단계: 코드 & 캡챠 검증 후 로그인
+    // 2단계: 코드 & 구글 리캡챠 검증 후 로그인
     async submitCode() {
         const code = document.getElementById('admin-otp-input').value.trim();
-        // 사용자가 소문자로 입력해도 대문자로 변환해서 검사 (편의성)
-        const captchaInput = document.getElementById('admin-captcha-input').value.trim().toUpperCase();
+        
+        // 구글 리캡챠가 체크되었는지 확인하고 토큰을 가져옵니다.
+        const recaptchaToken = grecaptcha.getResponse();
 
         if(!code) {
             Swal.fire({ icon: 'warning', title: '확인 필요', text: '인증 코드를 입력해주세요.', confirmButtonColor: '#3498db' });
             return;
         }
 
-        // 캡챠 정답 검사
-        if (captchaInput !== this.captchaAnswer.toUpperCase()) {
-            Swal.fire({ icon: 'error', title: '캡챠 오류', text: '그림의 문자와 입력한 문자가 일치하지 않습니다.', confirmButtonColor: '#e74c3c' });
-            this.generateCaptcha(); // 틀리면 곧바로 새로운 그림 생성!
-            document.getElementById('admin-captcha-input').focus();
+        if (!recaptchaToken) {
+            Swal.fire({ icon: 'error', title: '캡챠 오류', text: '"로봇이 아닙니다" 체크박스를 클릭해주세요.', confirmButtonColor: '#e74c3c' });
             return;
         }
 
@@ -370,10 +300,11 @@ const AdminManager = {
         });
 
         try {
+            // 서버에 코드와 함께 구글 토큰도 보냅니다.
             const res = await fetch('/api/admin/verify-code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code })
+                body: JSON.stringify({ code, recaptchaToken })
             });
             const data = await res.json();
             
@@ -390,10 +321,11 @@ const AdminManager = {
                 });
             } else {
                 Swal.fire({ icon: 'error', title: '인증 실패', text: data.message, confirmButtonColor: '#e74c3c' });
-                this.generateCaptcha(); 
+                grecaptcha.reset(); // 실패 시 캡챠 체크박스를 다시 풀어서 재시도 유도
             }
         } catch (e) {
             Swal.fire({ icon: 'error', title: '서버 오류', text: '인증 실패: 서버에 연결할 수 없습니다.', confirmButtonColor: '#e74c3c' });
+            grecaptcha.reset();
         }
     },
 

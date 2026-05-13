@@ -200,17 +200,10 @@
                 <div id="admin-step-2" style="display:none;">
                     <p id="admin-step-2-msg" style="margin-bottom: 20px; font-weight: bold; color: #27ae60; font-size: 14px;"></p>
                     
-                    <input type="text" id="admin-otp-input" placeholder="인증코드 6자리" style="width: 100%; padding: 14px; font-size: 18px; text-align: center; border: 1px solid #ccd1d9; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; letter-spacing: 2px; font-weight: bold;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); document.getElementById('admin-captcha-input').focus(); }">
+                    <input type="text" id="admin-otp-input" placeholder="인증코드 6자리" style="width: 100%; padding: 14px; font-size: 18px; text-align: center; border: 1px solid #ccd1d9; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; letter-spacing: 2px; font-weight: bold;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); AdminManager.submitCode(); }">
                     
-                    <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <p style="margin: 0; font-size: 13px; color: #e74c3c; font-weight: bold;">🤖 사람 확인 캡챠</p>
-                            <button type="button" onclick="AdminManager.generateCaptcha()" style="background: none; border: none; color: #3498db; font-size: 12px; cursor: pointer; padding: 0; font-weight: bold;">↻ 이미지 새로고침</button>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                            <canvas id="captcha-canvas" width="200" height="60" style="border: 1px solid #ddd; border-radius: 4px; background: #fdf2f0; letter-spacing: 2px;"></canvas>
-                            <input type="text" id="admin-captcha-input" placeholder="위 그림의 문자를 입력하세요" style="width: 100%; padding: 12px; font-size: 14px; text-align: center; border: 1px solid #ccc; border-radius: 6px;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); AdminManager.submitCode(); }">
-                        </div>
+                    <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                        <div class="g-recaptcha" data-sitekey="여기에_발급받은_사이트_키를_넣으세요"></div>
                     </div>
 
                     <button type="button" onclick="event.preventDefault(); event.stopPropagation(); AdminManager.submitCode();" style="width: 100%; background: #2ecc71; color: white; border: none; padding: 14px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">인증 확인 및 로그인</button>
@@ -232,6 +225,7 @@
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
     <script src="js/config.js" defer></script>
     <script src="js/utils.js" defer></script>
