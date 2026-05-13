@@ -43,9 +43,20 @@
 .title-switch-btn:hover { transform: rotate(180deg); background: #357ABD; }
 
 /* 모바일 전용 */
+/* 모바일 전용 */
 @media (max-width: 768px) {
-    .pc-top-bar { display: none; }
-    .header-center-group { width: 100%; }
-    .header-shape { width: 100%; border-radius: 0 0 15px 15px; padding: 0 15px; justify-content: space-between; }
-    .header_text { font-size: 15px; }
+    .pc-top-bar { display: block; height: 50px; } /* 하얀 띠 롤백 */
+    
+    /* 파란 헤더를 왼쪽으로 밀고, 우측에 로그인 버튼 들어갈 130px 공간 확보 */
+    .header-center-group { 
+        width: calc(100% - 130px); 
+        left: 0; transform: none; 
+    }
+    .header-shape { 
+        height: 50px; border-radius: 0 0 15px 0; 
+        padding: 0 10px; gap: 6px; 
+    }
+    .header_text { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .logo-img { height: 20px; }
+    .title-switch-btn { width: 22px; height: 22px; font-size: 11px; }
 }

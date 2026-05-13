@@ -65,13 +65,17 @@
     color: #ffffff !important;
 }
 
-/* 지도 축소 시 버튼 크기 반응형 조절 (버튼 찌그러짐 방지를 위해 zoom 속성 활용) */
+/* 지도 축소 시 버튼 크기 반응형 조절 (비율 축소 오류 방지를 위해 폰트/여백 직접 조절) */
 .district-stat-marker .zoom-lv-10 { display: none !important; }
-.district-stat-marker .zoom-lv-11 { zoom: 0.85; opacity: 0.6; }
-.district-stat-marker .zoom-lv-12 { zoom: 0.95; opacity: 0.8; }
-.district-stat-marker .zoom-lv-13, 
-.district-stat-marker .zoom-lv-14, 
-.district-stat-marker .zoom-lv-15, 
-.district-stat-marker .zoom-lv-16, 
-.district-stat-marker .zoom-lv-17, 
-.district-stat-marker .zoom-lv-18 { zoom: 1.1; opacity: 1; }
+/* 11레벨 (많이 축소됨) */
+.district-stat-marker .zoom-lv-11 .dist-stat-btn {
+    padding: 6px 10px !important; min-width: 65px !important;
+}
+.district-stat-marker .zoom-lv-11 .dist-stat-label { font-size: 12px !important; }
+.district-stat-marker .zoom-lv-11 .shared-dist-img { width: 18px !important; height: 18px !important; }
+/* 12레벨 (중간 축소) */
+.district-stat-marker .zoom-lv-12 .dist-stat-btn {
+    padding: 8px 12px !important; min-width: 75px !important;
+}
+.district-stat-marker .zoom-lv-12 .dist-stat-label { font-size: 13.5px !important; }
+.district-stat-marker .zoom-lv-12 .shared-dist-img { width: 21px !important; height: 21px !important; }

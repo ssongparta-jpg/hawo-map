@@ -63,6 +63,11 @@
         <button onclick="location.href='/login'" style="background: #2563eb; color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: background 0.2s;">로그인 / 가입</button>
     </div>
 
+    <div class="mobile-bottom-bar"></div>
+    <button id="mobile-menu-btn" class="mobile-menu-btn" onclick="document.querySelector('.boundary-toggle-container').classList.toggle('show-balloon')">
+        ⚙️ 메뉴 열기 🔼
+    </button>
+
     <div class="boundary-toggle-container">
         <div class="control-row">
             <span class="switch-label">행정구역 켜기/끄기</span>
