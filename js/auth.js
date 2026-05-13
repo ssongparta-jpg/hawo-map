@@ -209,14 +209,15 @@ const AuthManager = {
 // 관리자 인증 로그인 & 화면 이동 매니저
 const AdminManager = {
     selectedAdminId: null,
+    captchaAnswer: null,
 
-    // 관리자 인증 모달창 띄우기 (지도 위에서 동작)
     openLoginModal() {
         const modal = document.getElementById('admin-login-modal');
         if (modal) {
             modal.style.display = 'flex';
             document.getElementById('admin-step-1').style.display = 'block';
             document.getElementById('admin-step-2').style.display = 'none';
+            document.getElementById('admin-id-input').value = '';
             document.getElementById('admin-otp-input').value = '';
             this.selectedAdminId = null;
         }
@@ -227,23 +228,31 @@ const AdminManager = {
         if (modal) modal.style.display = 'none';
     },
 
-    // 1단계: 관리자 선택 및 메일 발송
-    async selectAdmin(adminId) {
-        // 1. 먼저 발송 의사를 확인합니다.
-        if (!confirm(`'${adminId}' 계정으로 인증 메일을 발송하시겠습니까?`)) return;
-        
-        // 2. [추가된 캡챠 로직] 자동화 매크로 봇을 막기 위한 수학 퀴즈
-        const num1 = Math.floor(Math.random() * 9) + 1; // 1~9 사이의 랜덤 숫자
+    // 2단계용 캡챠 생성 로직
+    generateCaptcha() {
+        const num1 = Math.floor(Math.random() * 9) + 1;
         const num2 = Math.floor(Math.random() * 9) + 1;
-        const answer = prompt(`[자동화 공격 방지] 메일을 발송하려면 아래 문제의 정답을 숫자로 입력해주세요.\n\n 퀴즈: ${num1} + ${num2} = ?`);
+        this.captchaAnswer = num1 + num2;
+        document.getElementById('captcha-question').innerText = `${num1} + ${num2} = `;
+        document.getElementById('admin-captcha-input').value = '';
+    },
 
-        // 정답을 맞추지 못하거나 취소(null)를 누르면 여기서 바로 함수를 끝내버립니다(return).
-        if (answer !== String(num1 + num2)) {
-            alert("정답이 틀렸거나 취소되었습니다. 다시 시도해주세요.");
+    // 1단계: ID 입력받아 메일 발송
+    async requestEmail() {
+        const adminId = document.getElementById('admin-id-input').value.trim();
+        if (!adminId) {
+            Swal.fire({ icon: 'warning', title: '입력 오류', text: '관리자 ID를 입력해주세요.', confirmButtonColor: '#3498db' });
             return;
         }
-        
-        // 3. 캡챠를 통과한 경우에만 서버로 메일 발송을 요청합니다.
+
+        // 로딩 팝업 표시
+        Swal.fire({
+            title: '메일 발송 중...',
+            text: '잠시만 기다려주세요.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
         try {
             const res = await fetch('/api/admin/send-code', { 
                 method: 'POST',
@@ -257,20 +266,33 @@ const AdminManager = {
                 document.getElementById('admin-step-1').style.display = 'none';
                 document.getElementById('admin-step-2').style.display = 'block';
                 document.getElementById('admin-step-2-msg').innerText = data.message;
-                alert("인증 메일이 발송되었습니다. 코드를 입력해주세요.");
+                
+                this.generateCaptcha(); // 2단계 UI가 켜질 때 캡챠 문제 출제
+
+                Swal.fire({ icon: 'success', title: '발송 완료!', text: '인증 메일이 성공적으로 발송되었습니다.', confirmButtonColor: '#2ecc71' });
             } else {
-                alert(data.message); // 예: 1분 쿨다운 에러 메시지 출력
+                Swal.fire({ icon: 'error', title: '발송 실패', text: data.message, confirmButtonColor: '#e74c3c' });
             }
         } catch (e) {
-            console.error(e);
-            alert("서버 통신 오류가 발생했습니다.");
+            Swal.fire({ icon: 'error', title: '서버 오류', text: '서버 통신 오류가 발생했습니다.', confirmButtonColor: '#e74c3c' });
         }
     },
 
-    // 2단계: 코드 검증 및 성공 시 관리자 페이지로 이동
+    // 2단계: 코드 & 캡챠 검증 후 로그인
     async submitCode() {
-        const code = document.getElementById('admin-otp-input').value;
-        if(!code) return alert("인증 코드를 입력해주세요.");
+        const code = document.getElementById('admin-otp-input').value.trim();
+        const captchaInput = document.getElementById('admin-captcha-input').value.trim();
+
+        if(!code) {
+            Swal.fire({ icon: 'warning', title: '확인 필요', text: '인증 코드를 입력해주세요.', confirmButtonColor: '#3498db' });
+            return;
+        }
+
+        if (parseInt(captchaInput) !== this.captchaAnswer) {
+            Swal.fire({ icon: 'error', title: '캡챠 오류', text: '자동화 방지 캡챠 정답이 틀렸습니다.', confirmButtonColor: '#e74c3c' });
+            this.generateCaptcha(); // 틀리면 새로운 캡챠 문제 출제
+            return;
+        }
 
         try {
             const res = await fetch('/api/admin/verify-code', {
@@ -281,20 +303,25 @@ const AdminManager = {
             const data = await res.json();
             
             if (data.success) {
-                alert(`관리자(${data.userId}) 로그인 성공!`);
-                this.closeLoginModal();
-                location.reload(); 
+                Swal.fire({ 
+                    icon: 'success', 
+                    title: '인증 성공!', 
+                    text: `관리자(${data.userId})로 로그인되었습니다.`, 
+                    confirmButtonColor: '#2ecc71' 
+                }).then(() => {
+                    this.closeLoginModal();
+                    location.reload(); 
+                });
             } else {
-                alert(data.message);
+                Swal.fire({ icon: 'error', title: '인증 실패', text: data.message, confirmButtonColor: '#e74c3c' });
+                this.generateCaptcha(); // 코드 실패 시에도 캡챠 리셋
             }
         } catch (e) {
-            alert("인증 실패: 서버 오류");
+            Swal.fire({ icon: 'error', title: '서버 오류', text: '인증 실패: 서버에 연결할 수 없습니다.' });
         }
     },
 
-    // 관리자가 우측 상단의 '관리자' 버튼을 눌렀을 때의 동작
     async open() {
-        // 팝업 모달 대신 전용 페이지를 새 탭으로 오픈
         window.open('admin.html', '_blank');
     }
 };

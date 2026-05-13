@@ -17,11 +17,15 @@ const PORT = 3000;
 const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
 
 // [관리자 설정] .env 파일에 등록된 관리자 ID와 이메일 매핑
-const ADMINS = {
-    'spring': process.env.ADMIN_EMAIL_SPRING,
-    'summer': process.env.ADMIN_EMAIL_SUMMER,
-    'autumn': process.env.ADMIN_EMAIL_AUTUMN
-};
+const ADMINS = {};
+if (process.env.ADMIN_EMAILS) {
+    process.env.ADMIN_EMAILS.split(',').forEach(pair => {
+        const [id, email] = pair.split(':');
+        if (id && email) {
+            ADMINS[id.trim()] = email.trim();
+        }
+    });
+}
 
 app.use(bodyParser.json());
 app.use(express.static(__dirname, { extensions: ['html'] }));
