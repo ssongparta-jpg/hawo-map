@@ -88,10 +88,54 @@ const mailRequestLimits = {};
 const loginAttempts = {};
 
 // 1. 인증 코드 발송 요청
+app.post('/api/admin/send-code', (req, res) => {
+    const { id } = req.body;
+    
+    // IP 기반 1분 쿨다운 방어
+    const clientIp = req.ip || req.socket.remoteAddress;
+    if (mailRequestLimits[clientIp] && Date.now() - mailRequestLimits[clientIp] < 60000) {
+        return res.status(429).json({ success: false, message: "메일 발송 요청이 너무 잦습니다. 1분 후에 다시 시도해주세요." });
+    }
+
+    if (!ADMINS[id]) {
+        return res.status(400).json({ success: false, message: "등록되지 않은 관리자 ID입니다." });
+    }
+
+    mailRequestLimits[clientIp] = Date.now(); // 쿨다운 기록
+
+    const targetEmail = ADMINS[id];
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6자리 코드 생성
+    
+    adminOtpStore = {
+        userId: id,
+        code: code,
+        expires: Date.now() + 3 * 60 * 1000,
+        attempts: 0 
+    };
+
+    const mailOptions = {
+        from: process.env.MAIL_USER,
+        to: targetEmail,
+        subject: '[화성오산 학교지도] 관리자 인증 코드',
+        text: `관리자(${id}) 로그인 인증 코드: [ ${code} ]\n3분 내에 입력해주세요. (5회 오류 시 파기됩니다)`
+    };
+
+    transporter.sendMail(mailOptions, (error) => {
+        if (error) {
+            console.error("Mail Error:", error);
+            delete mailRequestLimits[clientIp];
+            return res.status(500).json({ success: false, message: "메일 발송 실패" });
+        }
+        const maskedEmail = targetEmail.replace(/(.{2})(.*)(@.*)/, '$1*****$3');
+        res.json({ success: true, message: `${maskedEmail}로 인증코드를 보냈습니다. (제한: 5회)` });
+    });
+});
+
+// 2. 인증 코드 및 구글 리캡챠 검증 후 로그인
 app.post('/api/admin/verify-code', async (req, res) => {
     const { code, recaptchaToken } = req.body;
 
-    // [추가] 1. 구글 reCAPTCHA 검증 과정
+    // [구글 reCAPTCHA 검증]
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     if (secretKey) {
         try {
@@ -100,7 +144,7 @@ app.post('/api/admin/verify-code', async (req, res) => {
             const reCaptchaData = await reCaptchaRes.json();
             
             if (!reCaptchaData.success) {
-                return res.status(403).json({ success: false, message: "비정상적인 접근입니다 (로봇 의심). 캡챠를 다시 진행해주세요." });
+                return res.status(403).json({ success: false, message: "비정상적인 접근입니다 (로봇 의심). '로봇이 아닙니다' 체크를 다시 진행해주세요." });
             }
         } catch (error) {
             console.error("reCAPTCHA Error:", error);
@@ -108,7 +152,7 @@ app.post('/api/admin/verify-code', async (req, res) => {
         }
     }
 
-    // 2. 기존 OTP 코드 검증 과정
+    // [기존 OTP 코드 검증]
     if (!adminOtpStore.code || Date.now() > adminOtpStore.expires) {
         return res.status(400).json({ success: false, message: "인증 코드가 만료되었거나 존재하지 않습니다. 다시 요청해주세요." });
     }
@@ -135,47 +179,6 @@ app.post('/api/admin/verify-code', async (req, res) => {
             });
         }
 
-        res.status(401).json({ 
-            success: false, 
-            message: `인증 코드가 일치하지 않습니다. (남은 기회: ${maxAttempts - adminOtpStore.attempts}번)` 
-        });
-    }
-});
-
-// 2. 인증 코드 검증 및 로그인
-app.post('/api/admin/verify-code', (req, res) => {
-    const { code } = req.body;
-
-    if (!adminOtpStore.code || Date.now() > adminOtpStore.expires) {
-        return res.status(400).json({ success: false, message: "인증 코드가 만료되었거나 존재하지 않습니다. 다시 요청해주세요." });
-    }
-
-    if (adminOtpStore.code === code) {
-        // 인증 성공: 정보 파기 후 세션 생성
-        const adminId = adminOtpStore.userId;
-        adminOtpStore = { userId: null, code: null, expires: null, attempts: 0 };
-        
-        req.session.userId = adminId;
-        req.session.isAdminAuth = true; 
-        
-        req.session.save(() => {
-            res.json({ success: true, userId: adminId });
-        });
-    } else {
-        // [핵심 해킹 방어] 인증 실패 시 카운트 증가
-        adminOtpStore.attempts += 1;
-        const maxAttempts = 5;
-
-        // 5회 이상 틀렸을 경우: OTP 즉시 파기 및 차단
-        if (adminOtpStore.attempts >= maxAttempts) {
-            adminOtpStore = { userId: null, code: null, expires: null, attempts: 0 };
-            return res.status(403).json({ 
-                success: false, 
-                message: "입력 시도 횟수(5회)를 초과하여 보안상 인증 코드가 파기되었습니다. 코드를 다시 발급받아주세요." 
-            });
-        }
-
-        // 5회 미만 틀렸을 경우: 남은 횟수 안내
         res.status(401).json({ 
             success: false, 
             message: `인증 코드가 일치하지 않습니다. (남은 기회: ${maxAttempts - adminOtpStore.attempts}번)` 
