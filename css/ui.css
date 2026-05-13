@@ -193,3 +193,83 @@ input:checked + .slider:before { transform: translateX(16px); }
   height: auto !important;        /* 기존에 동그라미를 위해 고정된 height가 있다면 해제 */
   aspect-ratio: auto !important;
 }
+
+/* --- 거리재기 및 네이버 길찾기 관련 스타일 --- */
+
+/* 일시정지 플로팅 버튼 */
+.btn-pause-measure {
+    position: absolute; 
+    bottom: 30px; 
+    right: 120px; 
+    z-index: 1200;
+    background: white; 
+    color: #333; 
+    border: 1px solid #ccc; 
+    padding: 8px 14px;
+    border-radius: 20px; 
+    font-size: 13px; 
+    font-weight: bold; 
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2); 
+    transition: all 0.2s; 
+    display: none;
+}
+.btn-pause-measure.paused { 
+    background: #f39c12; 
+    color: white; 
+    border-color: #e67e22; 
+}
+
+/* 거리재기 툴팁 (빨간 박스) */
+.dist-tooltip { 
+    pointer-events: auto !important; 
+    cursor: pointer !important;
+    border: 1px solid #e74c3c !important;
+    background: white !important;
+    color: #e74c3c !important;
+    font-weight: bold !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* 경로 팝업창 공통 스타일 */
+.route-popup-box {
+    text-align: center; 
+    padding: 8px; 
+    min-width: 180px;
+}
+.route-popup-title {
+    font-weight: bold; 
+    font-size: 13px; 
+    margin-bottom: 8px; 
+    color: #333;
+}
+.btn-naver-route {
+    background: #03c75a; 
+    color: white; 
+    border: none; 
+    padding: 8px 12px; 
+    border-radius: 6px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    width: 100%;
+    transition: background 0.2s;
+}
+.btn-naver-route:hover {
+    background: #02b350;
+}
+.route-popup-warning {
+    color: #e74c3c; 
+    font-size: 11px; 
+    margin-top: 8px; 
+    font-weight: bold;
+}
+
+/* 모바일 화면 대응 */
+@media (max-width: 768px) { 
+    .btn-pause-measure { 
+        bottom: 70px; 
+        right: 105px; 
+        padding: 8px 12px; 
+        font-size: 12px; 
+    } 
+}

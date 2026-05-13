@@ -213,3 +213,7 @@ body {
     transform: scale(1.3);
     margin-right: 5px; /* 글자와의 간격 확보 */
 }
+
+/* admin.html 리팩토링 유틸리티 */
+.admin-name-text { margin-right: 15px; font-weight: bold; }
+.loading-text { color: #666; }

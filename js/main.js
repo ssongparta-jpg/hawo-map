@@ -7,6 +7,7 @@ const App = {
         DistanceManager.init();
         await MapConfig.loadCustomColors();
         await AuthManager.checkAuth();
+        
         try {
             const [pRows, lRows, hRows] = await Promise.all([
                 this.fetchJson(MapConfig.GIDS.POINTS),
@@ -25,7 +26,6 @@ const App = {
                 return parseFloat(String(val).replace(/,/g, '')) || 0;
             };
 
-            // 데이터 파싱
             pRows.forEach((row) => {
                 const c = row.c;
                 if (!c || !c[1] || !c[2]) return;
@@ -55,7 +55,6 @@ const App = {
                 groupedSchools[locKey].push({lat, lng, p});
             });
 
-            // 마커 생성 (겹침 처리)
             Object.values(groupedSchools).forEach(group => {
                 group.sort((a, b) => {
                     const getRank = (name) => {
@@ -86,7 +85,9 @@ const App = {
             MapManager.addDistrictButtons();
             console.log("앱 초기화 완료.");
             
-        } catch (e) { console.error("데이터 로드 중 오류 발생:", e); }
+        } catch (e) { 
+            console.error("데이터 로드 중 오류 발생:", e); 
+        }
     },
 
     async fetchJson(gid) {
@@ -95,11 +96,10 @@ const App = {
         return JSON.parse(txt.substring(47).slice(0, -2)).table.rows;
     },
 
-renderLegend(rows) {
+    renderLegend(rows) {
         const container = document.getElementById('legend');
         if (!container) return;
         
-        // 여기에 예쁜 카드 형태의 HTML 구조를 통째로 렌더링합니다.
         container.innerHTML = `
             <div class="legend-card">
                 <div class="legend-header" id="legendToggleBtn">
@@ -117,7 +117,6 @@ renderLegend(rows) {
         const body = document.getElementById('legendBody');
         const arrow = document.getElementById('legendArrow');
 
-        // 토글 클릭 시 CSS의 .collapsed 클래스를 켰다 껐다 함
         toggleBtn.onclick = (e) => {
             e.stopPropagation();
             const isCollapsed = body.classList.toggle('collapsed');
@@ -134,6 +133,7 @@ renderLegend(rows) {
             const color = row.c[3]?.v || '#333';
             const symbol = row.c[2]?.v || '●';
             
+            // 데이터별 동적 색상 처리(인라인 허용 구역)
             item.innerHTML = `
                 <span class="l-symbol" style="color:${color}">${symbol}</span>
                 <span class="l-text">${type}</span>
@@ -150,7 +150,7 @@ renderLegend(rows) {
 };
 
 // =========================================
-// 거리재기 및 네이버 길찾기 연동 매니저 (경유지 유무 버그 완벽 수정)
+// 거리재기 및 네이버 길찾기 연동 매니저 
 // =========================================
 const DistanceManager = {
     active: false,
@@ -163,31 +163,11 @@ const DistanceManager = {
     hoverTimer: null,
 
     init() {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            #btn-pause-measure {
-                position: absolute; bottom: 30px; right: 120px; z-index: 1200;
-                background: white; color: #333; border: 1px solid #ccc; padding: 8px 14px;
-                border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: all 0.2s; display: none;
-            }
-            #btn-pause-measure.paused { background: #f39c12; color: white; border-color: #e67e22; }
-            
-            .dist-tooltip { 
-                pointer-events: auto !important; 
-                cursor: pointer !important;
-                border: 1px solid #e74c3c !important;
-                background: white !important;
-                color: #e74c3c !important;
-                font-weight: bold !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            }
-            @media (max-width: 768px) { #btn-pause-measure { bottom: 70px; right: 105px; padding: 8px 12px; font-size: 12px; } }
-        `;
-        document.head.appendChild(style);
-
+        // [수정됨] 자바스크립트 내 하드코딩 스타일 주입 로직 완전 제거 -> 외부 CSS로 이관
+        
         const pauseBtn = document.createElement('button');
         pauseBtn.id = 'btn-pause-measure';
+        pauseBtn.className = 'btn-pause-measure';
         pauseBtn.innerHTML = '⏸ 일시정지';
         const container = document.querySelector('.container') || document.body;
         container.appendChild(pauseBtn);
@@ -232,6 +212,7 @@ const DistanceManager = {
         this.isPaused = !this.isPaused;
         const pauseBtn = document.getElementById('btn-pause-measure');
         const mapEl = document.getElementById('map');
+        
         if (this.isPaused) {
             pauseBtn.classList.add('paused');
             pauseBtn.innerHTML = '▶ 그리기 재개';
@@ -259,11 +240,12 @@ const DistanceManager = {
         const marker = L.circleMarker(latlng, { radius: 7, color: '#c0392b', fillColor: '#fff', fillOpacity: 1, weight: 2 }).addTo(MapManager.map);
         const distStr = this.formatDistance(this.totalDistance);
         
+        // [수정됨] 지저분한 인라인 스타일을 깔끔한 클래스로 변경
         const popupHtml = `
-            <div id="route-popup-${pIndex}" style="text-align:center; padding:8px; min-width:180px;">
-                <div style="font-weight:bold; font-size:13px; margin-bottom:8px; color:#333;">이 지점까지 길 찾기</div>
-                <button onclick="DistanceManager.openNaverUpTo(${pIndex})" style="background:#03c75a; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%;">네이버 지도 열기 ↗</button>
-                <div style="color:#e74c3c; font-size:11px; margin-top:8px; font-weight:bold;">※ 경유지는 최대 5개 설정 가능합니다</div>
+            <div id="route-popup-${pIndex}" class="route-popup-box">
+                <div class="route-popup-title">이 지점까지 길 찾기</div>
+                <button class="btn-naver-route" onclick="DistanceManager.openNaverUpTo(${pIndex})">네이버 지도 열기 ↗</button>
+                <div class="route-popup-warning">※ 경유지는 최대 5개 설정 가능합니다</div>
             </div>
         `;
         marker.bindPopup(popupHtml, { closeButton: false, autoClose: false, offset: [0, -5] });
@@ -329,12 +311,10 @@ const DistanceManager = {
         const endPt = finalPoints[finalPoints.length - 1];
         const waypoints = finalPoints.slice(1, -1); 
 
-        // [버그 수정 핵심 파트] 네이버 지도가 인식할 수 있도록 /-/ 구분자 추가!
+        // 네이버 지도가 인식할 수 있도록 /-/ 구분자 추가
         if (waypoints.length === 0) {
-            // 경유지가 없을 때: 출발 / 도착 /-/ car
             url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/-/car`;
         } else {
-            // 경유지가 있을 때: 출발 / 도착 / 경유1:경유2 /-/ car
             const waypointsStr = waypoints.map((p, i) => fmt(p, `경유지${i + 1}`)).join(':');
             url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/-/car`;
         }
@@ -355,7 +335,9 @@ const DistanceManager = {
     formatDistance(m) {
         return m < 1000 ? Math.round(m) + 'm' : (m / 1000).toFixed(1) + 'km';
     }
-    
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+// [수정됨] 화살표 함수에서 익명 함수로 변경하여 호환성 강화
+document.addEventListener('DOMContentLoaded', function() {
+    App.init();
+});
