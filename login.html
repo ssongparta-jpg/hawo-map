@@ -20,12 +20,12 @@
                 <p>서비스 이용을 위해 로그인해주세요.</p>
             </header>
 
-            <div class="login-tabs">
+            <nav class="login-tabs">
                 <button class="tab-btn active" onclick="LoginApp.switchTab('user')">일반 로그인</button>
                 <button id="admin-tab-btn" class="tab-btn" onclick="LoginApp.switchTab('admin')" style="display: none;">관리자 인증</button>
-            </div>
+            </nav>
 
-            <div id="user-login-area" class="form-area active">
+            <section id="user-login-area" class="form-area active">
                 <div class="input-group">
                     <input type="text" id="user-id" placeholder="아이디를 입력하세요" autocomplete="off" onkeydown="if(event.key==='Enter') document.getElementById('user-pw').focus();" onclick="LoginApp.handleIdClick()">
                 </div>

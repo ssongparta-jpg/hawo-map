@@ -35,12 +35,13 @@
   <script src="/server/admin.js"></script>
   
   <script>
+    // 관리자 페이지에 진입하자마자 첫 화면(PW 초기화 요청 탭)을 안전하게 자동 로드합니다.
     document.addEventListener('DOMContentLoaded', () => {
-        const checkAdmin = setInterval(() => {
+        const interval = setInterval(() => {
             if (window.AdminApp && typeof AdminApp.loadResetRequests === 'function') {
-                clearInterval(checkAdmin);
+                clearInterval(interval);
                 const resetBtn = document.getElementById('nav-reset');
-                if(resetBtn) resetBtn.click();
+                if (resetBtn) resetBtn.click();
             }
         }, 100);
     });

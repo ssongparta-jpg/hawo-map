@@ -85,8 +85,10 @@
     0% { opacity: 0; transform: translateY(15px) scale(0.8); }
     100% { opacity: 1; transform: translateY(0) scale(1); }
 }
-.district-stat-marker {
-    animation: markerPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+
+/* 👇 [핵심 버그 수정] district-stat-marker가 아닌 내부의 dist-stat-btn에 애니메이션을 줍니다! 👇 */
+.leaflet-container .dist-stat-btn {
+    animation: markerPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 /* --- 지도 축소/확대 시 크기 조절 및 저배율 투명도 적용 --- */

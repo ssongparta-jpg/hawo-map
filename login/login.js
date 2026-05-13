@@ -2,7 +2,7 @@ const LoginApp = {
     isIdChecked: false,
     adminIdTemp: null,
     userCaptchaAnswer: null,
-    
+
     // 이스터에그: 아이디 창 단시간 5번 클릭 시 관리자 탭 오픈
     idClickCount: 0,
     idClickTimer: null,
@@ -11,7 +11,6 @@ const LoginApp = {
         this.idClickCount++;
         clearTimeout(this.idClickTimer);
         
-        // 1초 안에 다음 클릭이 없으면 초기화
         this.idClickTimer = setTimeout(() => {
             this.idClickCount = 0;
         }, 1000);
@@ -22,23 +21,15 @@ const LoginApp = {
                 adminTab.style.display = 'block';
                 Swal.fire({ icon: 'info', title: '관리자 모드', text: '관리자 인증 메뉴가 활성화되었습니다.', timer: 1500, showConfirmButton: false });
             }
-            this.idClickCount = 0; // 활성화 후 초기화
+            this.idClickCount = 0; 
         }
     },
 
-    getUserLoginFails() {
-        return parseInt(localStorage.getItem('hwaoLoginFails') || '0', 10);
-    },
-    incrementUserLoginFails() {
-        const current = this.getUserLoginFails();
-        localStorage.setItem('hwaoLoginFails', current + 1);
-    },
-    clearUserLoginFails() {
-        localStorage.removeItem('hwaoLoginFails');
-    },
+    getUserLoginFails() { return parseInt(localStorage.getItem('hwaoLoginFails') || '0', 10); },
+    incrementUserLoginFails() { localStorage.setItem('hwaoLoginFails', this.getUserLoginFails() + 1); },
+    clearUserLoginFails() { localStorage.removeItem('hwaoLoginFails'); },
 
     init() {
-        // [수정] 5회 이상 실패 기록이 있을 때만 캡챠 띄우기
         if (this.getUserLoginFails() >= 5) {
             const captchaContainer = document.getElementById('user-captcha-container');
             if (captchaContainer) {
@@ -50,7 +41,6 @@ const LoginApp = {
 
     switchTab(tabName) {
         this.isIdChecked = false; 
-        
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.form-area').forEach(area => {
             area.classList.remove('active');
@@ -66,7 +56,6 @@ const LoginApp = {
             if (adminTab) adminTab.classList.add('active');
             document.getElementById('admin-step1-area').style.display = 'block';
             setTimeout(() => document.getElementById('admin-step1-area').classList.add('active'), 10);
-            
             if (window.grecaptcha) grecaptcha.reset();
         }
     },
@@ -80,7 +69,7 @@ const LoginApp = {
         setTimeout(() => document.getElementById('user-register-area').classList.add('active'), 10);
     },
 
-    // [수정] 캡챠 순한맛 버전 (가독성 향상)
+    // [수정됨] 캡챠 아주 순한맛 (글자 겹침 X, 회전 X, 굵고 선명하게)
     generateUserCaptcha() {
         const canvas = document.getElementById('user-captcha-canvas');
         if (!canvas) return;
@@ -93,51 +82,34 @@ const LoginApp = {
         }
         this.userCaptchaAnswer = captchaStr;
 
-        ctx.fillStyle = `rgb(${220 + Math.random()*20}, ${220 + Math.random()*20}, ${220 + Math.random()*20})`;
+        // 깔끔한 밝은 회색 배경
+        ctx.fillStyle = `rgb(245, 245, 245)`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 노이즈 선 대폭 감소 (7개 -> 3개), 굵기도 얇게
+        // 연하고 얇은 방해 선 3개만 추가
         for(let i = 0; i < 3; i++) {
-            ctx.strokeStyle = `rgba(${Math.random()*100}, ${Math.random()*100}, ${Math.random()*100}, 0.2)`;
-            ctx.lineWidth = Math.random() * 2 + 1;
+            ctx.strokeStyle = `rgba(0, 0, 0, 0.15)`;
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-            ctx.bezierCurveTo(
-                Math.random() * canvas.width, Math.random() * canvas.height,
-                Math.random() * canvas.width, Math.random() * canvas.height,
-                Math.random() * canvas.width, Math.random() * canvas.height
-            );
+            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
             ctx.stroke();
         }
 
         ctx.textBaseline = 'middle';
-        const fonts = ['Arial', 'Verdana', 'Georgia', 'Courier New'];
+        ctx.font = 'bold 32px Arial'; 
         
+        // 글자를 반듯하게 가로로 정렬
         for (let i = 0; i < captchaStr.length; i++) {
-            const x = 25 + i * 25; 
-            const y = canvas.height / 2 + (Math.random() * 10 - 5); 
-            const angle = (Math.random() * 0.4 - 0.2); // 회전 최소화
-            const scaleX = 0.8 + Math.random() * 0.2; 
-            const scaleY = 0.8 + Math.random() * 0.2; 
-            
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.scale(scaleX, scaleY);
-            
-            ctx.font = `bold ${Math.floor(Math.random() * 6 + 28)}px ${fonts[Math.floor(Math.random() * fonts.length)]}`; 
-            
-            ctx.fillStyle = `rgb(${Math.random()*60}, ${Math.random()*60}, ${Math.random()*60})`; 
-            ctx.fillText(captchaStr[i], 0, 0);
-
-            ctx.restore();
+            ctx.fillStyle = '#333'; 
+            ctx.fillText(captchaStr[i], 20 + i * 28, canvas.height / 2 + (Math.random() * 4 - 2));
         }
 
-        // 점 노이즈 개수 감소
-        for(let i = 0; i < 60; i++) {
-            ctx.fillStyle = `rgba(${Math.random()*200}, ${Math.random()*200}, ${Math.random()*200}, 0.5)`;
+        // 아주 연한 점 노이즈 약간만 추가
+        for(let i = 0; i < 40; i++) {
+            ctx.fillStyle = `rgba(0, 0, 0, 0.1)`;
             ctx.beginPath();
-            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 1.5, 0, Math.PI * 2);
+            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1.5, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -150,7 +122,6 @@ const LoginApp = {
         
         if (!id || !pw) return Swal.fire({ icon: 'warning', title: '입력 오류', text: '아이디와 비밀번호를 모두 입력해주세요.' });
 
-        // [수정] 실패 횟수가 5회 이상일 때만 캡챠 정답 검사
         if (this.getUserLoginFails() >= 5) {
             const captchaInput = document.getElementById('user-captcha-input').value.trim().toUpperCase();
             if (!captchaInput) return Swal.fire({ icon: 'warning', text: '봇 방지용 그림 문자를 입력해주세요.' });
@@ -177,7 +148,6 @@ const LoginApp = {
                 this.incrementUserLoginFails();
                 document.getElementById('user-pw').value = ''; 
                 
-                // [수정] 누적 5회가 되면 캡챠 박스 오픈
                 Swal.fire({ icon: 'error', title: '로그인 실패', text: data.message }).then(() => {
                     if (this.getUserLoginFails() >= 5) {
                         document.getElementById('user-captcha-container').style.display = 'block';
