@@ -47,7 +47,6 @@ const ShareApp = {
                 const imgSrc = key === '화성시' ? 'source/coco.png' : 'source/caca.png';
                 const imgClass = key === '오산시' ? 'shared-dist-img osan-img' : 'shared-dist-img';
 
-                // [수정됨] 충돌을 일으키던 인라인 스타일과 이벤트를 완전히 제거
                 const icon = L.divIcon({
                     className: 'district-stat-marker',
                     html: `
@@ -59,8 +58,8 @@ const ShareApp = {
                     iconSize: [180, 50]
                 });
                 
-                // 마커를 생성하고 이벤트 바인딩
-                L.marker(conf.pos, { icon }).addTo(this.map).on('click', (e) => {
+                // zIndexOffset 5000 추가!
+                L.marker(conf.pos, { icon, zIndexOffset: 5000 }).addTo(this.map).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     if (conf.link) window.open(conf.link, '_blank');
                 });

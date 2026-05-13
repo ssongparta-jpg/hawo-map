@@ -36,10 +36,13 @@
   
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-            const firstTab = document.getElementById('nav-reset') || document.getElementById('nav-users');
-            if(firstTab) firstTab.click();
-        }, 400);
+        const checkAdmin = setInterval(() => {
+            if (window.AdminApp && typeof AdminApp.loadResetRequests === 'function') {
+                clearInterval(checkAdmin);
+                const resetBtn = document.getElementById('nav-reset');
+                if(resetBtn) resetBtn.click();
+            }
+        }, 100);
     });
   </script>
 </body>

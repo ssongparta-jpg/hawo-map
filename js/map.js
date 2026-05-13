@@ -85,7 +85,14 @@ const MapManager = {
     bindEvents() {
         this.map.on('zoomend', () => {
             const zoom = this.map.getZoom();
-            document.querySelectorAll('.dist-stat-btn').forEach(btn => btn.className = `dist-stat-btn zoom-lv-${zoom}`);
+            
+            // 👇 [핵심 버그 수정] 기존 디자인 클래스를 날려버리지 않고, 오직 zoom-lv-* 클래스만 쏙 골라서 교체합니다!
+            document.querySelectorAll('.dist-stat-btn').forEach(btn => {
+                btn.classList.forEach(cls => {
+                    if (cls.startsWith('zoom-lv-')) btn.classList.remove(cls);
+                });
+                btn.classList.add(`zoom-lv-${zoom}`);
+            });
             
             const mapContainer = this.map.getContainer();
             if (zoom >= 15) mapContainer.classList.add('view-labels-mode');
@@ -365,7 +372,7 @@ const MapManager = {
         } catch (e) { console.error('경계 로드 실패'); }
     },
 
-addDistrictButtons() {
+    addDistrictButtons() {
         Object.entries(MapConfig.DISTRICTS).forEach(([key, conf]) => {
             if (!conf.pos) return;
             
@@ -374,7 +381,6 @@ addDistrictButtons() {
                 labelName = key; 
             }
             
-            // [수정됨] 에러를 유발하던 마우스 인라인 이벤트를 제거하고 CSS에 100% 위임
             const icon = L.divIcon({
                 className: 'district-stat-marker',
                 html: `
@@ -385,17 +391,15 @@ addDistrictButtons() {
                 iconSize: [120, 36]
             });
 
-            // [수정됨] 팝업이 안전하게 열릴 수 있도록 marker 객체를 넘겨줍니다.
-            const marker = L.marker(conf.pos, { icon }).addTo(this.map);
-            marker.on('click', (e) => {
+            // zIndexOffset을 높게 주어 다른 마커들에 파묻히지 않게 고정합니다.
+            L.marker(conf.pos, { icon, zIndexOffset: 5000 }).addTo(this.map).on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                this.showDistrictStats(key, conf, marker);
+                this.showDistrictStats(key, conf);
             });
         });
     },
 
-    // [수정됨] 매개변수에 marker 추가 및 팝업 렌더링 로직 안정화
-    showDistrictStats(regionKey, config, marker) {
+    showDistrictStats(regionKey, config) {
         const keywords = config.keywords || [];
         
         const regionMarkers = this.markers.filter(m => {
@@ -450,18 +454,16 @@ addDistrictButtons() {
             </div>
         `;
 
-        // [수정됨] 마커가 증발하는 버그를 막기 위해 지도에 직접 띄우지 않고 마커에 bind 합니다!
-        if (!marker.getPopup()) {
-            marker.bindPopup(popupContent, {
-                className: 'custom-stat-popup',
-                closeButton: true,
-                offset: L.point(0, -10),
-                autoPan: true
-            });
-        } else {
-            marker.setPopupContent(popupContent);
-        }
-        marker.openPopup();
+        // 팝업이 증발하지 않도록 가장 확실하고 안전한 기본 방식으로 띄웁니다.
+        L.popup({
+            className: 'custom-stat-popup',
+            closeButton: true,
+            offset: L.point(0, -20),
+            autoPan: true
+        })
+        .setLatLng(config.pos)
+        .setContent(popupContent)
+        .openOn(this.map);
     },
 
     focusRegion(key) {
