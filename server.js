@@ -120,7 +120,7 @@ app.post('/api/admin/send-code', (req, res) => {
 });
 
 // 2. 인증 코드 검증 및 로그인
-pp.post('/api/admin/verify-code', (req, res) => {
+app.post('/api/admin/verify-code', (req, res) => {
     const { code } = req.body;
 
     if (!adminOtpStore.code || Date.now() > adminOtpStore.expires) {
