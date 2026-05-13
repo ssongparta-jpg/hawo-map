@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>로그인 - 화성오산 학교지도</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="login/login.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="source/hwaologo.png" alt="로고" class="login-logo" onerror="this.src='source/share.png'">
+                <h2>화성오산 학교지도</h2>
+                <p>서비스 이용을 위해 로그인해주세요.</p>
+            </div>
+
+            <div class="login-tabs">
+                <button class="tab-btn active" onclick="LoginApp.switchTab('user')">일반 로그인</button>
+                <button class="tab-btn" onclick="LoginApp.switchTab('admin')">관리자 인증</button>
+            </div>
+
+            <div id="user-form-area" class="form-area active">
+                <div class="input-group">
+                    <input type="text" id="user-id" placeholder="아이디를 입력하세요" autocomplete="off" onkeydown="if(event.key==='Enter') document.getElementById('user-pw').focus();">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="user-pw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter') LoginApp.userLogin();">
+                </div>
+                <button class="btn-primary" onclick="LoginApp.userLogin()">로그인</button>
+                <div class="form-footer">
+                    <span onclick="LoginApp.userRegister()">아직 계정이 없으신가요? <strong>회원가입</strong></span>
+                </div>
+            </div>
+
+            <div id="admin-step1-area" class="form-area" style="display: none;">
+                <div class="info-box">부여받은 관리자 계정 ID를 입력해주세요.</div>
+                <div class="input-group">
+                    <input type="text" id="admin-id" placeholder="관리자 ID (예: spring)" onkeydown="if(event.key==='Enter') LoginApp.requestAdminEmail();">
+                </div>
+                <button class="btn-primary admin-btn" onclick="LoginApp.requestAdminEmail()">인증 메일 발송</button>
+            </div>
+
+            <div id="admin-step2-area" class="form-area" style="display: none;">
+                <div class="info-box success" id="admin-msg">메일로 인증 코드가 발송되었습니다.</div>
+                <div class="input-group">
+                    <input type="text" id="admin-otp" placeholder="인증코드 6자리" style="letter-spacing: 3px; text-align: center; font-weight: bold; font-size: 18px;" onkeydown="if(event.key==='Enter') LoginApp.verifyAdminCode();">
+                </div>
+                
+                <div class="recaptcha-wrapper">
+                    <div class="g-recaptcha" data-sitekey="6Lf2q-csAAAAAAYzpCTLVDJY2Ez64JN7gYbwq1lX"></div>
+                </div>
+
+                <button class="btn-primary admin-btn" onclick="LoginApp.verifyAdminCode()">인증 확인 및 로그인</button>
+            </div>
+
+            <div class="back-link">
+                <a href="/">&#8592; 지도로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="login/login.js"></script>
+</body>
+</html>
