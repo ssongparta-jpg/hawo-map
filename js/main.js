@@ -355,6 +355,20 @@ const DistanceManager = {
     formatDistance(m) {
         return m < 1000 ? Math.round(m) + 'm' : (m / 1000).toFixed(1) + 'km';
     }
+    
 };
+
+document.addEventListener('DOMContentLoaded', () => {
+    const helpBtn = document.getElementById('helpBtn');
+    if (helpBtn) {
+        helpBtn.onclick = () => {
+            if (typeof HelpManager !== 'undefined') {
+                HelpManager.open();
+            } else {
+                console.error("HelpManager가 정의되지 않았습니다.");
+            }
+        };
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => App.init());
