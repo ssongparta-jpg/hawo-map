@@ -79,22 +79,35 @@ db.serialize(async () => {
     });
 });
 
+// ip 주소 및 로그인 횟수 기록 (악의적 접근 차단)
+const mailRequestLimits = {};
 const loginAttempts = {};
-
-// --- 관리자 인증 API (이메일 OTP) ---
 
 // 1. 인증 코드 발송 요청
 app.post('/api/admin/send-code', (req, res) => {
     const { id } = req.body;
+    
+    // [핵심 방어] 클라이언트의 IP 주소를 가져옵니다.
+    const clientIp = req.ip || req.socket.remoteAddress;
+
+    // 만약 이 IP가 메일을 보낸 기록이 있고, 그게 1분(60,000 밀리초) 이내라면? 칼같이 차단!
+    if (mailRequestLimits[clientIp] && Date.now() - mailRequestLimits[clientIp] < 60000) {
+        return res.status(429).json({ 
+            success: false, 
+            message: "메일 발송 요청이 너무 잦습니다. 1분 후에 다시 시도해주세요." 
+        });
+    }
 
     if (!ADMINS[id]) {
         return res.status(400).json({ success: false, message: "등록되지 않은 관리자 ID입니다." });
     }
 
+    // 통과했다면 현재 시간을 장부에 기록합니다.
+    mailRequestLimits[clientIp] = Date.now();
+
     const targetEmail = ADMINS[id];
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6자리 코드 생성
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); 
     
-    // [수정] 코드 발급 시 시도 횟수(attempts)를 0으로 초기화
     adminOtpStore = {
         userId: id,
         code: code,
@@ -112,6 +125,8 @@ app.post('/api/admin/send-code', (req, res) => {
     transporter.sendMail(mailOptions, (error) => {
         if (error) {
             console.error(error);
+            // 메일 전송에 실패했으면 쿨다운을 풀어줍니다.
+            delete mailRequestLimits[clientIp];
             return res.status(500).json({ success: false, message: "메일 발송 실패" });
         }
         const maskedEmail = targetEmail.replace(/(.{2})(.*)(@.*)/, '$1*****$3');

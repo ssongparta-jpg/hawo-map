@@ -229,8 +229,21 @@ const AdminManager = {
 
     // 1단계: 관리자 선택 및 메일 발송
     async selectAdmin(adminId) {
+        // 1. 먼저 발송 의사를 확인합니다.
         if (!confirm(`'${adminId}' 계정으로 인증 메일을 발송하시겠습니까?`)) return;
         
+        // 2. [추가된 캡챠 로직] 자동화 매크로 봇을 막기 위한 수학 퀴즈
+        const num1 = Math.floor(Math.random() * 9) + 1; // 1~9 사이의 랜덤 숫자
+        const num2 = Math.floor(Math.random() * 9) + 1;
+        const answer = prompt(`[자동화 공격 방지] 메일을 발송하려면 아래 문제의 정답을 숫자로 입력해주세요.\n\n 퀴즈: ${num1} + ${num2} = ?`);
+
+        // 정답을 맞추지 못하거나 취소(null)를 누르면 여기서 바로 함수를 끝내버립니다(return).
+        if (answer !== String(num1 + num2)) {
+            alert("정답이 틀렸거나 취소되었습니다. 다시 시도해주세요.");
+            return;
+        }
+        
+        // 3. 캡챠를 통과한 경우에만 서버로 메일 발송을 요청합니다.
         try {
             const res = await fetch('/api/admin/send-code', { 
                 method: 'POST',
@@ -246,7 +259,7 @@ const AdminManager = {
                 document.getElementById('admin-step-2-msg').innerText = data.message;
                 alert("인증 메일이 발송되었습니다. 코드를 입력해주세요.");
             } else {
-                alert(data.message);
+                alert(data.message); // 예: 1분 쿨다운 에러 메시지 출력
             }
         } catch (e) {
             console.error(e);
@@ -281,7 +294,7 @@ const AdminManager = {
 
     // 관리자가 우측 상단의 '관리자' 버튼을 눌렀을 때의 동작
     async open() {
-        // [수정] 팝업 모달 대신 전용 페이지를 새 탭으로 오픈
+        // 팝업 모달 대신 전용 페이지를 새 탭으로 오픈
         window.open('admin.html', '_blank');
     }
 };
