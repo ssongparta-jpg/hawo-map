@@ -273,3 +273,29 @@ input:checked + .slider:before { transform: translateX(16px); }
         font-size: 12px; 
     } 
 }
+
+/* --- search.js 드롭다운 검색 결과 색상 --- */
+.search-item-type { font-size: 11px; font-weight: bold; }
+.search-item-type.type-elem { color: #2ECC71; }
+.search-item-type.type-mid { color: #F1C40F; }
+.search-item-type.type-high { color: #E74C3C; }
+.search-item-type.type-kinder { color: #4A90E2; }
+.search-item-type.type-default { color: #333; }
+
+/* --- utils.js 도움말 팝업창 스타일 --- */
+.help-title {
+    font-size: 22px; 
+    margin-bottom: 15px; 
+    font-weight: 900; 
+    color: #333;
+}
+.help-desc {
+    font-size: 14px; 
+    line-height: 1.6; 
+    color: #555; 
+    margin-bottom: 25px; 
+    background: #f9f9f9; 
+    padding: 15px; 
+    border-radius: 8px;
+    word-break: keep-all;
+}

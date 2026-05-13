@@ -18,19 +18,24 @@ const SearchManager = {
             if (!e.target.closest('.search-wrapper')) resultBox.style.display = 'none';
         });
     },
+
     renderResults(matches, container) {
         container.innerHTML = '';
         if (matches.length === 0) { container.style.display = 'none'; return; }
+        
         matches.slice(0, 8).forEach(m => {
             const div = document.createElement('div');
             div.className = 'search-item';
-            let typeColor = '#333';
-            if (m.properties.name.includes('초등학교')) typeColor = '#2ECC71';
-            else if (m.properties.name.includes('중학교')) typeColor = '#F1C40F';
-            else if (m.properties.name.includes('고등학교')) typeColor = '#E74C3C';
-            else if (m.properties.name.includes('유치원')) typeColor = '#4A90E2';
+            
+            // [리팩토링] 하드코딩된 색상 제거 및 공통 클래스 사용
+            let typeClass = 'type-default';
+            if (m.properties.name.includes('초등학교')) typeClass = 'type-elem';
+            else if (m.properties.name.includes('중학교')) typeClass = 'type-mid';
+            else if (m.properties.name.includes('고등학교')) typeClass = 'type-high';
+            else if (m.properties.name.includes('유치원')) typeClass = 'type-kinder';
 
-            div.innerHTML = `<span>${m.properties.name}</span><span style="font-size:11px; color:${typeColor}; font-weight:bold;">${m.properties.type}</span>`;
+            div.innerHTML = `<span>${m.properties.name}</span><span class="search-item-type ${typeClass}">${m.properties.type}</span>`;
+            
             div.onclick = () => {
                 MapManager.focusMarker(m);
                 container.style.display = 'none';
@@ -82,8 +87,7 @@ const FilterManager = {
         this.selectedEst.clear(); 
         document.querySelectorAll('.filter-tag, .dist-tag, .est-tag').forEach(tag => tag.classList.remove('active'));
         document.getElementById('adv-name-input').value = '';
-        const ids = ['min-s', 'max-s', 'min-c', 'max-c', 'min-t', 'max-t', 'min-sc', 'max-sc', 'min-st', 'max-st'];
-        ids.forEach(id => {
+        ['min-s', 'max-s', 'min-c', 'max-c', 'min-t', 'max-t', 'min-sc', 'max-sc', 'min-st', 'max-st'].forEach(id => {
             const el = document.getElementById(id); if(el) el.value = '';
         });
     },
@@ -106,10 +110,12 @@ const FilterManager = {
         const filtered = MapManager.markers.filter(m => {
             const p = m.properties;
             if (p.type.includes('교육') || p.name.includes('교육지원청')) return false;
+            
             const matchName = !nameQuery || p.name.includes(nameQuery);
             const matchType = this.selectedTypes.size === 0 || this.selectedTypes.has(p.type);
             const estVal = (p.establish || '').trim();
             const matchEst = this.selectedEst.size === 0 || Array.from(this.selectedEst).some(e => estVal === e);
+            
             let matchDist = this.selectedDistricts.size === 0 || Array.from(this.selectedDistricts).some(distKey => {
                 if (distKey === "오산시") return p.adrs.includes("오산시");
                 return MapConfig.DISTRICTS[distKey]?.keywords?.some(k => p.adrs.includes(k));
@@ -132,14 +138,12 @@ const FilterManager = {
         this.close();
         if (filtered.length === 0) {
             alert("조건에 맞는 학교가 없습니다.");
+        } else if (filtered.length === 1) {
+            const target = filtered[0];
+            MapManager.map.flyTo(target.getLatLng(), 16, { duration: 1.5 });
+            setTimeout(() => target.openPopup(), 1600);
         } else {
-            if (filtered.length === 1) {
-                const target = filtered[0];
-                MapManager.map.flyTo(target.getLatLng(), 16, { duration: 1.5 });
-                setTimeout(() => target.openPopup(), 1600);
-            } else {
-                ResultPageManager.open(filtered); 
-            }
+            ResultPageManager.open(filtered); 
         }
     }
 };
@@ -154,7 +158,6 @@ const ResultPageManager = {
         container.innerHTML = '';
         [...results].sort((a, b) => a.properties.name.localeCompare(b.properties.name, 'ko')).forEach(m => {
             const p = m.properties;
-            
             let typeClass = '';
             if (p.type.includes('유치원')) typeClass = 'type-kinder';
             else if (p.type.includes('초등학교')) typeClass = 'type-elem';
