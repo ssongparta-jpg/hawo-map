@@ -95,18 +95,18 @@
 .district-stat-marker .zoom-lv-10 { display: none !important; }
 
 /* 👇 저배율 (11~12레벨): 처음 켰을 때 너무 안 보이지 않도록 투명도 상향 (0.4 -> 0.75 / 0.7 -> 0.9) 👇 */
-.district-stat-marker .zoom-lv-11 { opacity: 0.75 !important; }
+.district-stat-marker .zoom-lv-11 { opacity: 0.65 !important; }
 .district-stat-marker .zoom-lv-11 .dist-stat-btn { padding: 6px 10px !important; min-width: 65px !important; }
 .district-stat-marker .zoom-lv-11 .dist-stat-label { font-size: 12px !important; }
 .district-stat-marker .zoom-lv-11 .shared-dist-img { width: 18px !important; height: 18px !important; }
 
-.district-stat-marker .zoom-lv-12 { opacity: 0.9 !important; }
+.district-stat-marker .zoom-lv-12 { opacity: 0.75 !important; }
 .district-stat-marker .zoom-lv-12 .dist-stat-btn { padding: 8px 12px !important; min-width: 75px !important; }
 .district-stat-marker .zoom-lv-12 .dist-stat-label { font-size: 13.5px !important; }
 .district-stat-marker .zoom-lv-12 .shared-dist-img { width: 21px !important; height: 21px !important; }
 
 /* 고배율 (13레벨 이상): 불투명도 100% 및 원본 크기 유지 */
-.district-stat-marker .zoom-lv-13, 
+.district-stat-marker .zoom-lv-13 { opacity: 0.85 !important; }
 .district-stat-marker .zoom-lv-14, 
 .district-stat-marker .zoom-lv-15, 
 .district-stat-marker .zoom-lv-16, 
