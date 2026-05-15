@@ -94,13 +94,13 @@
 /* --- 지도 축소/확대 시 크기 조절 및 저배율 투명도 적용 --- */
 .district-stat-marker .zoom-lv-10 { display: none !important; }
 
-/* 저배율 (11~12레벨): 투명도 적용 및 크기 축소 */
-.district-stat-marker .zoom-lv-11 { opacity: 0.4 !important; }
+/* 👇 저배율 (11~12레벨): 처음 켰을 때 너무 안 보이지 않도록 투명도 상향 (0.4 -> 0.75 / 0.7 -> 0.9) 👇 */
+.district-stat-marker .zoom-lv-11 { opacity: 0.75 !important; }
 .district-stat-marker .zoom-lv-11 .dist-stat-btn { padding: 6px 10px !important; min-width: 65px !important; }
 .district-stat-marker .zoom-lv-11 .dist-stat-label { font-size: 12px !important; }
 .district-stat-marker .zoom-lv-11 .shared-dist-img { width: 18px !important; height: 18px !important; }
 
-.district-stat-marker .zoom-lv-12 { opacity: 0.7 !important; }
+.district-stat-marker .zoom-lv-12 { opacity: 0.9 !important; }
 .district-stat-marker .zoom-lv-12 .dist-stat-btn { padding: 8px 12px !important; min-width: 75px !important; }
 .district-stat-marker .zoom-lv-12 .dist-stat-label { font-size: 13.5px !important; }
 .district-stat-marker .zoom-lv-12 .shared-dist-img { width: 21px !important; height: 21px !important; }
