@@ -40,24 +40,24 @@
 .search-item-type.type-shared { color: #8E44AD; }
 .search-item-type.type-default { color: #333; }
 
-/* 2. 하단 컨트롤러 (행정구역/즐겨찾기 토글 - 누런색 콤팩트 박스) */
+/* 2. 하단 컨트롤러 (PC 환경: 넓은 화면에 맞게 가로 배열로 롤백 & 예쁜 디자인 유지) */
 .boundary-toggle-container {
     position: absolute; bottom: 30px; left: 20px; z-index: 1200; 
-    display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    display: flex; flex-direction: row; align-items: center; gap: 20px; /* 👈 PC는 가로로 나란히 넓게 배치! */
     background: #fffdf0; border: 1px solid #ebdca5; 
-    border-radius: 12px; /* 로그인 버튼처럼 둥글게 */
-    padding: 8px 12px; /* 👈 위아래, 좌우 여백을 타이트하게 다이어트! */
+    border-radius: 20px; /* 가로 배열에 어울리는 둥근 모서리 */
+    padding: 10px 18px; 
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    width: max-content; /* 👈 핵심: 빈 공간 없이 내부 글자 길이에 딱 맞춤 */
+    width: max-content; 
 }
-.control-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; margin: 0; }
-.switch-label { font-size: 11.5px; font-weight: 800; color: #443e2a; margin: 0; white-space: nowrap; }
-.toggle-switch { position: relative; display: inline-block; width: 30px; height: 16px; margin:0; flex-shrink: 0; }
+.control-row { display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: auto; margin: 0; }
+.switch-label { font-size: 13px; font-weight: 800; color: #443e2a; margin: 0; white-space: nowrap; }
+.toggle-switch { position: relative; display: inline-block; width: 34px; height: 18px; margin:0; flex-shrink: 0; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; transition: .3s; border-radius: 20px; }
-.slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px; background: white; transition: .3s; border-radius: 50%; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background: white; transition: .3s; border-radius: 50%; }
 input:checked + .slider { background: #4A90E2; }
-input:checked + .slider:before { transform: translateX(14px); }
+input:checked + .slider:before { transform: translateX(16px); }
 
 /* 3. 거리재기 메인 & 서브 UI */
 #btn-measure {
