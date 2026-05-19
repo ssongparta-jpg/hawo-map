@@ -40,19 +40,24 @@
 .search-item-type.type-shared { color: #8E44AD; }
 .search-item-type.type-default { color: #333; }
 
-/* 2. 하단 컨트롤러 (행정구역/즐겨찾기 토글) */
+/* 2. 하단 컨트롤러 (행정구역/즐겨찾기 토글 - 누런색 콤팩트 박스) */
 .boundary-toggle-container {
-    position: absolute; bottom: 30px; left: 20px; z-index: 1200; display: flex; align-items: center; 
-    background: rgba(255, 255, 255, 0.9); padding: 8px 15px; border-radius: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); gap: 15px;
+    position: absolute; bottom: 30px; left: 20px; z-index: 1200; 
+    display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    background: #fffdf0; border: 1px solid #ebdca5; 
+    border-radius: 12px; /* 로그인 버튼처럼 둥글게 */
+    padding: 8px 12px; /* 👈 위아래, 좌우 여백을 타이트하게 다이어트! */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    width: max-content; /* 👈 핵심: 빈 공간 없이 내부 글자 길이에 딱 맞춤 */
 }
-.control-row { display: flex; align-items: center; gap: 5px; }
-.switch-label { font-size: 12px; font-weight: bold; margin: 0; }
-.toggle-switch { position: relative; display: inline-block; width: 34px; height: 18px; margin:0; flex-shrink: 0; }
+.control-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; margin: 0; }
+.switch-label { font-size: 11.5px; font-weight: 800; color: #443e2a; margin: 0; white-space: nowrap; }
+.toggle-switch { position: relative; display: inline-block; width: 30px; height: 16px; margin:0; flex-shrink: 0; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; transition: .3s; border-radius: 20px; }
-.slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px; background: white; transition: .3s; border-radius: 50%; }
+.slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px; background: white; transition: .3s; border-radius: 50%; }
 input:checked + .slider { background: #4A90E2; }
-input:checked + .slider:before { transform: translateX(16px); }
+input:checked + .slider:before { transform: translateX(14px); }
 
 /* 3. 거리재기 메인 & 서브 UI */
 #btn-measure {
@@ -125,62 +130,24 @@ input:checked + .slider:before { transform: translateX(16px); }
         border-top: 1px solid rgba(0,0,0,0.05);
     }
 
-    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (우측 로그인 박스와 대칭되는 누런 네모 상자) */
+    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (여백 최소화 및 다이어트) */
     .boundary-toggle-container {
-        position: absolute !important; 
-        top: auto !important;
-        bottom: 8px !important; /* 👈 우측 유저 정보창(8px)과 완벽하게 바닥 선 동기화 */
-        left: 10px !important; 
-        height: 54px !important; /* 👈 우측 유저 정보창(54px)과 높이 일치 */
-        width: 115px !important; /* 글자와 슬라이더가 여유롭게 들어가는 최적의 폭 */
-        display: flex !important; 
-        flex-direction: column !important; 
-        justify-content: center !important; 
-        gap: 4px !important; 
-        
-        background: #fffdf0 !important; /* 👈 요청하신 살짝 누런 빛을 띠는 단색 배경 */
-        border: 1px solid #ebdca5 !important; /* 따뜻한 느낌의 옅은 노란빛 테두리 */
-        border-radius: 10px !important; /* 우측 박스와 완벽히 일치하는 둥근 모서리 */
-        padding: 4px 8px !important; 
-        z-index: 1500 !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+        position: absolute !important; top: auto !important; bottom: 30px !important; left: 8px !important;
+        transform: translateY(50%) !important; 
+        height: auto !important; 
+        width: max-content !important; /* 👈 너비 타이트하게 조이기 */
+        display: flex !important; flex-direction: column !important; justify-content: center !important; 
+        gap: 6px !important; 
+        background: #fffdf0 !important; border: 1px solid #ebdca5 !important; border-radius: 12px !important; 
+        padding: 6px 10px !important; /* 👈 위아래 패딩 타이트하게 조이기 */
+        z-index: 1500 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
     }
-    
-    /* 항목의 행 정렬 (글자와 슬라이드바 수직 중앙 정렬) */
-    .control-row { 
-        display: flex !important; 
-        justify-content: space-between !important; 
-        align-items: center !important; /* 👈 글자와 슬라이더 바의 높낮이 열을 칼같이 정렬 */
-        width: 100% !important; 
-        margin: 0 !important; 
-        gap: 6px !important;
-    }
-    
-    .switch-label { 
-        font-size: 11px !important; 
-        font-weight: 800 !important; 
-        color: #443e2a !important; /* 누런 배경과 조화를 이루는 차분한 다크 브라운 글자색 */
-        margin: 0 !important; 
-        white-space: nowrap !important; 
-    }
-    
-    .toggle-switch { 
-        width: 28px !important; 
-        height: 15px !important; 
-        margin: 0 !important; 
-        flex-shrink: 0 !important; 
-    }
-    
-    .slider:before { 
-        height: 11px !important; 
-        width: 11px !important; 
-        left: 2px !important; 
-        bottom: 2px !important; 
-    }
-    
-    input:checked + .slider:before { 
-        transform: translateX(13px) !important; 
-    }
+    .boundary-toggle-container::after, .boundary-toggle-container::before { display: none !important; }
+    .control-row { display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; margin: 0 !important; gap: 8px !important; }
+    .switch-label { font-size: 11px !important; font-weight: 800 !important; color: #443e2a !important; margin: 0 !important; white-space: nowrap !important; }
+    .toggle-switch { width: 28px !important; height: 15px !important; margin: 0 !important; flex-shrink: 0 !important; }
+    .slider:before { height: 11px !important; width: 11px !important; left: 2px !important; bottom: 2px !important; }
+    input:checked + .slider:before { transform: translateX(13px) !important; }
 
     /* 중앙 덩어리: 기본 거리재기 버튼 */
     #btn-measure { 
