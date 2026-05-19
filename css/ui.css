@@ -40,18 +40,19 @@
 .search-item-type.type-shared { color: #8E44AD; }
 .search-item-type.type-default { color: #333; }
 
-/* 2. 하단 컨트롤러 (PC 환경: 넓은 화면에 맞게 가로 배열로 롤백 & 예쁜 디자인 유지) */
+/* 2. 하단 컨트롤러 (PC 환경: 흰색 배경 롤백) */
 .boundary-toggle-container {
     position: absolute; bottom: 30px; left: 20px; z-index: 1200; 
-    display: flex; flex-direction: row; align-items: center; gap: 20px; /* 👈 PC는 가로로 나란히 넓게 배치! */
-    background: #fffdf0; border: 1px solid #ebdca5; 
-    border-radius: 20px; /* 가로 배열에 어울리는 둥근 모서리 */
+    display: flex; flex-direction: row; align-items: center; gap: 20px; 
+    background: #ffffff; /* 👈 깔끔한 흰색으로 롤백 */
+    border: 1px solid #cccccc; /* 👈 기본 옅은 회색 테두리 */
+    border-radius: 20px; 
     padding: 10px 18px; 
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     width: max-content; 
 }
 .control-row { display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: auto; margin: 0; }
-.switch-label { font-size: 13px; font-weight: 800; color: #443e2a; margin: 0; white-space: nowrap; }
+.switch-label { font-size: 13px; font-weight: 800; color: #333; margin: 0; white-space: nowrap; } /* 👈 다크브라운에서 짙은 색으로 롤백 */
 .toggle-switch { position: relative; display: inline-block; width: 34px; height: 18px; margin:0; flex-shrink: 0; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; transition: .3s; border-radius: 20px; }
@@ -130,21 +131,23 @@ input:checked + .slider:before { transform: translateX(16px); }
         border-top: 1px solid rgba(0,0,0,0.05);
     }
 
-    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (여백 최소화 및 다이어트) */
+    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (흰색 배경 + 약간 검은 테두리) */
     .boundary-toggle-container {
         position: absolute !important; top: auto !important; bottom: 30px !important; left: 8px !important;
         transform: translateY(50%) !important; 
         height: auto !important; 
-        width: max-content !important; /* 👈 너비 타이트하게 조이기 */
+        width: max-content !important; 
         display: flex !important; flex-direction: column !important; justify-content: center !important; 
         gap: 6px !important; 
-        background: #fffdf0 !important; border: 1px solid #ebdca5 !important; border-radius: 12px !important; 
-        padding: 6px 10px !important; /* 👈 위아래 패딩 타이트하게 조이기 */
+        background: #ffffff !important; /* 👈 깔끔한 흰색 배경 */
+        border: 1px solid rgba(0,0,0,0.4) !important; /* 👈 요청하신 약간 검은 테두리 */
+        border-radius: 12px !important; 
+        padding: 6px 10px !important; 
         z-index: 1500 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
     }
     .boundary-toggle-container::after, .boundary-toggle-container::before { display: none !important; }
     .control-row { display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; margin: 0 !important; gap: 8px !important; }
-    .switch-label { font-size: 11px !important; font-weight: 800 !important; color: #443e2a !important; margin: 0 !important; white-space: nowrap !important; }
+    .switch-label { font-size: 11px !important; font-weight: 800 !important; color: #333 !important; margin: 0 !important; white-space: nowrap !important; }
     .toggle-switch { width: 28px !important; height: 15px !important; margin: 0 !important; flex-shrink: 0 !important; }
     .slider:before { height: 11px !important; width: 11px !important; left: 2px !important; bottom: 2px !important; }
     input:checked + .slider:before { transform: translateX(13px) !important; }
@@ -174,18 +177,29 @@ input:checked + .slider:before { transform: translateX(16px); }
     }
     .btn-pause-measure[style*="display: block"] { display: flex !important; }
 
-    /* 우측 덩어리: 모바일 유저 정보창 */
+    /* 우측 덩어리: 모바일 유저 정보창 (비로그인 시 투명, 로그인 시 파란 네모) */
     #header-user-status {
         position: absolute !important; top: auto !important; bottom: 30px !important; right: 6px !important; left: auto !important;
         transform: translateY(50%) !important; 
         width: auto !important; height: auto !important; min-height: 40px !important; min-width: 85px !important;
         display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important;
-        background: #f4f9ff !important; 
+        
+        /* 👈 기본 상태(로그인 전)에서는 투명하게 처리하여 네모가 안 보이게 함 */
+        background: transparent !important; 
         backdrop-filter: none !important; 
-        border: 1px solid #cce0ff !important; border-radius: 10px !important;
+        border: 1px solid transparent !important; 
+        border-radius: 10px !important;
         padding: 5px 6px !important; z-index: 1500 !important;
-        box-shadow: 0 2px 5px rgba(0,123,255,0.1) !important; gap: 0 !important;
+        box-shadow: none !important; gap: 0 !important;
     }
+
+    /* 👈 로그인 후(내부에 유저명이 생겼을 때)에만 파란색 네모 박스 활성화! */
+    #header-user-status:has(.user-greeting) {
+        background: #f4f9ff !important; 
+        border: 1px solid #cce0ff !important;
+        box-shadow: 0 2px 5px rgba(0,123,255,0.1) !important;
+    }
+
     .user-greeting { font-size: 11.5px !important; margin: 0 0 4px 0 !important; color: #0d47a1 !important; font-weight: 900 !important; text-align: center !important; display: block !important; width: 100% !important; }
     .user-btn-wrapper { display: flex !important; gap: 3px !important; justify-content: center !important; width: 100% !important; }
     
