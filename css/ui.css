@@ -77,6 +77,37 @@ input:checked + .slider:before { transform: translateX(16px); }
 .btn-naver-route { background: #03c75a; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
 .btn-naver-route:hover { background: #02b350; }
 .route-popup-warning { color: #e74c3c; font-size: 11px; margin-top: 8px; font-weight: bold; }
+/* =========================================
+   5. 상단 유저 로그인/정보창 공통 스타일 (PC & 모바일 기본)
+   ========================================= */
+/* PC에서 우측 상단에 위치할 때의 기본 정렬 */
+#header-user-status {
+    display: flex; align-items: center; gap: 8px;
+}
+.user-greeting { font-size: 14px; font-weight: 800; color: #333; margin-right: 5px; }
+.user-btn-wrapper { display: flex; gap: 6px; align-items: center; }
+
+/* 👇 [핵심 버그 수정] PC와 모바일 모두에 적용되는 버튼 솔리드(단색) 기본 디자인 👇 */
+.btn-pw-change, .btn-admin, .btn-logout, .btn-login {
+    border: none !important;
+    color: white !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.btn-pw-change { background: #95a5a6 !important; padding: 6px 12px !important; border-radius: 20px !important; font-size: 12px !important; }
+.btn-pw-change:hover { background: #7f8c8d !important; }
+
+.btn-admin { background: #2ecc71 !important; padding: 6px 12px !important; border-radius: 20px !important; font-size: 12px !important; }
+
+.btn-logout { background: #e74c3c !important; padding: 6px 12px !important; border-radius: 20px !important; font-size: 12px !important; }
+.btn-logout:hover { background: #c0392b !important; }
+
+.btn-login { background: #2563eb !important; padding: 8px 18px !important; border-radius: 20px !important; font-size: 14px !important; box-shadow: 0 3px 6px rgba(37, 99, 235, 0.3) !important; }
+.btn-login:hover { background: #1d4ed8 !important; transform: translateY(-2px) !important; }
 
 /* =========================================
    6. 모바일 전용 (스마트폰 앱 스타일 3분할 하단 바)
@@ -84,21 +115,21 @@ input:checked + .slider:before { transform: translateX(16px); }
 .mobile-bottom-bar { display: none; }
 
 @media (max-width: 768px) {
-    /* 모바일 하단 하얀색 독바 (배경 75% 투명도 및 유리 효과 유지) */
+    /* 👇 [수정됨] 모바일 하단 하얀색 독바 (투명도 60%, 블러 4px로 낮춰 지도가 잘 비치게 함) 👇 */
     .mobile-bottom-bar {
         display: block; position: absolute; bottom: 0; left: 0; 
         width: 100%; height: 60px; 
-        background: rgba(255, 255, 255, 0.75) !important; 
-        backdrop-filter: blur(10px) !important; 
+        background: rgba(255, 255, 255, 0.6) !important; 
+        backdrop-filter: blur(4px) !important; 
         box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 1000;
         border-top: 1px solid rgba(0,0,0,0.05);
     }
 
-    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (크기 대폭 다이어트하여 가운데 공간 확보) */
+    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 */
     .boundary-toggle-container {
         position: absolute !important; top: auto !important; bottom: 30px !important; left: 6px !important;
         transform: translateY(50%) !important; 
-        height: auto !important; width: 90px !important; /* 110px -> 90px 축소 */
+        height: auto !important; width: 90px !important; 
         display: flex !important; flex-direction: column !important; justify-content: center !important; 
         gap: 5px !important; background: transparent !important; z-index: 1500 !important;
         box-shadow: none !important; border: none !important; padding: 0 !important;
@@ -110,7 +141,7 @@ input:checked + .slider:before { transform: translateX(16px); }
     .slider:before { height: 10px !important; width: 10px !important; left: 2px !important; bottom: 2px !important; }
     input:checked + .slider:before { transform: translateX(12px) !important; }
 
-    /* 중앙 덩어리: 기본 거리재기 버튼 (유연한 크기 적용) */
+    /* 중앙 덩어리: 기본 거리재기 버튼 */
     #btn-measure { 
         position: absolute !important; top: auto !important; bottom: 30px !important; left: 50% !important; right: auto !important;
         transform: translate(-50%, 50%) !important; 
@@ -120,14 +151,12 @@ input:checked + .slider:before { transform: translateX(16px); }
         font-size: 13px !important; display: flex !important; align-items: center !important; justify-content: center !important;
         white-space: nowrap !important; transition: all 0.2s ease !important;
     }
-    
-    /* 중앙 덩어리 활성화: 우측으로 살짝 이동 및 여백 다이어트 */
     #btn-measure.active { 
         left: calc(50% + 2px) !important; transform: translate(0, 50%) !important; 
         padding: 0 10px !important; font-size: 11.5px !important; height: 32px !important;
     }
     
-    /* 일시정지/중단 버튼: 좌측 이동 및 여백 다이어트 (절대 침범 안함) */
+    /* 일시정지/중단 버튼 */
     .btn-pause-measure { 
         position: absolute !important; top: auto !important; bottom: 30px !important; left: 50% !important; right: auto !important;
         transform: translate(calc(-100% - 2px), 50%) !important; 
@@ -137,44 +166,32 @@ input:checked + .slider:before { transform: translateX(16px); }
     }
     .btn-pause-measure[style*="display: block"] { display: flex !important; }
 
-    /* 우측 덩어리: 유저 정보창 (유리효과 완벽 제거 & 단색 처리 & 여백 축소) */
+    /* 우측 덩어리: 모바일 유저 정보창 */
     #header-user-status {
         position: absolute !important; top: auto !important; bottom: 30px !important; right: 6px !important; left: auto !important;
         transform: translateY(50%) !important; 
         width: auto !important; height: auto !important; min-height: 40px !important; min-width: 85px !important;
         display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important;
-        
-        background: #f4f9ff !important; /* 👈 투명도/블러 모두 빼고 완전 단색 처리 */
-        backdrop-filter: none !important; /* 👈 기괴한 회색 네모 렌더링 버그 원천 차단 */
+        background: #f4f9ff !important; 
+        backdrop-filter: none !important; 
         border: 1px solid #cce0ff !important; border-radius: 10px !important;
         padding: 5px 6px !important; z-index: 1500 !important;
-        box-shadow: 0 2px 5px rgba(0,123,255,0.1) !important;
+        box-shadow: 0 2px 5px rgba(0,123,255,0.1) !important; gap: 0 !important;
     }
     .user-greeting { font-size: 11.5px !important; margin: 0 0 4px 0 !important; color: #0d47a1 !important; font-weight: 900 !important; text-align: center !important; display: block !important; width: 100% !important; }
     .user-btn-wrapper { display: flex !important; gap: 3px !important; justify-content: center !important; width: 100% !important; }
     
-    /* 내부 버튼들도 렌더링 꼬임 방지를 위해 배경색 강제 지정 */
+    /* 모바일 전용 버튼 크기 다이어트 (기본 디자인에서 크기만 줄임) */
     .btn-pw-change, .btn-admin, .btn-logout { 
         padding: 4px 6px !important; font-size: 10px !important; border-radius: 4px !important; margin: 0 !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important; white-space: nowrap !important;
-        border: none !important; color: white !important;
     }
-    .btn-pw-change { background: #95a5a6 !important; }
-    .btn-admin { background: #2ecc71 !important; }
-    .btn-logout { background: #e74c3c !important; }
-
-    /* 비로그인 시 기본 버튼 */
     .btn-login { 
         padding: 8px 12px !important; font-size: 12px !important; border-radius: 16px !important; margin: 0 !important;
-        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2) !important; white-space: nowrap !important;
     }
 
     /* 상단 요소들 */
     .search-container { 
-        top: 65px !important; 
-        left: 50% !important; 
-        transform: translateX(-50%) !important; 
-        width: 92% !important; 
+        top: 65px !important; left: 50% !important; transform: translateX(-50%) !important; width: 92% !important; 
     }
     #legend, #share-legend { top: 115px !important; left: 10px !important; } 
 }
