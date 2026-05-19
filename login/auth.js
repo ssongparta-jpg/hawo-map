@@ -10,15 +10,14 @@ const AuthManager = {
             const statusArea = document.getElementById('header-user-status');
             if (!statusArea) return;
 
+            // auth.js (수정된 checkAuth 부분)
             if (data.isLoggedIn) {
                 this.userId = data.userId;
                 this.isAdmin = data.isAdmin;
                 
-                // [버그 수정] 옛날 인라인 스타일 제거 -> ui.css의 앱 스타일 클래스로 완벽 동기화
+                // UI 클래스(.user-greeting, .user-btn-wrapper)를 사용하도록 수정
                 let html = `<span class="user-greeting">${this.userId}님</span>`;
                 html += `<div class="user-btn-wrapper">`;
-                
-                // 요청하신 대로 글자 수를 줄여 가로 짤림 현상을 원천 방지합니다.
                 html += `<button class="btn-pw-change" onclick="location.href='/pw_change'">PW변경</button>`;
                 
                 if (this.isAdmin) {
