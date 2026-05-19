@@ -125,21 +125,62 @@ input:checked + .slider:before { transform: translateX(16px); }
         border-top: 1px solid rgba(0,0,0,0.05);
     }
 
-    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 */
+    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (우측 로그인 박스와 대칭되는 누런 네모 상자) */
     .boundary-toggle-container {
-        position: absolute !important; top: auto !important; bottom: 30px !important; left: 6px !important;
-        transform: translateY(50%) !important; 
-        height: auto !important; width: 90px !important; 
-        display: flex !important; flex-direction: column !important; justify-content: center !important; 
-        gap: 5px !important; background: transparent !important; z-index: 1500 !important;
-        box-shadow: none !important; border: none !important; padding: 0 !important;
+        position: absolute !important; 
+        top: auto !important;
+        bottom: 8px !important; /* 👈 우측 유저 정보창(8px)과 완벽하게 바닥 선 동기화 */
+        left: 10px !important; 
+        height: 54px !important; /* 👈 우측 유저 정보창(54px)과 높이 일치 */
+        width: 115px !important; /* 글자와 슬라이더가 여유롭게 들어가는 최적의 폭 */
+        display: flex !important; 
+        flex-direction: column !important; 
+        justify-content: center !important; 
+        gap: 4px !important; 
+        
+        background: #fffdf0 !important; /* 👈 요청하신 살짝 누런 빛을 띠는 단색 배경 */
+        border: 1px solid #ebdca5 !important; /* 따뜻한 느낌의 옅은 노란빛 테두리 */
+        border-radius: 10px !important; /* 우측 박스와 완벽히 일치하는 둥근 모서리 */
+        padding: 4px 8px !important; 
+        z-index: 1500 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
     }
-    .boundary-toggle-container::after, .boundary-toggle-container::before { display: none !important; }
-    .control-row { display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; margin: 0 !important; }
-    .switch-label { font-size: 10.5px !important; font-weight: 800 !important; color: #333 !important; text-shadow: 0 0 3px rgba(255,255,255,0.8); letter-spacing: -0.5px !important; }
-    .toggle-switch { width: 26px !important; height: 14px !important; margin: 0 !important; }
-    .slider:before { height: 10px !important; width: 10px !important; left: 2px !important; bottom: 2px !important; }
-    input:checked + .slider:before { transform: translateX(12px) !important; }
+    
+    /* 항목의 행 정렬 (글자와 슬라이드바 수직 중앙 정렬) */
+    .control-row { 
+        display: flex !important; 
+        justify-content: space-between !important; 
+        align-items: center !important; /* 👈 글자와 슬라이더 바의 높낮이 열을 칼같이 정렬 */
+        width: 100% !important; 
+        margin: 0 !important; 
+        gap: 6px !important;
+    }
+    
+    .switch-label { 
+        font-size: 11px !important; 
+        font-weight: 800 !important; 
+        color: #443e2a !important; /* 누런 배경과 조화를 이루는 차분한 다크 브라운 글자색 */
+        margin: 0 !important; 
+        white-space: nowrap !important; 
+    }
+    
+    .toggle-switch { 
+        width: 28px !important; 
+        height: 15px !important; 
+        margin: 0 !important; 
+        flex-shrink: 0 !important; 
+    }
+    
+    .slider:before { 
+        height: 11px !important; 
+        width: 11px !important; 
+        left: 2px !important; 
+        bottom: 2px !important; 
+    }
+    
+    input:checked + .slider:before { 
+        transform: translateX(13px) !important; 
+    }
 
     /* 중앙 덩어리: 기본 거리재기 버튼 */
     #btn-measure { 
