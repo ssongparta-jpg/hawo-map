@@ -79,48 +79,60 @@ input:checked + .slider:before { transform: translateX(16px); }
 .route-popup-warning { color: #e74c3c; font-size: 11px; margin-top: 8px; font-weight: bold; }
 
 /* =========================================
-   5. 모바일 전용 (하단 바 및 직관적 배치)
+   5. 모바일 전용 (스마트폰 앱 스타일 3분할 하단 바)
    ========================================= */
 .mobile-bottom-bar { display: none; }
 
 @media (max-width: 768px) {
-    /* 모바일 하단 하얀색 바 */
+    /* 모바일 하단 하얀색 바 (앱 느낌의 둥근 독 스타일) */
     .mobile-bottom-bar {
         display: block; position: absolute; bottom: 0; left: 0; 
-        width: 100%; height: 50px; background: #ffffff; 
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 1000;
+        width: 100%; height: 65px; background: #ffffff; 
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 1000;
+        border-radius: 20px 20px 0 0;
     }
 
-    /* 우측 하단 로그인 컨테이너 (하단 바 우측에 쏙!) */
-    #header-user-status {
-        top: auto !important; bottom: 8px !important; right: 8px !important;
-        width: auto !important; flex-direction: row !important; flex-wrap: nowrap !important; 
-        align-items: center !important; justify-content: flex-end !important; z-index: 1500 !important;
-    }
-    #header-user-status button { padding: 5px 8px !important; font-size: 11px !important; margin: 0 0 0 4px !important; }
-    #header-user-status span { font-size: 12px !important; margin: 0 4px 0 0 !important; color: #333 !important; font-weight: 800 !important; }
-
-    /* 좌측 하단 행정구역/즐겨찾기 토글 (예시대로 글자는 왼쪽, 스위치는 오른쪽에 예쁘게 줄 맞춤) */
+    /* [좌측 덩어리] 행정구역/즐겨찾기 토글 */
     .boundary-toggle-container {
-        bottom: 8px !important; left: 10px !important; height: auto !important; width: 140px !important;
-        flex-direction: column !important; justify-content: center !important; align-items: flex-end !important; 
-        gap: 6px !important; background: transparent !important; box-shadow: none !important; border: none !important; 
+        bottom: 10px !important; left: 15px !important; height: 45px !important; width: auto !important;
+        flex-direction: column !important; justify-content: center !important; align-items: flex-start !important; 
+        gap: 8px !important; background: transparent !important; box-shadow: none !important; border: none !important; 
         padding: 0 !important; transform: none !important; opacity: 1 !important; visibility: visible !important;
         z-index: 1500 !important;
     }
     .boundary-toggle-container::after, .boundary-toggle-container::before { display: none !important; }
     
-    .control-row { width: 100% !important; display: flex !important; justify-content: space-between !important; align-items: center !important; margin: 0 !important; gap: 5px !important; }
-    .switch-label { font-size: 11px !important; font-weight: 800 !important; color: #555 !important; text-align: left !important; white-space: nowrap !important; }
-    .toggle-switch { width: 28px !important; height: 16px !important; margin: 0 !important; }
-    .slider:before { height: 12px !important; width: 12px !important; left: 2px !important; bottom: 2px !important; }
-    input:checked + .slider:before { transform: translateX(12px) !important; }
+    .control-row { width: auto !important; display: flex !important; justify-content: flex-start !important; align-items: center !important; margin: 0 !important; gap: 8px !important; }
+    .switch-label { font-size: 11px !important; font-weight: 800 !important; color: #555 !important; width: 45px !important; text-align: left !important; }
+    .toggle-switch { width: 34px !important; height: 18px !important; margin: 0 !important; }
+    .slider:before { height: 14px !important; width: 14px !important; left: 2px !important; bottom: 2px !important; }
+    input:checked + .slider:before { transform: translateX(16px) !important; }
     
-    /* 거리재기 버튼 (하단 바 위, 우측) */
-    #btn-measure { bottom: 65px !important; right: 10px !important; }
-    .btn-pause-measure { bottom: 65px !important; right: 105px !important; }
+    /* [중앙 덩어리] 거리재기 버튼 (메인 액션 버튼 스타일로 승격) */
+    #btn-measure { 
+        bottom: 14px !important; left: 50% !important; right: auto !important;
+        transform: translateX(-50%) !important;
+        height: 36px !important; padding: 0 16px !important; border-radius: 18px !important;
+        background: #2c3e50 !important; color: white !important; border: none !important;
+        box-shadow: 0 4px 10px rgba(44, 62, 80, 0.3) !important; z-index: 1500 !important;
+        font-size: 13px !important; display: flex !important; align-items: center !important;
+    }
+    #btn-measure.active { background: #e74c3c !important; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3) !important; }
+    .btn-pause-measure { bottom: 80px !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; }
     
-    /* 검색창과 범례 위치 (검색창 넉넉하게 내리고, 범례도 내림) */
+    /* [우측 덩어리] 로그인 및 유저 상태창 (2줄로 깔끔하게 정리됨) */
+    #header-user-status {
+        top: auto !important; bottom: 8px !important; right: 15px !important; left: auto !important;
+        width: 110px !important; height: 50px !important;
+        flex-direction: row !important; flex-wrap: wrap !important; 
+        align-content: center !important; justify-content: flex-end !important; z-index: 1500 !important;
+    }
+    #header-user-status button { padding: 4px 8px !important; font-size: 10px !important; margin: 2px 0 0 4px !important; border-radius: 6px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;}
+    
+    /* 유저 이름이 길어지면 버튼들이 자연스럽게 다음 줄로 밀려납니다 */
+    #header-user-status span { font-size: 11px !important; margin: 0 2px 2px 0 !important; color: #333 !important; font-weight: 800 !important; width: 100% !important; text-align: right !important; }
+
+    /* 검색창과 범례 위치 */
     .search-container { top: 65px !important; left: 50% !important; transform: translateX(-50%) !important; width: 92% !important; }
     #legend, #share-legend { top: 120px !important; left: 10px !important; } 
 }
