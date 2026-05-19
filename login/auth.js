@@ -14,10 +14,12 @@ const AuthManager = {
                 this.userId = data.userId;
                 this.isAdmin = data.isAdmin;
                 
-                // [수정됨] 지저분한 스타일을 빼고 클래스(class)로 깔끔하게 묶었습니다!
+                // [버그 수정] 옛날 인라인 스타일 제거 -> ui.css의 앱 스타일 클래스로 완벽 동기화
                 let html = `<span class="user-greeting">${this.userId}님</span>`;
                 html += `<div class="user-btn-wrapper">`;
-                html += `<button class="btn-pw-change" onclick="location.href='/pw_change'">비번 변경</button>`;
+                
+                // 요청하신 대로 글자 수를 줄여 가로 짤림 현상을 원천 방지합니다.
+                html += `<button class="btn-pw-change" onclick="location.href='/pw_change'">PW변경</button>`;
                 
                 if (this.isAdmin) {
                     html += `<button class="btn-admin" onclick="window.open('/admin', '_blank')">⚙️ 관리자</button>`;
