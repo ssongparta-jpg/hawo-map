@@ -255,7 +255,7 @@ const ShareApp = {
         container.innerHTML = `
             <div class="legend-card">
                 <div class="legend-header" id="shareLegendToggle">
-                    <span class="legend-label">📍 지역 필터</span>
+                    <span class="legend-label">📍 범례</span>
                     <span class="arrow-icon" id="shareLegendArrow">▼</span>
                 </div>
                 <div class="legend-content" id="shareLegendBody">

@@ -103,7 +103,7 @@ const App = {
         container.innerHTML = `
             <div class="legend-card">
                 <div class="legend-header" id="legendToggleBtn">
-                    <span class="legend-label">📍 지도 범례</span>
+                    <span class="legend-label">📍 범례</span>
                     <span class="arrow-icon" id="legendArrow">▼</span>
                 </div>
                 <div class="legend-content" id="legendBody">
