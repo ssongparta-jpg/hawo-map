@@ -2,6 +2,13 @@
    ui.css : 메인 화면의 각종 UI 컨트롤
    ========================================= */
 
+:root {
+    --map-panel-bg: #ffffff;
+    --map-panel-border: 1px solid #eaeaea;
+    --map-panel-radius: 10px;
+    --map-panel-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
 /* 1. 검색창 및 자동완성 드롭다운 */
 .search-container {
     position: absolute; top: 11px; left: 20px;
@@ -69,6 +76,12 @@ input:checked + .slider:before { transform: translateX(16px); }
 }
 #btn-measure:hover { background: #f0f0f0; }
 #btn-measure.active { background: #e74c3c; color: white; border-color: #c0392b; }
+#btn-measure, .btn-pause-measure {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
 
 .btn-pause-measure {
     position: absolute; bottom: 30px; right: 120px; z-index: 1200; background: white; color: #333; 
@@ -124,26 +137,27 @@ input:checked + .slider:before { transform: translateX(16px); }
     /* 👇 [수정됨] 모바일 하단 하얀색 독바 (투명도 60%, 블러 4px로 낮춰 지도가 잘 비치게 함) 👇 */
     .mobile-bottom-bar {
         display: block; position: absolute; bottom: 0; left: 0; 
-        width: 100%; height: 60px; 
+        width: 100%; height: 60px; height: calc(60px + env(safe-area-inset-bottom, 0px)); 
         background: rgba(255, 255, 255, 0.05) !important; 
         backdrop-filter: blur(2px) !important; 
         box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 1000;
         border-top: 1px solid rgba(0,0,0,0.05);
     }
 
-    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (흰색 배경 + 약간 검은 테두리) */
+    /* 좌측 덩어리: 행정구역/즐겨찾기 토글 (범례 카드와 동일한 표면감) */
     .boundary-toggle-container {
-        position: absolute !important; top: auto !important; bottom: 30px !important; left: 8px !important;
+        position: absolute !important; top: auto !important; bottom: 30px !important; bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important; left: 8px !important;
         transform: translateY(50%) !important; 
         height: auto !important; 
         width: max-content !important; 
         display: flex !important; flex-direction: column !important; justify-content: center !important; 
         gap: 6px !important; 
-        background: #ffffff !important; /* 👈 깔끔한 흰색 배경 */
-        border: 1px solid rgba(0,0,0,0.4) !important; /* 👈 요청하신 약간 검은 테두리 */
-        border-radius: 12px !important; 
-        padding: 6px 10px !important; 
-        z-index: 1500 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        background: var(--map-panel-bg) !important;
+        border: var(--map-panel-border) !important;
+        border-radius: var(--map-panel-radius) !important;
+        padding: 6px 10px !important;
+        z-index: 1500 !important;
+        box-shadow: var(--map-panel-shadow) !important;
     }
     .boundary-toggle-container::after, .boundary-toggle-container::before { display: none !important; }
     .control-row { display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important; margin: 0 !important; gap: 8px !important; }
@@ -154,7 +168,7 @@ input:checked + .slider:before { transform: translateX(16px); }
 
     /* 중앙 덩어리: 기본 거리재기 버튼 */
     #btn-measure { 
-        position: absolute !important; top: auto !important; bottom: 30px !important; left: 50% !important; right: auto !important;
+        position: absolute !important; top: auto !important; bottom: 30px !important; bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important; left: 50% !important; right: auto !important;
         transform: translate(-50%, 50%) !important; 
         height: 36px !important; padding: 0 16px !important; border-radius: 18px !important;
         background: #2c3e50 !important; color: white !important; border: none !important;
@@ -169,17 +183,26 @@ input:checked + .slider:before { transform: translateX(16px); }
     
     /* 일시정지/중단 버튼 */
     .btn-pause-measure { 
-        position: absolute !important; top: auto !important; bottom: 30px !important; left: 50% !important; right: auto !important;
+        position: absolute !important; top: auto !important; bottom: 30px !important; bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important; left: 50% !important; right: auto !important;
         transform: translate(calc(-100% - 2px), 50%) !important; 
         height: 32px !important; padding: 0 10px !important; border-radius: 16px !important;
         font-size: 11.5px !important; white-space: nowrap !important; z-index: 1500 !important;
         display: none !important; align-items: center !important; justify-content: center !important;
+        pointer-events: none !important;
     }
-    .btn-pause-measure[style*="display: block"] { display: flex !important; }
+    #btn-measure.active ~ .btn-pause-measure {
+        display: flex !important;
+        pointer-events: auto !important;
+    }
+    #btn-measure:not(.active) ~ .btn-pause-measure {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
 
-    /* 우측 덩어리: 모바일 유저 정보창 (비로그인 시 투명, 로그인 시 파란 네모) */
+    /* 우측 덩어리: 모바일 유저 정보창 (비로그인 시 투명, 로그인 시 범례 카드와 동일한 표면감) */
     #header-user-status {
-        position: absolute !important; top: auto !important; bottom: 30px !important; right: 6px !important; left: auto !important;
+        position: absolute !important; top: auto !important; bottom: 30px !important; bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important; right: 6px !important; left: auto !important;
         transform: translateY(50%) !important; 
         width: auto !important; height: auto !important; min-height: 40px !important; min-width: 85px !important;
         display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important;
@@ -193,14 +216,15 @@ input:checked + .slider:before { transform: translateX(16px); }
         box-shadow: none !important; gap: 0 !important;
     }
 
-    /* 👈 로그인 후(내부에 유저명이 생겼을 때)에만 파란색 네모 박스 활성화! */
+    /* 로그인 후(내부에 유저명이 생겼을 때)에만 범례와 같은 카드 표면 적용 */
     #header-user-status:has(.user-greeting) {
-        background: #f4f9ff !important; 
-        border: 1px solid #cce0ff !important;
-        box-shadow: 0 2px 5px rgba(0,123,255,0.1) !important;
+        background: var(--map-panel-bg) !important;
+        border: var(--map-panel-border) !important;
+        box-shadow: var(--map-panel-shadow) !important;
+        border-radius: var(--map-panel-radius) !important;
     }
 
-    .user-greeting { font-size: 11.5px !important; margin: 0 0 4px 0 !important; color: #0d47a1 !important; font-weight: 900 !important; text-align: center !important; display: block !important; width: 100% !important; }
+    .user-greeting { font-size: 11.5px !important; margin: 0 0 4px 0 !important; color: #333 !important; font-weight: 900 !important; text-align: center !important; display: block !important; width: 100% !important; }
     .user-btn-wrapper { display: flex !important; gap: 3px !important; justify-content: center !important; width: 100% !important; }
     
     /* 모바일 전용 버튼 크기 다이어트 (기본 디자인에서 크기만 줄임) */
