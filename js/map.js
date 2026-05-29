@@ -121,6 +121,11 @@ const MapManager = {
             const delBtn = popupNode.querySelector('.memo-del-btn');
             const favBtn = popupNode.querySelector('.fav-toggle-btn');
 
+            requestAnimationFrame(() => {
+                this.fitSpecialBusinessList(popupNode);
+                requestAnimationFrame(() => this.fitSpecialBusinessList(popupNode));
+            });
+
             if (textarea && saveBtn) {
                 const schoolName = textarea.id.replace('memo-', '');
                 const isLoggedIn = AuthManager.userId !== null;
@@ -279,14 +284,74 @@ const MapManager = {
             .filter(item => item && item !== '-' && item.toLowerCase() !== 'no data');
     },
 
+    getVisualTextLength(text) {
+        return Array.from(String(text ?? '')).reduce((total, char) => {
+            return total + (/^[\x00-\x7F]$/.test(char) ? 0.58 : 1);
+        }, 0);
+    },
+
+    getSpecialBusinessFontSize(items) {
+        const totalLength = items.reduce((sum, item) => sum + this.getVisualTextLength(item), 0);
+        const separatorLength = Math.max(0, items.length - 1) * 1.5;
+        const longestLength = Math.max(...items.map(item => this.getVisualTextLength(item)));
+        const fitLength = totalLength + separatorLength + Math.max(0, longestLength - 18) * 0.5;
+
+        if (fitLength > 78 || items.length >= 7) return 8;
+        if (fitLength > 64 || items.length >= 5) return 8.8;
+        if (fitLength > 50 || longestLength > 16) return 9.5;
+        return 10.5;
+    },
+
+    fitSpecialBusinessList(scope = document) {
+        const lists = scope.querySelectorAll('.popup-special-bs-list');
+        lists.forEach(list => {
+            const chips = [...list.querySelectorAll('.popup-special-bs-badge')];
+            if (!chips.length) return;
+
+            const card = list.closest('.popup-special-bs-box');
+            const minFontSize = 7.8;
+            const baseFontSize = Number(list.dataset.fontSize || 10.5);
+            let fontSize = baseFontSize;
+
+            const setFontSize = (size) => {
+                list.style.setProperty('--popup-special-bs-font-size', `${size}px`);
+            };
+            const isOverflowing = () => {
+                return list.scrollHeight > list.clientHeight + 1 ||
+                    chips.some(chip => chip.scrollWidth > chip.clientWidth + 1);
+            };
+
+            if (card) card.classList.remove('is-overflowing');
+            setFontSize(fontSize);
+
+            while (fontSize > minFontSize && isOverflowing()) {
+                fontSize = Math.max(minFontSize, Number((fontSize - 0.4).toFixed(1)));
+                setFontSize(fontSize);
+            }
+
+            if (isOverflowing()) {
+                if (card) card.classList.add('is-overflowing');
+            }
+        });
+    },
+
     makeSpecialBusinessHtml(rawValue) {
         const items = this.getSpecialBusinessItems(rawValue);
         if (!items.length) return '';
 
+        const fontSize = this.getSpecialBusinessFontSize(items);
+        const itemHtml = items
+            .map(item => {
+                const safeItem = this.escapeHtml(item);
+                return `<span class="popup-special-bs-badge" title="${safeItem}">${safeItem}</span>`;
+            })
+            .join('');
+
         return `
-                <div class="popup-special-bs-list" aria-label="특별 사업">
-                    ${items.map(item => `<span class="popup-special-bs-badge">${this.escapeHtml(item)}</span>`).join('')}
-                </div>`;
+                <fieldset class="popup-special-bs-box" aria-label="특색사업">
+                    <legend class="popup-special-bs-title">🎨 특색사업</legend>
+                    <div class="popup-special-bs-list" aria-label="특색사업명 목록" data-font-size="${fontSize}" style="--popup-special-bs-font-size:${fontSize}px;">${itemHtml}</div>
+                </fieldset>`;
     },
 
     makePopupHtml(p) {
