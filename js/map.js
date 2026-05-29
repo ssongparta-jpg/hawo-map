@@ -262,6 +262,33 @@ const MapManager = {
         });
     },
 
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    },
+
+    getSpecialBusinessItems(rawValue) {
+        return String(rawValue || '')
+            .split(/[,，\n]+/)
+            .map(item => item.trim())
+            .filter(item => item && item !== '-' && item.toLowerCase() !== 'no data');
+    },
+
+    makeSpecialBusinessHtml(rawValue) {
+        const items = this.getSpecialBusinessItems(rawValue);
+        if (!items.length) return '';
+
+        return `
+                <div class="popup-special-bs-list" aria-label="특별 사업">
+                    ${items.map(item => `<span class="popup-special-bs-badge">${this.escapeHtml(item)}</span>`).join('')}
+                </div>`;
+    },
+
     makePopupHtml(p) {
         const isEduOffice = (p.type && p.type.includes('교육')) || p.name.includes('교육지원청');
         let principalName = p.principal;
@@ -272,6 +299,7 @@ const MapManager = {
             : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
             
         const estBadge = p.establish ? `<span class="badge-est">${p.establish}</span>` : '';
+        const specialBusinessHtml = this.makeSpecialBusinessHtml(p.special_bs);
         
         // [리팩토링] 인라인 스타일 걷어내고 시맨틱 태그 및 클래스 적용
         let bodyContent = '';
@@ -311,6 +339,7 @@ const MapManager = {
                     <button id="fav-btn-${p.name}" class="fav-toggle-btn" onclick="MapManager.toggleFavorite('${p.name}', event)">☆</button>
                 </div>
                 <div class="popup-adrs">${p.adrs || ''}</div>
+                ${specialBusinessHtml}
                 <hr class="popup-hr">
                 ${bodyContent}
                 

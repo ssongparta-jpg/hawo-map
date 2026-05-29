@@ -26,6 +26,8 @@ const App = {
                 return parseFloat(String(val).replace(/,/g, '')) || 0;
             };
 
+            const getCellValue = (cell) => cell?.v || cell?.f || '';
+
             pRows.forEach((row) => {
                 const c = row.c;
                 if (!c || !c[1] || !c[2]) return;
@@ -45,9 +47,10 @@ const App = {
                     shape: c[10]?.v || '●', 
                     color: c[11]?.v || '#333', 
                     url: c[13]?.v,
-                    principal: c[16]?.v || c[16]?.f,                 
-                    vice_principal: c[17]?.v || c[17]?.f,            
-                    chief_of_administration: c[18]?.v || c[18]?.f    
+                    principal: getCellValue(c[16]),                 
+                    vice_principal: getCellValue(c[17]),            
+                    chief_of_administration: getCellValue(c[18]),
+                    special_bs: String(getCellValue(c[19])).trim()
                 };
                 
                 const locKey = lat.toFixed(5) + "," + lng.toFixed(5);
