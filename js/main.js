@@ -257,6 +257,7 @@ const DistanceManager = {
             if (btn) { btn.classList.add('active'); btn.innerHTML = '🛑 중단'; }
             if (pauseBtn) { pauseBtn.style.display = 'block'; pauseBtn.classList.remove('paused'); pauseBtn.innerHTML = '⏸ 일시정지'; }
             if (mapEl) mapEl.classList.add('cursor-crosshair');
+            if (MapManager?.map) MapManager.map.closePopup();
             this.clearAll();
         } else {
             if (btn) { btn.classList.remove('active'); btn.innerHTML = '📏 거리재기'; }

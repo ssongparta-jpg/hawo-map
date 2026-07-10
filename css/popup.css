@@ -4,7 +4,7 @@
 
 /* 1. 기본 Leaflet 팝업 프레임 커스텀 */
 .custom-popup { z-index: 20000 !important; } 
-.custom-popup .leaflet-popup-content-wrapper { background: rgba(255, 255, 255, 0.98); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.25); padding: 0; overflow: visible !important; }
+.custom-popup .leaflet-popup-content-wrapper { background: rgba(255, 255, 255, 0.96); border-radius: 14px; box-shadow: 0 18px 42px rgba(15,23,42,0.24); padding: 0; overflow: visible !important; border: 1px solid rgba(148,163,184,0.28); backdrop-filter: blur(16px); }
 .custom-popup .leaflet-popup-close-button { z-index: 20100 !important; color: #999 !important; font-size: 18px !important; top: 10px !important; right: 10px !important; }
 .custom-popup .leaflet-popup-content { width: 310px !important; margin: 0; }
 
@@ -14,9 +14,9 @@
 .popup-category { font-size: 11px; color: #4A90E2; font-weight: 700; display: flex; align-items: center; gap: 5px; }
 .badge-est { font-size: 10px; color: #666; background: #eee; padding: 1px 5px; border-radius: 4px; font-weight: normal; }
 .popup-title-row { display: flex; align-items: center; justify-content: space-between; }
-.popup-title { font-size: 17px; font-weight: 800; color: #222; margin: 0 0 4px 0; }
-.popup-adrs { font-size: 12px; color: #666; margin-bottom: 8px; line-height: 1.4; white-space: normal; word-break: keep-all; }
-.popup-hr { border: 0; height: 1px; background: #eee; margin: 8px 0; }
+.popup-title { font-size: 17px; font-weight: 900; color: var(--app-text, #172033); margin: 0 0 4px 0; }
+.popup-adrs { font-size: 12px; color: #64748b; margin-bottom: 8px; line-height: 1.4; white-space: normal; word-break: keep-all; }
+.popup-hr { border: 0; height: 1px; background: #e2e8f0; margin: 8px 0; }
 .popup-special-bs-box { position: relative; width: 100%; min-width: 0; margin: 4px 0 10px; padding: 0; border: 0; border-radius: 0; background: transparent; box-sizing: border-box; }
 .popup-special-bs-title { display: none; }
 .popup-special-bs-list { --popup-special-bs-font-size: 10.5px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; min-height: 24px; max-height: 40px; margin: 0; padding: 0; overflow: hidden; border-radius: 0; background: transparent; box-sizing: border-box; line-height: 1.25; }
@@ -24,12 +24,13 @@
 .popup-special-bs-box.is-overflowing .popup-special-bs-badge { letter-spacing: -0.6px; padding-left: 3px; padding-right: 3px; }
 
 /* 3. 팝업 내부 테이블 및 리스트 디자인 */
-.popup-admin-row { display: flex; justify-content: space-between; align-items: center; white-space: nowrap; font-size: 11px; color: #444; background: #f8f9fa; padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; }
+.popup-admin-row { display: flex; justify-content: space-between; align-items: center; white-space: nowrap; font-size: 11px; color: #475569; background: rgba(248,250,252,0.9); padding: 7px 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(226,232,240,0.9); }
 .popup-info-list { list-style: none; padding: 0; margin: 0; }
 .popup-info-list li { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #444; margin-bottom: 3px; }
 .popup-content.compact-mode .grid-list { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 15px; row-gap: 4px; padding-left: 0; }
-.popup-link-top { font-size: 11px; color: #4A90E2; text-decoration: none; font-weight: 700; padding: 3px 8px; background: #f0f7ff; border-radius: 4px; white-space: nowrap; }
-.popup-link-none { font-size: 11px; color: #999; padding: 3px 8px; background: #eee; border-radius: 4px; white-space: nowrap; }
+.popup-link-top { font-size: 11px; color: #1d5fbf; text-decoration: none; font-weight: 800; padding: 4px 9px; background: #eef5ff; border-radius: 8px; white-space: nowrap; transition: background var(--motion-fast, 0.18s ease), transform var(--motion-fast, 0.18s ease); }
+.popup-link-top:hover { background: #dbeafe; transform: translateY(-1px); }
+.popup-link-none { font-size: 11px; color: #94a3b8; padding: 4px 9px; background: #f1f5f9; border-radius: 8px; white-space: nowrap; }
 
 /* 즐겨찾기 버튼 */
 .fav-toggle-btn { background:none; border:none; font-size: 20px; cursor: pointer; color: #ccc; transition: color 0.2s; padding: 0; }
@@ -38,10 +39,11 @@
 /* 4. 메모 영역 */
 .memo-section { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc; }
 .memo-title { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #333; }
-.memo-textarea { width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none; box-sizing: border-box; }
+.memo-textarea { width: 100%; height: 50px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px; font-size: 12px; resize: none; box-sizing: border-box; outline: none; transition: border-color var(--motion-fast, 0.18s ease), box-shadow var(--motion-fast, 0.18s ease); }
+.memo-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.13); }
 .memo-btn-group { display: flex; gap: 5px; margin-top: 5px; }
-.memo-btn { flex: 1; color: white; border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: opacity 0.2s; }
-.memo-btn:hover { opacity: 0.8; }
+.memo-btn { flex: 1; color: white; border: none; padding: 7px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: bold; transition: opacity var(--motion-fast, 0.18s ease), transform var(--motion-fast, 0.18s ease); }
+.memo-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 .memo-save-btn { background-color: #4A90E2; }
 .memo-del-btn { background-color: #e74c3c; }
 .memo-btn.disabled-btn { background-color: #ccc !important; cursor: not-allowed; }

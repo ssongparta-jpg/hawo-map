@@ -8,6 +8,8 @@ const MapManager = {
     activeTypeFilters: new Set(),
     showOnlyFavorites: false,
     favoriteNames: [],
+    lastDistanceMarkerClickAt: 0,
+    lastDistanceMarkerClickKey: '',
 
     init() {
         this.map = L.map('map', { zoomControl: false, minZoom: 10, maxZoom: 18, attributionControl: false });
@@ -63,14 +65,18 @@ const MapManager = {
         else if (p.name.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '●'; }
         else if (p.name.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
 
-        if (count > 1) stackClass = `stack-pos-${stackIndex % 8}`;
+        if (count > 1) stackClass = `has-stack stack-pos-${stackIndex % 8}`;
         const safeName = this.escapeHtml(p.name);
+        const stackBadge = count > 1 && stackIndex === 0
+            ? `<div class="marker-stack-badge">${count > 9 ? '9+' : count}</div>`
+            : '';
         
         // 동적 색상은 데이터에서 오므로 CSS 변수로만 전달합니다.
         const html = `
-            <div class="custom-combined-marker ${typeClass} ${stackClass}">
+            <div class="custom-combined-marker ${typeClass} ${stackClass}" style="--marker-color:${symbolColor};">
                 <div class="marker-label-box">${safeName}</div>
-                <div class="marker-symbol" style="color:${symbolColor};">${symbolChar}</div>
+                <div class="marker-symbol">${symbolChar}</div>
+                ${stackBadge}
             </div>
         `;
         return L.divIcon({ className: 'marker-container-icon', html, iconSize: [0, 0] });
@@ -263,6 +269,7 @@ const MapManager = {
             autoPanPaddingTopLeft: autoPanPaddingVal 
         });
         this.disableAutoPopup(marker);
+        this.wireDistanceMarkerDom(marker);
         marker.properties = p;
         marker.on('click', (e) => {
              if (this.handleDistanceMarkerClick(marker, e)) return;
@@ -280,21 +287,49 @@ const MapManager = {
         }
     },
 
+    wireDistanceMarkerDom(marker) {
+        const bind = () => {
+            const icon = marker.getElement?.();
+            if (!icon || icon.dataset.distancePickBound === '1') return;
+
+            icon.dataset.distancePickBound = '1';
+            const pickPoint = (event) => {
+                this.handleDistanceMarkerClick(marker, { originalEvent: event });
+            };
+
+            L.DomEvent.on(icon, 'click', pickPoint, this);
+            L.DomEvent.on(icon, 'touchend', pickPoint, this);
+        };
+
+        marker.on('add', () => requestAnimationFrame(bind));
+        setTimeout(bind, 0);
+    },
+
     handleDistanceMarkerClick(marker, e) {
         if (!window.DistanceManager || !DistanceManager.active || DistanceManager.isPaused) return false;
         if (e?.originalEvent) {
             e.originalEvent.preventDefault?.();
             L.DomEvent.stop(e.originalEvent);
         }
-        if (typeof DistanceManager.addPoint === 'function') DistanceManager.addPoint(marker.getLatLng());
+        const latlng = marker.getLatLng();
+        const clickKey = `${latlng.lat.toFixed(7)},${latlng.lng.toFixed(7)}`;
+        const now = Date.now();
+        if (this.lastDistanceMarkerClickKey === clickKey && now - this.lastDistanceMarkerClickAt < 500) return true;
+
+        this.lastDistanceMarkerClickKey = clickKey;
+        this.lastDistanceMarkerClickAt = now;
+
+        if (typeof DistanceManager.addPoint === 'function') DistanceManager.addPoint(latlng);
         marker.closePopup();
+        if (this.map) this.map.closePopup();
         return true;
     },
 
     triggerMarkerPopup(e, name) {
         if (e) { e.stopPropagation(); }
         const target = this.markers.find(m => m.properties.name === name);
-        if (target) { 
+        if (target) {
+            if (this.handleDistanceMarkerClick(target, e ? { originalEvent: e } : null)) return;
             if (this.activeMarker) this.activeMarker.setZIndexOffset(100);
             target.setZIndexOffset(10000);
             this.activeMarker = target;
@@ -305,6 +340,7 @@ const MapManager = {
     focusMarker(m) {
         this.map.flyTo(m.getLatLng(), 16, { duration: 1.5 });
         this.map.once('moveend', () => {
+            if (this.handleDistanceMarkerClick(m)) return;
             if (this.activeMarker) this.activeMarker.setZIndexOffset(100);
             m.setZIndexOffset(10000);
             this.activeMarker = m;

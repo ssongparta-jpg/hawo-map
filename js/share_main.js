@@ -30,6 +30,7 @@ const ShareApp = {
         MapManager.openSharedPopup = function(uid) {
             const marker = MapManager.markers.find(m => m.properties.uid === uid);
             if (marker) {
+                if (MapManager.handleDistanceMarkerClick(marker)) return;
                 if (MapManager.activeMarker) MapManager.activeMarker.setZIndexOffset(100);
                 marker.setZIndexOffset(10000);
                 MapManager.activeMarker = marker;
@@ -178,6 +179,7 @@ const ShareApp = {
                 className: 'custom-popup', pane: 'ultraTopPane', autoPanPadding: L.point(20, 20)
             });
         MapManager.disableAutoPopup(marker);
+        MapManager.wireDistanceMarkerDom(marker);
 
         marker.properties = p;
         marker.on('click', (e) => {
@@ -377,6 +379,7 @@ const DistanceManager = {
             if (btn) { btn.classList.add('active'); btn.innerHTML = '🛑 중단'; }
             if (pauseBtn) { pauseBtn.style.display = 'block'; pauseBtn.classList.remove('paused'); pauseBtn.innerHTML = '⏸ 일시정지'; }
             if (mapEl) mapEl.classList.add('cursor-crosshair');
+            if (MapManager?.map) MapManager.map.closePopup();
             this.clearAll();
         } else {
             if (btn) { btn.classList.remove('active'); btn.innerHTML = '📏 거리재기'; }
