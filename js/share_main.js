@@ -67,13 +67,7 @@ const ShareApp = {
             });
         };
 
-        MapManager.map.on('zoomend', () => {
-            const zoom = MapManager.map.getZoom();
-            const mapContainer = MapManager.map.getContainer();
-            if (zoom >= 13) mapContainer.classList.add('view-labels-mode');
-            else mapContainer.classList.remove('view-labels-mode');
-        });
-        if (MapManager.map.getZoom() >= 13) MapManager.map.getContainer().classList.add('view-labels-mode');
+        if (typeof MapManager.updateZoomState === 'function') MapManager.updateZoomState();
 
         MapManager.map.removeLayer(MapManager.cluster);
         MapManager.cluster = L.markerClusterGroup({
@@ -183,7 +177,8 @@ const ShareApp = {
             .bindPopup(this.makeSharedPopupHtml(p), {
                 className: 'custom-popup', pane: 'ultraTopPane', autoPanPadding: L.point(20, 20)
             });
-            
+        MapManager.disableAutoPopup(marker);
+
         marker.properties = p;
         marker.on('click', (e) => {
             if (MapManager.handleDistanceMarkerClick(marker, e)) return;
@@ -335,7 +330,7 @@ const ShareApp = {
 
 // [리팩토링] 인라인 스타일 주입을 걷어낸 깔끔한 DistanceManager
 const DistanceManager = {
-    active: false, isPaused: false, points: [], lines: [], markers: [], tempLine: null, totalDistance: 0, hoverTimer: null,
+    active: false, isPaused: false, points: [], lines: [], markers: [], tempLine: null, totalDistance: 0, hoverTimer: null, lastRouteOpenAt: 0,
     init() {
         const pauseBtn = document.createElement('button');
         pauseBtn.id = 'btn-pause-measure'; 
@@ -344,16 +339,34 @@ const DistanceManager = {
         (document.querySelector('.container') || document.body).appendChild(pauseBtn);
         
         document.addEventListener('click', (e) => {
+            if (this.handleRouteButtonEvent(e)) return;
             const pBtn = e.target.closest('#btn-pause-measure');
             if (pBtn) { e.preventDefault(); this.togglePause(); }
-            const routeBtn = e.target.closest('[data-route-index]');
-            if (routeBtn) this.openNaverUpTo(Number(routeBtn.dataset.routeIndex));
         });
+
+        document.addEventListener('touchend', (e) => {
+            this.handleRouteButtonEvent(e);
+        }, { passive: false });
         
         if (MapManager && MapManager.map) {
             MapManager.map.on('click', (e) => { if (this.active && !this.isPaused) this.addPoint(e.latlng); });
             MapManager.map.on('mousemove', (e) => { if (this.active && !this.isPaused && this.points.length > 0) this.drawTempLine(e.latlng); });
         }
+    },
+    handleRouteButtonEvent(e) {
+        const routeBtn = e.target.closest?.('[data-route-index]');
+        if (!routeBtn) return false;
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+
+        const now = Date.now();
+        if (now - this.lastRouteOpenAt < 700) return true;
+        this.lastRouteOpenAt = now;
+
+        this.openNaverUpTo(Number(routeBtn.dataset.routeIndex));
+        return true;
     },
     toggle(btnElem) {
         this.active = !this.active; this.isPaused = false;
@@ -430,7 +443,7 @@ const DistanceManager = {
         this.tempLine = L.polyline([lastPoint, latlng], { color: '#e74c3c', weight: 3, dashArray: '5, 5', opacity: 0.5 }).addTo(MapManager.map);
     },
     openNaverUpTo(endIndex) {
-        if (endIndex < 1 || this.points.length < 2) return;
+        if (!Number.isInteger(endIndex) || endIndex < 1 || this.points.length < 2) return;
         let fullPath = this.points.slice(0, endIndex + 1);
         let finalPoints = [];
         if (fullPath.length <= 7) { finalPoints = fullPath; } 
@@ -451,7 +464,9 @@ const DistanceManager = {
             const waypointsStr = waypoints.map((p, i) => fmt(p, `경유지${i + 1}`)).join(':');
             url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/-/car`;
         }
-        window.open(url, '_blank');
+        const opened = window.open(url, '_blank');
+        if (opened) opened.opener = null;
+        else window.location.assign(url);
     },
     clearAll() {
         if (MapManager && MapManager.map) {

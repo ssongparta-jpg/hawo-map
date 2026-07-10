@@ -93,7 +93,7 @@ input:checked + .slider:before { transform: translateX(16px); }
 /* 길찾기 안내 미니 팝업 */
 .route-popup-box { text-align: center; padding: 8px; min-width: 180px; }
 .route-popup-title { font-weight: bold; font-size: 13px; margin-bottom: 8px; color: #333; }
-.btn-naver-route { background: #03c75a; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
+.btn-naver-route { background: #03c75a; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .btn-naver-route:hover { background: #02b350; }
 .route-popup-warning { color: #e74c3c; font-size: 11px; margin-top: 8px; font-weight: bold; }
 /* =========================================

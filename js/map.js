@@ -77,21 +77,8 @@ const MapManager = {
     },
 
     bindEvents() {
-        this.map.on('zoomend', () => {
-            const zoom = this.map.getZoom();
-            
-            // 👇 [핵심 버그 수정] 기존 디자인 클래스를 날려버리지 않고, 오직 zoom-lv-* 클래스만 쏙 골라서 교체합니다!
-            document.querySelectorAll('.dist-stat-btn').forEach(btn => {
-                btn.classList.forEach(cls => {
-                    if (cls.startsWith('zoom-lv-')) btn.classList.remove(cls);
-                });
-                btn.classList.add(`zoom-lv-${zoom}`);
-            });
-            
-            const mapContainer = this.map.getContainer();
-            if (zoom >= 15) mapContainer.classList.add('view-labels-mode');
-            else mapContainer.classList.remove('view-labels-mode');
-        });
+        this.map.on('zoomend', () => this.updateZoomState());
+        this.updateZoomState();
 
         const toggleBtn = document.getElementById('toggle-boundary');
         if (toggleBtn) {
@@ -165,6 +152,28 @@ const MapManager = {
                 }
             }
         });
+    },
+
+    updateZoomState() {
+        if (!this.map) return;
+        const zoom = this.map.getZoom();
+
+        document.querySelectorAll('.dist-stat-btn').forEach(btn => {
+            btn.classList.forEach(cls => {
+                if (cls.startsWith('zoom-lv-')) btn.classList.remove(cls);
+            });
+            btn.classList.add(`zoom-lv-${zoom}`);
+        });
+
+        const mapContainer = this.map.getContainer();
+        if (!mapContainer) return;
+        mapContainer.classList.forEach(cls => {
+            if (cls.startsWith('map-zoom-')) mapContainer.classList.remove(cls);
+        });
+        mapContainer.classList.add(`map-zoom-${zoom}`);
+        mapContainer.classList.toggle('compact-marker-stack', zoom <= 14);
+        const labelZoom = MapConfig.isSharedMode ? 13 : 15;
+        mapContainer.classList.toggle('view-labels-mode', zoom >= labelZoom);
     },
 
     async filterFavorites(showOnlyFav) {
@@ -253,19 +262,30 @@ const MapManager = {
             autoPanPadding: L.point(20, 20),
             autoPanPaddingTopLeft: autoPanPaddingVal 
         });
+        this.disableAutoPopup(marker);
         marker.properties = p;
         marker.on('click', (e) => {
              if (this.handleDistanceMarkerClick(marker, e)) return;
              if (this.activeMarker) this.activeMarker.setZIndexOffset(100); 
              marker.setZIndexOffset(10000); 
              this.activeMarker = marker;
+             marker.openPopup();
         });
         return marker;
     },
 
+    disableAutoPopup(marker) {
+        if (marker && typeof marker.off === 'function' && marker._openPopup) {
+            marker.off('click', marker._openPopup, marker);
+        }
+    },
+
     handleDistanceMarkerClick(marker, e) {
         if (!window.DistanceManager || !DistanceManager.active || DistanceManager.isPaused) return false;
-        if (e?.originalEvent) L.DomEvent.stop(e.originalEvent);
+        if (e?.originalEvent) {
+            e.originalEvent.preventDefault?.();
+            L.DomEvent.stop(e.originalEvent);
+        }
         if (typeof DistanceManager.addPoint === 'function') DistanceManager.addPoint(marker.getLatLng());
         marker.closePopup();
         return true;

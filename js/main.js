@@ -198,6 +198,7 @@ const DistanceManager = {
     tempLine: null,
     totalDistance: 0,
     hoverTimer: null,
+    lastRouteOpenAt: 0,
 
     init() {
         // [수정됨] 자바스크립트 내 하드코딩 스타일 주입 로직 완전 제거 -> 외부 CSS로 이관
@@ -210,11 +211,14 @@ const DistanceManager = {
         container.appendChild(pauseBtn);
 
         document.addEventListener('click', (e) => {
+            if (this.handleRouteButtonEvent(e)) return;
             const pBtn = e.target.closest('#btn-pause-measure');
             if (pBtn) { e.preventDefault(); this.togglePause(); }
-            const routeBtn = e.target.closest('[data-route-index]');
-            if (routeBtn) this.openNaverUpTo(Number(routeBtn.dataset.routeIndex));
         });
+
+        document.addEventListener('touchend', (e) => {
+            this.handleRouteButtonEvent(e);
+        }, { passive: false });
         
         if (MapManager && MapManager.map) {
             MapManager.map.on('click', (e) => {
@@ -224,6 +228,22 @@ const DistanceManager = {
                 if (this.active && !this.isPaused && this.points.length > 0) this.drawTempLine(e.latlng);
             });
         }
+    },
+
+    handleRouteButtonEvent(e) {
+        const routeBtn = e.target.closest?.('[data-route-index]');
+        if (!routeBtn) return false;
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+
+        const now = Date.now();
+        if (now - this.lastRouteOpenAt < 700) return true;
+        this.lastRouteOpenAt = now;
+
+        this.openNaverUpTo(Number(routeBtn.dataset.routeIndex));
+        return true;
     },
 
     toggle(btnElem) {
@@ -328,7 +348,7 @@ const DistanceManager = {
     },
 
     openNaverUpTo(endIndex) {
-        if (endIndex < 1 || this.points.length < 2) return;
+        if (!Number.isInteger(endIndex) || endIndex < 1 || this.points.length < 2) return;
         
         let fullPath = this.points.slice(0, endIndex + 1);
         let finalPoints = [];
@@ -358,7 +378,9 @@ const DistanceManager = {
             url += `${fmt(startPt, '출발지')}/${fmt(endPt, '도착지')}/${waypointsStr}/-/car`;
         }
         
-        window.open(url, '_blank');
+        const opened = window.open(url, '_blank');
+        if (opened) opened.opener = null;
+        else window.location.assign(url);
     },
 
     clearAll() {
