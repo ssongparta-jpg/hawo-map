@@ -36,6 +36,12 @@
     cursor: pointer; border-radius: 4px; transition: background 0.2s; color: #555; margin: 0;
 }
 .legend-row:hover { background: #f0f7ff; color: #4A90E2; font-weight: bold; }
+.legend-row.active {
+    background: #eef5ff;
+    color: #00427a;
+    font-weight: 900;
+    box-shadow: inset 3px 0 0 #4A90E2;
+}
 .l-symbol { font-weight: bold; width: 16px; text-align: center; font-size: 14px; }
 .legend-reset-row { color: #4A90E2; font-weight: bold; font-size: 12px; padding-bottom: 8px; margin-bottom: 5px; border-bottom: 1px dashed #eee; cursor: pointer; text-align: center; }
 

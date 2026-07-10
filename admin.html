@@ -12,39 +12,26 @@
     <header class="admin-header">
       <h1>⚙️ 화성오산 지도 관리자 대시보드</h1>
       <div class="user-info">
-        <span id="admin-name" style="margin-right: 15px; font-weight: bold;"></span>
-        <button onclick="location.href='/'" class="btn-return">지도 돌아가기</button>
-        <button onclick="AdminApp.logout()" class="btn-logout">로그아웃</button>
+        <span id="admin-name" class="admin-name"></span>
+        <button data-admin-action="return-map" class="btn-return">지도 돌아가기</button>
+        <button data-admin-action="logout" class="btn-logout">로그아웃</button>
       </div>
     </header>
 
     <div class="admin-container">
       <nav class="admin-sidebar">
-        <button onclick="AdminApp.loadResetRequests()" class="nav-btn" id="nav-reset">🔑 PW 초기화 요청</button>
-        <button onclick="AdminApp.manageUsers()" class="nav-btn" id="nav-users">👥 전체 회원 관리</button>
-        <button onclick="AdminApp.viewAllMemos()" class="nav-btn" id="nav-memos">📝 전체 유저 메모</button>
-        <button onclick="AdminApp.manageColors()" class="nav-btn" id="nav-colors">🎨 지도 색상 관리</button>
+        <button data-admin-view="reset" class="nav-btn" id="nav-reset">🔑 PW 초기화 요청</button>
+        <button data-admin-view="users" class="nav-btn" id="nav-users">👥 전체 회원 관리</button>
+        <button data-admin-view="memos" class="nav-btn" id="nav-memos">📝 전체 유저 메모</button>
+        <button data-admin-view="colors" class="nav-btn" id="nav-colors">🎨 지도 색상 관리</button>
       </nav>
       
       <main class="admin-content" id="admin-content">
-        <h2 style="color:#666;">데이터를 불러오는 중입니다...</h2>
+        <h2 class="admin-muted-title">데이터를 불러오는 중입니다...</h2>
       </main>
     </div>
   </div>
 
   <script src="/server/admin.js"></script>
-  
-  <script>
-    // 관리자 페이지에 진입하자마자 첫 화면(PW 초기화 요청 탭)을 안전하게 자동 로드합니다.
-    document.addEventListener('DOMContentLoaded', () => {
-        const interval = setInterval(() => {
-            if (window.AdminApp && typeof AdminApp.loadResetRequests === 'function') {
-                clearInterval(interval);
-                const resetBtn = document.getElementById('nav-reset');
-                if (resetBtn) resetBtn.click();
-            }
-        }, 100);
-    });
-  </script>
 </body>
 </html>

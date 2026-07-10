@@ -17,8 +17,8 @@ const LoginApp = {
 
         if (this.idClickCount >= 5) {
             const adminTab = document.getElementById('admin-tab-btn');
-            if (adminTab && adminTab.style.display === 'none') {
-                adminTab.style.display = 'block';
+            if (adminTab && adminTab.classList.contains('is-hidden')) {
+                adminTab.classList.remove('is-hidden');
                 Swal.fire({ icon: 'info', title: '관리자 모드', text: '관리자 인증 메뉴가 활성화되었습니다.', timer: 1500, showConfirmButton: false });
             }
             this.idClickCount = 0; 
@@ -30,43 +30,88 @@ const LoginApp = {
     clearUserLoginFails() { localStorage.removeItem('hwaoLoginFails'); },
 
     init() {
+        this.bindEvents();
         if (this.getUserLoginFails() >= 5) {
             const captchaContainer = document.getElementById('user-captcha-container');
             if (captchaContainer) {
-                captchaContainer.style.display = 'block';
+                captchaContainer.classList.remove('is-hidden');
                 this.generateUserCaptcha();
             }
         }
     },
 
+    bindEvents() {
+        document.addEventListener('click', (event) => {
+            const tabTarget = event.target.closest('[data-tab]');
+            if (tabTarget) {
+                this.switchTab(tabTarget.dataset.tab);
+                return;
+            }
+
+            const actionTarget = event.target.closest('[data-action]');
+            if (!actionTarget) return;
+            const action = actionTarget.dataset.action;
+
+            if (action === 'refresh-captcha') this.generateUserCaptcha();
+            if (action === 'user-login') this.userLogin();
+            if (action === 'show-register') this.showRegisterForm();
+            if (action === 'request-admin-reset') this.requestAdminReset();
+            if (action === 'check-id') this.checkId();
+            if (action === 'user-register') this.userRegister();
+            if (action === 'request-admin-email') this.requestAdminEmail();
+            if (action === 'verify-admin-code') this.verifyAdminCode();
+        });
+
+        document.getElementById('user-id')?.addEventListener('click', () => this.handleIdClick());
+        document.getElementById('user-id')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') document.getElementById('user-pw')?.focus();
+        });
+        document.getElementById('user-pw')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') this.userLogin();
+        });
+        document.getElementById('user-captcha-input')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') this.userLogin();
+        });
+        document.getElementById('reg-id')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') this.checkId();
+        });
+        document.getElementById('reg-pw')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') document.getElementById('reg-pw-confirm')?.focus();
+        });
+        document.getElementById('reg-pw-confirm')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') this.userRegister();
+        });
+        document.getElementById('admin-id')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') this.requestAdminEmail();
+        });
+        document.getElementById('admin-otp')?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') this.verifyAdminCode();
+        });
+    },
+
+    activateArea(areaId) {
+        document.querySelectorAll('.form-area').forEach(area => area.classList.remove('active'));
+        const area = document.getElementById(areaId);
+        if (area) area.classList.add('active');
+    },
+
     switchTab(tabName) {
         this.isIdChecked = false; 
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.form-area').forEach(area => {
-            area.classList.remove('active');
-            area.style.display = 'none';
-        });
 
         if (tabName === 'user') {
             document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.getElementById('user-login-area').style.display = 'block';
-            setTimeout(() => document.getElementById('user-login-area').classList.add('active'), 10);
+            this.activateArea('user-login-area');
         } else {
             const adminTab = document.getElementById('admin-tab-btn');
             if (adminTab) adminTab.classList.add('active');
-            document.getElementById('admin-step1-area').style.display = 'block';
-            setTimeout(() => document.getElementById('admin-step1-area').classList.add('active'), 10);
+            this.activateArea('admin-step1-area');
             if (window.grecaptcha) grecaptcha.reset();
         }
     },
 
     showRegisterForm() {
-        document.querySelectorAll('.form-area').forEach(area => {
-            area.classList.remove('active');
-            area.style.display = 'none';
-        });
-        document.getElementById('user-register-area').style.display = 'block';
-        setTimeout(() => document.getElementById('user-register-area').classList.add('active'), 10);
+        this.activateArea('user-register-area');
     },
 
     // [수정됨] 캡챠 아주 순한맛 (글자 겹침 X, 회전 X, 굵고 선명하게)
@@ -150,7 +195,7 @@ const LoginApp = {
                 
                 Swal.fire({ icon: 'error', title: '로그인 실패', text: data.message }).then(() => {
                     if (this.getUserLoginFails() >= 5) {
-                        document.getElementById('user-captcha-container').style.display = 'block';
+                        document.getElementById('user-captcha-container').classList.remove('is-hidden');
                         this.generateUserCaptcha();
                         document.getElementById('user-captcha-input').focus();
                     } else {
@@ -254,12 +299,10 @@ const LoginApp = {
                 this.adminIdTemp = adminId;
                 Swal.close();
                 
-                document.getElementById('admin-step1-area').style.display = 'none';
                 document.getElementById('admin-step1-area').classList.remove('active');
                 
                 const step2 = document.getElementById('admin-step2-area');
-                step2.style.display = 'block';
-                setTimeout(() => step2.classList.add('active'), 10);
+                step2.classList.add('active');
                 
                 document.getElementById('admin-msg').innerText = data.message;
                 if (window.grecaptcha) grecaptcha.reset();

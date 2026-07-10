@@ -34,7 +34,7 @@ const SearchManager = {
             else if (m.properties.name.includes('고등학교')) typeClass = 'type-high';
             else if (m.properties.name.includes('유치원')) typeClass = 'type-kinder';
 
-            div.innerHTML = `<span>${m.properties.name}</span><span class="search-item-type ${typeClass}">${m.properties.type}</span>`;
+            div.innerHTML = `<span>${MapManager.escapeHtml(m.properties.name)}</span><span class="search-item-type ${typeClass}">${MapManager.escapeHtml(m.properties.type)}</span>`;
             
             div.onclick = () => {
                 MapManager.focusMarker(m);
@@ -168,9 +168,9 @@ const ResultPageManager = {
             const card = document.createElement('div');
             card.className = 'result-card';
             card.innerHTML = `
-                <div class="res-type ${typeClass}">${p.type} ${p.establish ? `· ${p.establish}` : ''}</div>
-                <div class="res-name" title="${p.name}">${p.name}</div>
-                <div class="res-addr" title="${p.adrs}">${p.adrs}</div>
+                <div class="res-type ${typeClass}">${MapManager.escapeHtml(p.type)} ${p.establish ? `· ${MapManager.escapeHtml(p.establish)}` : ''}</div>
+                <div class="res-name" title="${MapManager.escapeAttr(p.name)}">${MapManager.escapeHtml(p.name)}</div>
+                <div class="res-addr" title="${MapManager.escapeAttr(p.adrs)}">${MapManager.escapeHtml(p.adrs)}</div>
             `;
             card.onclick = () => { this.close(); this.focusSchool(m); };
             container.appendChild(card);

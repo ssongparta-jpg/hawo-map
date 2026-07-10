@@ -9,7 +9,26 @@ const AdminApp = {
         shared: { hwaseongFill: "#4A90E2", hwaseongBorder: "#0047AB", osanFill: "#FF6392", osanBorder: "#e7733d" }
     },
 
+    escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    },
+
+    escapeAttr(value) {
+        return this.escapeHtml(value).replace(/`/g, '&#96;');
+    },
+
+    escapeJsString(value) {
+        return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    },
+
     async init() {
+        this.bindEvents();
         try {
             const res = await fetch('/api/check-auth');
             const data = await res.json();
@@ -21,6 +40,48 @@ const AdminApp = {
             document.getElementById('admin-name').innerText = `${data.userId}`;
             this.loadResetRequests(); 
         } catch(e) { location.href = 'index.html'; }
+    },
+
+    bindEvents() {
+        document.addEventListener('click', (event) => {
+            const actionTarget = event.target.closest('[data-admin-action]');
+            if (actionTarget) {
+                const action = actionTarget.dataset.adminAction;
+                if (action === 'return-map') location.href = '/';
+                if (action === 'logout') this.logout();
+                return;
+            }
+
+            const viewTarget = event.target.closest('[data-admin-view]');
+            if (!viewTarget) return;
+            const view = viewTarget.dataset.adminView;
+            if (view === 'reset') this.loadResetRequests();
+            if (view === 'users') this.manageUsers();
+            if (view === 'memos') this.viewAllMemos();
+            if (view === 'colors') this.manageColors();
+        });
+
+        document.addEventListener('click', (event) => {
+            const commandTarget = event.target.closest('[data-admin-command]');
+            if (!commandTarget) return;
+            const command = commandTarget.dataset.adminCommand;
+
+            if (command === 'approve-reset') this.approveOne(commandTarget.dataset.id);
+            if (command === 'delete-user') this.deleteUser(commandTarget.dataset.id);
+            if (command === 'delete-memo') this.deleteMemo(commandTarget.dataset.userId, commandTarget.dataset.schoolName);
+            if (command === 'save-colors') this.saveColors();
+            if (command === 'reset-color') this.resetColor(commandTarget.dataset.colorId, commandTarget.dataset.defaultHex);
+            if (command === 'color-tab') this.switchColorTab(commandTarget.dataset.tab, commandTarget);
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (event.target.id === 'user-search') this.filterUsers();
+            if (event.target.id === 'memo-search') this.filterMemos();
+        });
+
+        document.addEventListener('input', (event) => {
+            if (event.target.dataset.colorId) this.handleColorInput(event.target);
+        });
     },
 
     async logout() {
@@ -41,13 +102,14 @@ const AdminApp = {
             const res = await fetch('/api/admin/reset-requests');
             const data = await res.json();
             if (!data.requests || data.requests.length === 0) {
-                 content.innerHTML = '<h2>🔑 비밀번호 초기화 요청</h2><p style="color:#666;">대기 중인 요청이 없습니다.</p>';
+                 content.innerHTML = '<h2>🔑 비밀번호 초기화 요청</h2><p class="admin-empty-note">대기 중인 요청이 없습니다.</p>';
                  return;
             }
             let html = `<h2>🔑 비밀번호 초기화 요청</h2><table class="admin-table"><thead><tr><th>요청자 ID</th><th>요청 일시</th><th>승인</th></tr></thead><tbody>`;
             data.requests.forEach(r => {
-                html += `<tr><td style="font-weight:bold; color:#e74c3c;">${r.id}</td><td>${new Date(r.requestDate).toLocaleString('ko-KR')}</td>
-                    <td><button onclick="AdminApp.approveOne('${r.id}')" class="admin-btn-approve">초기화 승인(1234)</button></td></tr>`;
+                const safeId = this.escapeHtml(r.id);
+                html += `<tr><td class="admin-danger-text">${safeId}</td><td>${new Date(r.requestDate).toLocaleString('ko-KR')}</td>
+                    <td><button data-admin-command="approve-reset" data-id="${this.escapeAttr(r.id)}" class="admin-btn-approve">초기화 승인(1234)</button></td></tr>`;
             });
             content.innerHTML = html + `</tbody></table>`;
         } catch (e) { content.innerHTML = '<p>데이터 로드 오류</p>'; }
@@ -70,7 +132,7 @@ const AdminApp = {
             
             content.innerHTML = `
                 <h2>👥 전체 회원 관리</h2>
-                <input type="text" id="user-search" class="admin-search-bar" placeholder="회원 ID로 검색..." onkeyup="AdminApp.filterUsers()">
+                <input type="text" id="user-search" class="admin-search-bar" placeholder="회원 ID로 검색...">
                 <div id="user-table-container"></div>
             `;
             this.renderUsers(this.allUsers);
@@ -88,15 +150,16 @@ const AdminApp = {
         if(users.length === 0) { container.innerHTML = '<p>검색 결과가 없습니다.</p>'; return; }
         let html = `<table class="admin-table"><thead><tr><th>가입자 ID</th><th>위험 관리</th></tr></thead><tbody>`;
         users.forEach(u => {
-            html += `<tr><td style="font-weight:bold;">${u.id}</td>
-                <td><button onclick="AdminApp.deleteUser('${u.id}')" class="admin-btn-delete">강제 탈퇴 처리</button></td></tr>`;
+            const safeId = this.escapeHtml(u.id);
+            html += `<tr><td class="admin-strong-text">${safeId}</td>
+                <td><button data-admin-command="delete-user" data-id="${this.escapeAttr(u.id)}" class="admin-btn-delete">강제 탈퇴 처리</button></td></tr>`;
         });
         container.innerHTML = html + `</tbody></table>`;
     },
 
     async deleteUser(id) {
         if(!confirm(`정말 [${id}] 님을 강제 탈퇴시키겠습니까?`)) return;
-        await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+        await fetch(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
         this.manageUsers();
     },
 
@@ -111,7 +174,7 @@ const AdminApp = {
 
             content.innerHTML = `
                 <h2>📝 전체 유저 메모 모아보기</h2>
-                <input type="text" id="memo-search" class="admin-search-bar" placeholder="ID, 학교명, 또는 메모 내용으로 검색..." onkeyup="AdminApp.filterMemos()">
+                <input type="text" id="memo-search" class="admin-search-bar" placeholder="ID, 학교명, 또는 메모 내용으로 검색...">
                 <div id="memo-table-container"></div>
             `;
             this.renderMemos(this.allMemos);
@@ -131,11 +194,14 @@ const AdminApp = {
         if(memos.length === 0) { container.innerHTML = '<p>검색 결과가 없습니다.</p>'; return; }
         let html = `<table class="admin-table"><thead><tr><th>작성자 ID</th><th>대상 학교</th><th>메모 내용</th><th>관리</th></tr></thead><tbody>`;
         memos.forEach(m => {
+            const safeUserId = this.escapeHtml(m.userId);
+            const safeSchoolName = this.escapeHtml(m.schoolName);
+            const safeContent = this.escapeHtml(m.content).replace(/\n/g, '<br>');
             html += `<tr>
-                <td><span style="background:#eef5ff; color:#4A90E2; padding:3px 8px; border-radius:4px; font-weight:bold;">${m.userId}</span></td>
-                <td style="font-weight:bold; color:#333;">${m.schoolName}</td>
-                <td style="color:#555;">${m.content.replace(/\n/g, '<br>')}</td>
-                <td><button onclick="AdminApp.deleteMemo('${m.userId}', '${m.schoolName}')" class="admin-btn-delete">삭제</button></td>
+                <td><span class="memo-user-badge">${safeUserId}</span></td>
+                <td class="memo-school-cell">${safeSchoolName}</td>
+                <td class="memo-content-cell">${safeContent}</td>
+                <td><button data-admin-command="delete-memo" data-user-id="${this.escapeAttr(m.userId)}" data-school-name="${this.escapeAttr(m.schoolName)}" class="admin-btn-delete">삭제</button></td>
             </tr>`;
         });
         container.innerHTML = html + `</tbody></table>`;
@@ -170,8 +236,8 @@ const AdminApp = {
         content.innerHTML = `
             <h2>🎨 지도 색상 관리</h2>
             <div class="color-tabs">
-                <button class="color-tab-btn active" onclick="AdminApp.switchColorTab('general', this)">일반 학교 지도</button>
-                <button class="color-tab-btn" onclick="AdminApp.switchColorTab('shared', this)">공유학교 지도</button>
+                <button class="color-tab-btn active" data-admin-command="color-tab" data-tab="general">일반 학교 지도</button>
+                <button class="color-tab-btn" data-admin-command="color-tab" data-tab="shared">공유학교 지도</button>
             </div>
             
             <form id="color-form">
@@ -185,50 +251,50 @@ const AdminApp = {
                     ${this.createColorInput('general', 'osanBorder', '오산시 테두리 색상', this.currentColors.general.osanBorder, this.defaultColors.general.osanBorder)}
                 </div>
 
-                <div id="tab-shared" class="color-grid" style="display:none;">
+                <div id="tab-shared" class="color-grid admin-hidden">
                     ${this.createColorInput('shared', 'hwaseongFill', '화성 다(多)가치 내부 색상', this.currentColors.shared.hwaseongFill, this.defaultColors.shared.hwaseongFill)}
                     ${this.createColorInput('shared', 'hwaseongBorder', '화성 다(多)가치 테두리 색상', this.currentColors.shared.hwaseongBorder, this.defaultColors.shared.hwaseongBorder)}
                     ${this.createColorInput('shared', 'osanFill', '오산나래 내부 색상', this.currentColors.shared.osanFill, this.defaultColors.shared.osanFill)}
                     ${this.createColorInput('shared', 'osanBorder', '오산나래 테두리 색상', this.currentColors.shared.osanBorder, this.defaultColors.shared.osanBorder)}
                 </div>
 
-                <button type="button" class="btn-save-colors" onclick="AdminApp.saveColors()">💾 설정 저장 적용하기</button>
+                <button type="button" class="btn-save-colors" data-admin-command="save-colors">💾 설정 저장 적용하기</button>
             </form>
 
             <div class="preview-section">
                 <h3>👀 실시간 디자인 미리보기</h3>
                 
                 <div id="prev-box-general" class="preview-box">
-                    <div id="prev-area-hwaseong" class="prev-area" style="padding: 15px;">
-                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:10px; text-align:center;">화성시 영역</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
-                            <div id="prev-fill-dongtan" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                    <div id="prev-area-hwaseong" class="prev-area prev-area-padded">
+                        <div class="preview-area-title centered">화성시 영역</div>
+                        <div class="preview-area-grid">
+                            <div id="prev-fill-dongtan" class="preview-fill-cell">
                                 <div id="prev-btn-dongtan" class="prev-btn">화성시 동탄구 ↗</div>
                             </div>
-                            <div id="prev-fill-byeongjeom" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                            <div id="prev-fill-byeongjeom" class="preview-fill-cell">
                                 <div id="prev-btn-byeongjeom" class="prev-btn">화성시 병점구 ↗</div>
                             </div>
-                            <div id="prev-fill-hyohoeng" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                            <div id="prev-fill-hyohoeng" class="preview-fill-cell">
                                 <div id="prev-btn-hyohoeng" class="prev-btn">화성시 효행구 ↗</div>
                             </div>
-                            <div id="prev-fill-manse" style="padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;">
+                            <div id="prev-fill-manse" class="preview-fill-cell">
                                 <div id="prev-btn-manse" class="prev-btn">화성시 만세구 ↗</div>
                             </div>
                         </div>
                     </div>
                     <div id="prev-area-osan" class="prev-area">
-                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">오산시 영역</div>
+                        <div class="preview-area-title">오산시 영역</div>
                         <div id="prev-btn-osan" class="prev-btn">오산시 ↗</div>
                     </div>
                 </div>
 
-                <div id="prev-box-shared" class="preview-box" style="display:none;">
+                <div id="prev-box-shared" class="preview-box admin-hidden">
                     <div id="prev-area-shared-hw" class="prev-area">
-                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">화성 다(多)가치 영역</div>
+                        <div class="preview-area-title">화성 다(多)가치 영역</div>
                         <div id="prev-btn-shared-hw" class="prev-btn"><img src="source/coco.png"> 화성 다(多)가치 ↗</div>
                     </div>
                     <div id="prev-area-shared-os" class="prev-area">
-                        <div style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px;">오산나래 영역</div>
+                        <div class="preview-area-title">오산나래 영역</div>
                         <div id="prev-btn-shared-os" class="prev-btn"><img src="source/caca.png"> 오산나래 ↗</div>
                     </div>
                 </div>
@@ -245,12 +311,23 @@ const AdminApp = {
             <div class="color-item">
                 <label>${label}</label>
                 <div class="color-input-group">
-                    <input type="color" id="${id}-picker" value="${currentVal}" oninput="document.getElementById('${id}-text').value = this.value; AdminApp.updatePreview();">
-                    <input type="text" id="${id}-text" value="${currentVal}" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) { document.getElementById('${id}-picker').value = this.value; AdminApp.updatePreview(); }">
-                    <button type="button" class="btn-reset-color" onclick="AdminApp.resetColor('${id}', '${defaultVal}')">초기화</button>
+                    <input type="color" id="${id}-picker" value="${currentVal}" data-color-id="${id}" data-color-role="picker">
+                    <input type="text" id="${id}-text" value="${currentVal}" maxlength="7" data-color-id="${id}" data-color-role="text">
+                    <button type="button" class="btn-reset-color" data-admin-command="reset-color" data-color-id="${id}" data-default-hex="${defaultVal}">초기화</button>
                 </div>
             </div>
         `;
+    },
+
+    handleColorInput(input) {
+        const id = input.dataset.colorId;
+        const role = input.dataset.colorRole;
+        const picker = document.getElementById(`${id}-picker`);
+        const text = document.getElementById(`${id}-text`);
+
+        if (role === 'picker' && text) text.value = input.value;
+        if (role === 'text' && picker && /^#[0-9A-Fa-f]{6}$/.test(input.value)) picker.value = input.value;
+        this.updatePreview();
     },
 
     // 초기화 버튼 클릭 시 동작하는 함수
@@ -263,11 +340,11 @@ const AdminApp = {
     switchColorTab(tabName, btnElement) {
         document.querySelectorAll('.color-tab-btn').forEach(btn => btn.classList.remove('active'));
         btnElement.classList.add('active');
-        document.getElementById('tab-general').style.display = tabName === 'general' ? 'grid' : 'none';
-        document.getElementById('tab-shared').style.display = tabName === 'shared' ? 'grid' : 'none';
+        document.getElementById('tab-general').classList.toggle('admin-hidden', tabName !== 'general');
+        document.getElementById('tab-shared').classList.toggle('admin-hidden', tabName !== 'shared');
         
-        document.getElementById('prev-box-general').style.display = tabName === 'general' ? 'flex' : 'none';
-        document.getElementById('prev-box-shared').style.display = tabName === 'shared' ? 'flex' : 'none';
+        document.getElementById('prev-box-general').classList.toggle('admin-hidden', tabName !== 'general');
+        document.getElementById('prev-box-shared').classList.toggle('admin-hidden', tabName !== 'shared');
     },
 
     updatePreview() {

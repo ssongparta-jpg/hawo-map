@@ -19,6 +19,15 @@ body {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 .admin-header h1 { margin: 0; font-size: 20px; font-weight: 800; }
+.admin-name { margin-right: 15px; font-weight: bold; }
+.admin-muted-title { color: #666; }
+.admin-hidden { display: none !important; }
+.admin-empty-note { color: #666; }
+.admin-danger-text { font-weight: bold; color: #e74c3c; }
+.admin-strong-text { font-weight: bold; }
+.memo-user-badge { background:#eef5ff; color:#4A90E2; padding:3px 8px; border-radius:4px; font-weight:bold; }
+.memo-school-cell { font-weight:bold; color:#333; }
+.memo-content-cell { color:#555; }
 .btn-return { background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 .btn-logout { background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-left: 10px; font-weight: bold; }
 .btn-return:hover { background: #2980b9; }
@@ -132,6 +141,11 @@ body {
 .preview-section h3 { margin-top: 0; color: #2c3e50; font-size: 16px; margin-bottom: 15px; }
 
 .preview-box { display: flex; gap: 20px; flex-wrap: wrap; }
+.prev-area-padded { padding: 15px; }
+.preview-area-title { font-size:12px; font-weight:bold; color:#555; margin-bottom:5px; }
+.preview-area-title.centered { margin-bottom:10px; text-align:center; }
+.preview-area-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.preview-fill-cell { padding: 15px; border-radius: 8px; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease; }
 
 .prev-area { 
     border-width: 3px; 

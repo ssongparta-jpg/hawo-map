@@ -101,8 +101,10 @@ input:checked + .slider:before { transform: translateX(16px); }
    ========================================= */
 /* PC에서 우측 상단에 위치할 때의 기본 정렬 */
 #header-user-status {
+    position: absolute; right: 20px; top: 15px; z-index: 1000;
     display: flex; align-items: center; gap: 8px;
 }
+.favorite-control-row { margin-left: 15px; }
 .user-greeting { font-size: 14px; font-weight: 800; color: #333; margin-right: 5px; }
 .user-btn-wrapper { display: flex; gap: 6px; align-items: center; }
 

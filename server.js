@@ -12,6 +12,8 @@ const app = express();
 const db = new sqlite3.Database('./database.db');
 const SALT_ROUNDS = 10;
 const PORT = 3000;
+const SESSION_SECRET = process.env.SESSION_SECRET || 'hwao-secret-key';
+const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
 
 // 색상 설정 저장 파일 경로 설정
 const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
@@ -33,10 +35,15 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 app.use(session({
-    secret: 'hwao-secret-key',
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24시간
+    cookie: {
+        secure: COOKIE_SECURE,
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000
+    } // 24시간
 }));
 
 // [이메일 전송 설정] Nodemailer
@@ -90,9 +97,37 @@ db.serialize(async () => {
 const mailRequestLimits = {};
 const loginAttempts = {};
 
+function isValidUserId(id) {
+    return typeof id === 'string' && /^[\w가-힣.-]{2,32}$/u.test(id.trim());
+}
+
+function isValidPassword(pw) {
+    return typeof pw === 'string' && pw.length >= 4 && pw.length <= 128;
+}
+
+function isValidHexColor(color) {
+    return typeof color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(color);
+}
+
+function validateColorsPayload(colors) {
+    const required = {
+        general: ['dongtanFill', 'byeongjeomFill', 'hyohoengFill', 'manseFill', 'hwaseongBorder', 'osanFill', 'osanBorder'],
+        shared: ['hwaseongFill', 'hwaseongBorder', 'osanFill', 'osanBorder']
+    };
+
+    if (!colors || typeof colors !== 'object') return false;
+    return Object.entries(required).every(([group, keys]) => {
+        return colors[group] && typeof colors[group] === 'object' &&
+            keys.every(key => isValidHexColor(colors[group][key]));
+    });
+}
+
 // 1. 인증 코드 발송 요청
 app.post('/api/admin/send-code', (req, res) => {
     const { id } = req.body;
+    if (!isValidUserId(id)) {
+        return res.status(400).json({ success: false, message: "관리자 ID 형식이 올바르지 않습니다." });
+    }
     
     // IP 기반 1분 쿨다운 방어
     const clientIp = req.ip || req.socket.remoteAddress;
@@ -193,6 +228,9 @@ app.post('/api/admin/verify-code', async (req, res) => {
 
 app.post('/api/login', (req, res) => {
     const { id, pw } = req.body;
+    if (!isValidUserId(id) || !isValidPassword(pw)) {
+        return res.status(400).json({ success: false, message: "ID/PW 형식이 올바르지 않습니다." });
+    }
     
     if (ADMINS[id]) {
         return res.status(403).json({ success: false, message: "관리자 로그인은 아이디 박스를 5번 클릭하세요." });
@@ -230,6 +268,8 @@ app.get('/api/check-auth', (req, res) => {
 app.post('/api/register', async (req, res) => {
     const { id, pw } = req.body;
     if (!id || !pw) return res.status(400).json({ success: false, message: "정보를 모두 입력하세요." });
+    if (!isValidUserId(id)) return res.status(400).json({ success: false, message: "아이디는 2~32자의 한글, 영문, 숫자, _, ., - 만 사용할 수 있습니다." });
+    if (!isValidPassword(pw)) return res.status(400).json({ success: false, message: "비밀번호는 4~128자로 입력해주세요." });
 
     if (ADMINS[id]) return res.status(400).json({ success: false, message: "사용할 수 없는 아이디입니다." });
 
@@ -246,6 +286,9 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/change-pw', isLoggedIn, async (req, res) => {
     const { newPw } = req.body;
+    if (!isValidPassword(newPw)) {
+        return res.status(400).json({ success: false, message: "비밀번호는 4~128자로 입력해주세요." });
+    }
     try {
         const hashedNewPw = await bcrypt.hash(newPw, SALT_ROUNDS);
         db.run("UPDATE users SET pw = ? WHERE id = ?", [hashedNewPw, req.session.userId], (err) => {
@@ -257,6 +300,7 @@ app.post('/api/change-pw', isLoggedIn, async (req, res) => {
 // --- 비밀번호 찾기 ---
 app.post('/api/find-pw', (req, res) => {
     const { id } = req.body;
+    if (!isValidUserId(id)) return res.status(400).json({ success: false, message: "아이디 형식이 올바르지 않습니다." });
     db.get("SELECT pw FROM users WHERE id = ?", [id], (err, row) => {
         if (row) res.json({ success: true, message: "비밀번호는 암호화되어 있어 알려드릴 수 없습니다. 초기화를 요청하세요." }); 
         else res.status(404).json({ success: false, message: "존재하지 않는 아이디" });
@@ -265,6 +309,7 @@ app.post('/api/find-pw', (req, res) => {
 
 app.post('/api/request-reset-pw', (req, res) => {
     const { id } = req.body;
+    if (!isValidUserId(id)) return res.status(400).json({ success: false, message: "아이디 형식이 올바르지 않습니다." });
     db.run("INSERT OR IGNORE INTO reset_requests (id) VALUES (?)", [id], (err) => {
         res.json({ success: !err, message: "초기화 요청이 접수되었습니다." });
     });
@@ -281,12 +326,18 @@ app.get('/api/memo/:schoolName', (req, res) => {
 
 app.post('/api/memo', isLoggedIn, (req, res) => {
     const { schoolName, content } = req.body;
+    if (typeof schoolName !== 'string' || schoolName.length > 120 || typeof content !== 'string' || content.length > 2000) {
+        return res.status(400).json({ success: false, message: "메모 입력값이 올바르지 않습니다." });
+    }
     db.run("INSERT OR REPLACE INTO memos (userId, schoolName, content) VALUES (?, ?, ?)", 
         [req.session.userId, schoolName, content], (err) => res.json({ success: !err }));
 });
 
 app.delete('/api/memo', isLoggedIn, (req, res) => {
     const { schoolName } = req.body;
+    if (typeof schoolName !== 'string' || schoolName.length > 120) {
+        return res.status(400).json({ success: false, message: "학교명이 올바르지 않습니다." });
+    }
     db.run("DELETE FROM memos WHERE userId = ? AND schoolName = ?", 
         [req.session.userId, schoolName], (err) => res.json({ success: !err }));
 });
@@ -299,6 +350,9 @@ app.get('/api/favorite/:schoolName', isLoggedIn, (req, res) => {
 
 app.post('/api/favorite/toggle', isLoggedIn, (req, res) => {
     const { schoolName } = req.body;
+    if (typeof schoolName !== 'string' || schoolName.length > 120) {
+        return res.status(400).json({ success: false, message: "학교명이 올바르지 않습니다." });
+    }
     const userId = req.session.userId;
     db.get("SELECT * FROM favorites WHERE userId = ? AND schoolName = ?", [userId, schoolName], (err, row) => {
         if (row) {
@@ -354,7 +408,9 @@ app.get('/api/admin/reset-requests', isAdmin, (req, res) => {
 });
 
 app.post('/api/admin/approve-reset', isAdmin, async (req, res) => {
-    const { id, tempPw } = req.body;
+    const { id } = req.body;
+    if (!isValidUserId(id)) return res.status(400).json({ success: false, message: "아이디 형식이 올바르지 않습니다." });
+    const tempPw = '1234';
     const hash = await bcrypt.hash(tempPw, SALT_ROUNDS);
     db.serialize(() => {
         db.run("UPDATE users SET pw = ? WHERE id = ?", [hash, id]);
@@ -372,13 +428,20 @@ app.get('/api/colors', (req, res) => {
         if (err) {
             return res.status(404).json({ error: "색상 파일이 없습니다." });
         }
-        res.json(JSON.parse(data));
+        try {
+            res.json(JSON.parse(data));
+        } catch(e) {
+            res.status(500).json({ error: "색상 파일 형식이 올바르지 않습니다." });
+        }
     });
 });
 
 // 2. 색상 저장하기 (관리자 권한 필수)
 app.post('/api/colors', isAdmin, (req, res) => {
     const newColors = req.body;
+    if (!validateColorsPayload(newColors)) {
+        return res.status(400).json({ error: "색상 값 형식이 올바르지 않습니다." });
+    }
     fs.writeFile(COLORS_FILE, JSON.stringify(newColors, null, 2), 'utf8', (err) => {
         if (err) return res.status(500).json({ error: "파일 쓰기 실패" });
         res.json({ success: true });

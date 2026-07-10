@@ -5,6 +5,7 @@ const ShareApp = {
     osBorder: "#e7733d", 
 
     async init() {
+        this.bindUiActions();
         if(MapConfig.loadCustomColors) await MapConfig.loadCustomColors();
         MapConfig.isSharedMode = true; 
 
@@ -50,7 +51,7 @@ const ShareApp = {
                 const icon = L.divIcon({
                     className: 'district-stat-marker',
                     html: `
-                        <div class="dist-stat-btn shared-dist-btn zoom-lv-${this.map.getZoom()}" style="background-color:${conf.color} !important;">
+                        <div class="dist-stat-btn shared-dist-btn zoom-lv-${this.map.getZoom()}" style="background-color:${MapManager.safeCssColor(conf.color, '#4A90E2')} !important;">
                             <img src="${imgSrc}" class="${imgClass}" />
                             <span class="shared-dist-label">${displayName} ↗</span>
                         </div>
@@ -164,18 +165,16 @@ const ShareApp = {
         const yOffset = count > 1 ? (stackIndex * 40) - ((count - 1) * 20) : 0; 
 
         const iconSrc = p.region === '화성시' ? 'source/coco.png' : (p.region === '오산시' ? 'source/caca.png' : '');
-        const safeName = p.name.replace(/'/g, "\\'");
-        
-        let labelBorderColor = '#cccccc';
-        if (p.region === '화성시') labelBorderColor = '#F8B62B';
-        if (p.region === '오산시') labelBorderColor = '#00A1E9';
+        const safeName = MapManager.escapeHtml(p.name);
+        const regionClass = p.region === '화성시' ? 'region-hwaseong' : (p.region === '오산시' ? 'region-osan' : 'region-etc');
 
         const imgClass = p.region === '오산시' ? 'shared-marker-img osan-img' : 'shared-marker-img';
+        const imageHtml = iconSrc ? `<img src="${iconSrc}" class="${imgClass}" alt="">` : '';
 
         const iconHtml = `
-            <div class="custom-combined-marker is-shared ${stackedClass}" style="position: relative; z-index: ${100 - stackIndex}; top: ${yOffset}px;" onclick="event.stopPropagation(); MapManager.openSharedPopup('${p.uid}')">
-                <div class="marker-label-box" style="border-left: 5px solid ${labelBorderColor};">${p.name}</div>
-                <img src="${iconSrc}" class="${imgClass}" onerror="this.style.display='none'" />
+            <div class="custom-combined-marker is-shared ${regionClass} ${stackedClass}" style="position: relative; top: ${yOffset}px;">
+                <div class="marker-label-box">${safeName}</div>
+                ${imageHtml}
             </div>
         `;
         const icon = L.divIcon({ className: 'marker-container-icon', html: iconHtml, iconSize: [0, 0] });
@@ -186,64 +185,54 @@ const ShareApp = {
             });
             
         marker.properties = p;
-        marker.on('click', () => { MapManager.openSharedPopup(p.uid); });
+        marker.on('click', (e) => {
+            if (MapManager.handleDistanceMarkerClick(marker, e)) return;
+            MapManager.openSharedPopup(p.uid);
+        });
         
         return marker;
     },
 
     makeSharedPopupHtml(p) {
-        const isLoggedIn = AuthManager.userId !== null;
-        const btnBg = isLoggedIn ? '#4A90E2' : '#ccc';
-        const delBtnBg = isLoggedIn ? '#e74c3c' : '#ccc';
-        const btnDisabled = isLoggedIn ? '' : 'disabled';
-        const safeName = p.name.replace(/'/g, "\\'");
+        const safeName = MapManager.escapeHtml(p.name);
+        const safeType = MapManager.escapeHtml(p.type);
+        const safeAddress = MapManager.escapeHtml(p.adrs);
+        const safePlace = MapManager.escapeHtml(p.place);
+        const safeTarget = MapManager.escapeHtml(p.target);
+        const safeDuration = MapManager.escapeHtml(p.duration);
+        const safeActivity = MapManager.escapeHtml(p.activity);
+        const schoolNameAttr = MapManager.escapeAttr(p.name || '');
+        const schoolDomId = MapManager.getSchoolDomId(p.name || '');
 
         return `
             <div class="popup-content compact-mode">
                 <div class="popup-header">
-                    <div class="popup-category" style="color:${p.color}">${p.type}</div>
+                    <div class="popup-category" style="color:${MapManager.safeCssColor(p.color, '#8E44AD')}">${safeType}</div>
                 </div>
-                <div class="popup-title-row" style="display: flex; align-items: center; justify-content: space-between;">
-                    <div class="popup-title" style="margin: 0;">${p.name}</div>
-                    <button id="fav-btn-${p.name}" class="fav-toggle-btn"
-                            onclick="MapManager.toggleFavorite('${safeName}', event)">
-                        ☆
-                    </button>
+                <div class="popup-title-row">
+                    <div class="popup-title popup-title-plain">${safeName}</div>
+                    <button id="fav-btn-${schoolDomId}" class="fav-toggle-btn" data-school-name="${schoolNameAttr}" type="button">☆</button>
                 </div>
-                <div class="popup-adrs" style="margin-bottom: 12px;">${p.adrs}</div>
+                <div class="popup-adrs shared-popup-adrs">${safeAddress}</div>
                 <hr class="popup-hr">
                 
-                <ul class="popup-info-list" style="display:block;">
-                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">진행장소</span> <span class="value" style="font-weight:bold;">${p.place}</span></li>
-                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">모집대상</span> <span class="value">${p.target}</span></li>
-                    <li style="margin-bottom:6px;"><span class="label" style="width:65px; display:inline-block;">운영기간</span> <span class="value">${p.duration}</span></li>
+                <ul class="popup-info-list shared-info-list">
+                    <li><span class="label shared-info-label">진행장소</span> <span class="value shared-info-place">${safePlace}</span></li>
+                    <li><span class="label shared-info-label">모집대상</span> <span class="value">${safeTarget}</span></li>
+                    <li><span class="label shared-info-label">운영기간</span> <span class="value">${safeDuration}</span></li>
                 </ul>
 
                 <div class="shared-activity-box">
                     <span class="activity-label">✨ 주요활동</span>
-                    <strong class="activity-desc">${p.activity}</strong>
+                    <strong class="activity-desc">${safeActivity}</strong>
                 </div>
 
-                <div class="memo-section" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc;">
-                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">🏫 개인 메모</div>
-                    <textarea id="memo-${safeName}"
-                        style="width: 100%; height: 50px; border: 1px solid #ddd; border-radius: 4px; padding: 5px; font-size: 12px; resize: none;"
-                        placeholder="${isLoggedIn ? '메모를 불러오는 중...' : '로그인 후 이용 가능합니다'}"
-                        disabled></textarea>
-
-                    <div style="display: flex; gap: 5px; margin-top: 5px;">
-                        <button id="btn-save-${safeName}" class="memo-save-btn"
-                            onclick="AuthManager.saveMemo('${safeName}', event)"
-                            style="flex: 1; background-color: ${btnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
-                            ${btnDisabled}>
-                            저장
-                        </button>
-                        <button id="btn-del-${safeName}" class="memo-del-btn"
-                            onclick="AuthManager.deleteMemo('${safeName}', event)"
-                            style="flex: 1; background-color: ${delBtnBg}; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer;"
-                            ${btnDisabled}>
-                            삭제
-                        </button>
+                <div class="memo-section">
+                    <div class="memo-title">🏫 개인 메모</div>
+                    <textarea id="memo-${schoolDomId}" class="memo-textarea" data-school-name="${schoolNameAttr}" disabled></textarea>
+                    <div class="memo-btn-group">
+                        <button id="btn-save-${schoolDomId}" class="memo-btn memo-save-btn disabled-btn" type="button" disabled>저장</button>
+                        <button id="btn-del-${schoolDomId}" class="memo-btn memo-del-btn disabled-btn" type="button" disabled>삭제</button>
                     </div>
                 </div>
             </div>`;
@@ -259,14 +248,14 @@ const ShareApp = {
                     <span class="arrow-icon" id="shareLegendArrow">▼</span>
                 </div>
                 <div class="legend-content" id="shareLegendBody">
-                    <div class="legend-reset-row" onclick="ShareApp.filterRegion('전체')">↺ 전체 보기</div>
+                    <div class="legend-reset-row" data-region="전체">↺ 전체 보기</div>
                     
-                    <div class="legend-row" onclick="ShareApp.filterRegion('화성시')">
+                    <div class="legend-row" data-region="화성시">
                         <img src="source/coco.png" class="legend-region-img" />
                         <span class="l-text fw-bold">화성 다(多)가치</span>
                     </div>
                     
-                    <div class="legend-row" onclick="ShareApp.filterRegion('오산시')">
+                    <div class="legend-row" data-region="오산시">
                         <img src="source/caca.png" class="legend-region-img osan-legend-img" />
                         <span class="l-text fw-bold">오산나래</span>
                     </div>
@@ -284,6 +273,12 @@ const ShareApp = {
             const isCollapsed = body.classList.toggle('collapsed');
             arrow.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
         };
+        container.querySelectorAll('[data-region]').forEach(row => {
+            row.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.filterRegion(row.dataset.region);
+            });
+        });
     },
 
     filterRegion(region) {
@@ -309,7 +304,7 @@ const ShareApp = {
             matches.slice(0, 5).forEach(m => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
-                div.innerHTML = `<span>${m.properties.name}</span> <span class="search-item-type type-shared">${m.properties.type}</span>`;
+                div.innerHTML = `<span>${MapManager.escapeHtml(m.properties.name)}</span> <span class="search-item-type type-shared">${MapManager.escapeHtml(m.properties.type)}</span>`;
                 div.onclick = () => {
                     resultBox.style.display = 'none';
                     input.value = m.properties.name;
@@ -323,6 +318,17 @@ const ShareApp = {
 
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-wrapper')) resultBox.style.display = 'none';
+        });
+    },
+
+    bindUiActions() {
+        document.addEventListener('click', (event) => {
+            const target = event.target.closest('[data-action]');
+            if (!target) return;
+            const action = target.dataset.action;
+            if (action === 'close-help') document.getElementById('helpModal').style.display = 'none';
+            if (action === 'toggle-measure') DistanceManager.toggle(target);
+            if (action === 'go-login') location.href = '/login';
         });
     }
 };
@@ -340,6 +346,8 @@ const DistanceManager = {
         document.addEventListener('click', (e) => {
             const pBtn = e.target.closest('#btn-pause-measure');
             if (pBtn) { e.preventDefault(); this.togglePause(); }
+            const routeBtn = e.target.closest('[data-route-index]');
+            if (routeBtn) this.openNaverUpTo(Number(routeBtn.dataset.routeIndex));
         });
         
         if (MapManager && MapManager.map) {
@@ -392,7 +400,7 @@ const DistanceManager = {
         const popupHtml = `
             <div id="route-popup-${pIndex}" class="route-popup-box">
                 <div class="route-popup-title">이 지점까지 길 찾기</div>
-                <button class="btn-naver-route" onclick="DistanceManager.openNaverUpTo(${pIndex})">네이버 지도 열기 ↗</button>
+                <button class="btn-naver-route" data-route-index="${pIndex}">네이버 지도 열기 ↗</button>
                 <div class="route-popup-warning">※ 경유지는 최대 5개 설정 가능합니다</div>
             </div>`;
         marker.bindPopup(popupHtml, { closeButton: false, autoClose: false, offset: [0, -5] });
@@ -453,6 +461,7 @@ const DistanceManager = {
         }
         this.lines = []; this.markers = []; this.points = []; this.totalDistance = 0; this.tempLine = null;
     },
+    finish() { if (this.active) this.toggle(); },
     formatDistance(m) { return m < 1000 ? Math.round(m) + 'm' : (m / 1000).toFixed(1) + 'km'; }
 };
 

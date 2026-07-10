@@ -1,6 +1,9 @@
 const App = {
+    selectedLegendTypes: new Set(),
+
     async init() {
         console.log("앱 초기화 시작...");
+        this.bindUiActions();
         MapManager.init();
         FilterManager.init();
         SearchManager.init(); 
@@ -110,7 +113,7 @@ const App = {
                     <span class="arrow-icon" id="legendArrow">▼</span>
                 </div>
                 <div class="legend-content" id="legendBody">
-                    <div class="legend-reset-row" onclick="location.reload()">↺ 전체 보기</div>
+                    <div class="legend-reset-row" data-action="legend-reset">↺ 전체 보기</div>
                     <div id="type-list-area"></div>
                 </div>
             </div>
@@ -133,21 +136,52 @@ const App = {
             
             const item = document.createElement('div');
             item.className = 'legend-row';
-            const color = row.c[3]?.v || '#333';
-            const symbol = row.c[2]?.v || '●';
+            item.dataset.type = type;
+            const color = MapManager.safeCssColor(row.c[3]?.v || '#333');
+            const symbol = MapManager.escapeHtml(row.c[2]?.v || '●');
             
             // 데이터별 동적 색상 처리(인라인 허용 구역)
             item.innerHTML = `
                 <span class="l-symbol" style="color:${color}">${symbol}</span>
-                <span class="l-text">${type}</span>
+                <span class="l-text">${MapManager.escapeHtml(type)}</span>
             `;
             
             item.onclick = (e) => {
                 e.stopPropagation();
-                MapManager.cluster.clearLayers();
-                MapManager.markers.filter(m => m.properties.type === type).forEach(m => MapManager.cluster.addLayer(m));
+                if (this.selectedLegendTypes.has(type)) {
+                    this.selectedLegendTypes.delete(type);
+                    item.classList.remove('active');
+                } else {
+                    this.selectedLegendTypes.add(type);
+                    item.classList.add('active');
+                }
+                MapManager.setTypeFilters(this.selectedLegendTypes);
             };
             listArea.appendChild(item);
+        });
+    },
+
+    resetLegendFilters() {
+        this.selectedLegendTypes.clear();
+        document.querySelectorAll('#type-list-area .legend-row.active').forEach(item => item.classList.remove('active'));
+        MapManager.setTypeFilters(this.selectedLegendTypes);
+    },
+
+    bindUiActions() {
+        document.addEventListener('click', (event) => {
+            const target = event.target.closest('[data-action]');
+            if (!target) return;
+            const action = target.dataset.action;
+
+            if (action === 'open-filter') FilterManager.open();
+            if (action === 'execute-filter') FilterManager.execute();
+            if (action === 'close-filter') FilterManager.close();
+            if (action === 'reset-filter') FilterManager.reset();
+            if (action === 'close-results') ResultPageManager.close();
+            if (action === 'close-help') document.getElementById('helpModal').style.display = 'none';
+            if (action === 'toggle-measure') DistanceManager.toggle(target);
+            if (action === 'go-login') location.href = '/login';
+            if (action === 'legend-reset') this.resetLegendFilters();
         });
     }
 };
@@ -178,6 +212,8 @@ const DistanceManager = {
         document.addEventListener('click', (e) => {
             const pBtn = e.target.closest('#btn-pause-measure');
             if (pBtn) { e.preventDefault(); this.togglePause(); }
+            const routeBtn = e.target.closest('[data-route-index]');
+            if (routeBtn) this.openNaverUpTo(Number(routeBtn.dataset.routeIndex));
         });
         
         if (MapManager && MapManager.map) {
@@ -247,7 +283,7 @@ const DistanceManager = {
         const popupHtml = `
             <div id="route-popup-${pIndex}" class="route-popup-box">
                 <div class="route-popup-title">이 지점까지 길 찾기</div>
-                <button class="btn-naver-route" onclick="DistanceManager.openNaverUpTo(${pIndex})">네이버 지도 열기 ↗</button>
+                <button class="btn-naver-route" data-route-index="${pIndex}">네이버 지도 열기 ↗</button>
                 <div class="route-popup-warning">※ 경유지는 최대 5개 설정 가능합니다</div>
             </div>
         `;
@@ -333,6 +369,10 @@ const DistanceManager = {
         }
         this.lines = []; this.markers = []; this.points = [];
         this.totalDistance = 0; this.tempLine = null;
+    },
+
+    finish() {
+        if (this.active) this.toggle();
     },
 
     formatDistance(m) {

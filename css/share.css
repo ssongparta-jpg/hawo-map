@@ -10,6 +10,9 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
 }
 .view-labels-mode .is-stacked .marker-label-box { transform: translateY(-50%) !important; }
+.region-hwaseong .marker-label-box { border-left-color: #F8B62B; border-left-width: 5px; }
+.region-osan .marker-label-box { border-left-color: #00A1E9; border-left-width: 5px; }
+.region-etc .marker-label-box { border-left-color: #cccccc; border-left-width: 5px; }
 
 /* 공유학교 행정구역 상단 버튼 */
 .shared-dist-btn {
@@ -27,3 +30,10 @@
 /* 공유학교 범례창 전용 이미지 */
 .legend-region-img { width: 24px; height: 24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4)); object-fit: contain; }
 .osan-legend-img { width: 30px; height: 30px; margin-left: -3px; margin-right: -3px; }
+
+.popup-title-plain { margin: 0; }
+.shared-popup-adrs { margin-bottom: 12px; }
+.shared-info-list { display: block; }
+.shared-info-list li { margin-bottom: 6px; justify-content: flex-start; gap: 8px; }
+.shared-info-label { width: 65px; display: inline-block; flex: 0 0 65px; }
+.shared-info-place { font-weight: bold; }

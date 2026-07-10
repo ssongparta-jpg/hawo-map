@@ -15,82 +15,82 @@
         <main class="login-card">
             
             <header class="login-header">
-                <img src="/source/hwaologo.png" alt="로고" class="login-logo" onerror="this.onerror=null; this.src='/source/share.png';">
+                <img src="/source/hwaologo.png" alt="로고" class="login-logo">
                 <h2>화성오산 학교지도</h2>
                 <p>서비스 이용을 위해 로그인해주세요.</p>
             </header>
 
             <nav class="login-tabs">
-                <button class="tab-btn active" onclick="LoginApp.switchTab('user')">일반 로그인</button>
-                <button id="admin-tab-btn" class="tab-btn" onclick="LoginApp.switchTab('admin')" style="display: none;">관리자 인증</button>
+                <button class="tab-btn active" data-tab="user">일반 로그인</button>
+                <button id="admin-tab-btn" class="tab-btn is-hidden" data-tab="admin">관리자 인증</button>
             </nav>
 
             <section id="user-login-area" class="form-area active">
                 <div class="input-group">
-                    <input type="text" id="user-id" placeholder="아이디를 입력하세요" autocomplete="off" onkeydown="if(event.key==='Enter') document.getElementById('user-pw').focus();" onclick="LoginApp.handleIdClick()">
+                    <input type="text" id="user-id" placeholder="아이디를 입력하세요" autocomplete="off">
                 </div>
                 <div class="input-group">
-                    <input type="password" id="user-pw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter') LoginApp.userLogin();">
+                    <input type="password" id="user-pw" placeholder="비밀번호를 입력하세요">
                 </div>
 
-                <div id="user-captcha-container" class="captcha-container" style="display: none;">
+                <div id="user-captcha-container" class="captcha-container is-hidden">
                     <div class="captcha-header">
                         <p class="captcha-title">🤖 봇 방지 캡챠</p>
-                        <button type="button" class="captcha-refresh-btn" onclick="LoginApp.generateUserCaptcha()">↻ 그림 새로고침</button>
+                        <button type="button" class="captcha-refresh-btn" data-action="refresh-captcha">↻ 그림 새로고침</button>
                     </div>
                     <div class="captcha-body">
                         <canvas id="user-captcha-canvas" width="200" height="60" class="captcha-canvas"></canvas>
-                        <input type="text" id="user-captcha-input" class="captcha-input" placeholder="위 그림의 문자를 입력하세요" onkeydown="if(event.key === 'Enter') LoginApp.userLogin();">
+                        <input type="text" id="user-captcha-input" class="captcha-input" placeholder="위 그림의 문자를 입력하세요">
                     </div>
                 </div>
 
-                <button class="btn-primary" onclick="LoginApp.userLogin()">로그인</button>
+                <button class="btn-primary" data-action="user-login">로그인</button>
                 
                 <div class="form-footer">
-                    <span onclick="LoginApp.showRegisterForm()">아직 계정이 없으신가요? <strong>회원가입</strong></span>
+                    <span data-action="show-register">아직 계정이 없으신가요? <strong>회원가입</strong></span>
                 </div>
-                <button id="admin-reset-btn" onclick="LoginApp.requestAdminReset()">관리자 비밀번호 초기화 요청</button>
+                <button id="admin-reset-btn" data-action="request-admin-reset">관리자 비밀번호 초기화 요청</button>
             </section>
 
-            <section id="user-register-area" class="form-area" style="display: none;">
+            <section id="user-register-area" class="form-area">
                 <div class="info-box">회원정보를 입력해주세요.</div>
                 
                 <div class="input-group flex-group">
-                    <input type="text" id="reg-id" class="flex-input" placeholder="아이디" onkeydown="if(event.key==='Enter') LoginApp.checkId();">
-                    <button class="btn-check-id" onclick="LoginApp.checkId()">중복확인</button>
+                    <input type="text" id="reg-id" class="flex-input" placeholder="아이디">
+                    <button class="btn-check-id" data-action="check-id">중복확인</button>
                 </div>
                 <div class="input-group">
-                    <input type="password" id="reg-pw" placeholder="비밀번호 (4자 이상)" onkeydown="if(event.key==='Enter') document.getElementById('reg-pw-confirm').focus();">
+                    <input type="password" id="reg-pw" placeholder="비밀번호 (4자 이상)">
                 </div>
                 <div class="input-group">
-                    <input type="password" id="reg-pw-confirm" placeholder="비밀번호 확인" onkeydown="if(event.key==='Enter') LoginApp.userRegister();">
+                    <input type="password" id="reg-pw-confirm" placeholder="비밀번호 확인">
                 </div>
                 
-                <button class="btn-primary" onclick="LoginApp.userRegister()">가입하기</button>
+                <button class="btn-primary" data-action="user-register">가입하기</button>
                 <div class="form-footer">
-                    <span onclick="LoginApp.switchTab('user')">&#8592; 로그인으로 돌아가기</span>
+                    <span data-tab="user">&#8592; 로그인으로 돌아가기</span>
                 </div>
             </section>
 
-            <section id="admin-step1-area" class="form-area" style="display: none;">
+            <section id="admin-step1-area" class="form-area">
                 <div class="info-box">부여받은 관리자 ID를 입력해주세요.</div>
                 <div class="input-group">
-                    <input type="text" id="admin-id" placeholder="관리자 ID (예: admin)" onkeydown="if(event.key==='Enter') LoginApp.requestAdminEmail();">
+                    <input type="text" id="admin-id" placeholder="관리자 ID (예: admin)">
                 </div>
-                <button class="btn-primary admin-btn" onclick="LoginApp.requestAdminEmail()">인증 메일 발송</button>
+                <button class="btn-primary admin-btn" data-action="request-admin-email">인증 메일 발송</button>
             </section>
 
-            <section id="admin-step2-area" class="form-area" style="display: none;">
+            <section id="admin-step2-area" class="form-area">
                 <div class="info-box success" id="admin-msg">메일로 인증 코드가 발송되었습니다.</div>
                 <div class="input-group">
-                    <input type="text" id="admin-otp" class="otp-input" placeholder="인증코드 6자리" onkeydown="if(event.key==='Enter') LoginApp.verifyAdminCode();">
+                    <input type="text" id="admin-otp" class="otp-input" placeholder="인증코드 6자리">
                 </div>
                 
                 <div class="recaptcha-wrapper">
                     <div class="g-recaptcha" data-sitekey="6Lf2q-csAAAAAAYzpCTLVDJY2Ez64JN7gYbwq1lX"></div>
                 </div>
 
-                <button class="btn-primary admin-btn" onclick="LoginApp.verifyAdminCode()">인증 확인 및 로그인</button>
+                <button class="btn-primary admin-btn" data-action="verify-admin-code">인증 확인 및 로그인</button>
             </section>
 
             <footer class="back-link">

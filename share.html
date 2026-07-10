@@ -35,20 +35,20 @@
     <div class="pc-top-bar"></div>
 
     <header class="header-center-group">
-      <div class="header-shape" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-        <div class="logo-group" style="width: 40px; display: flex; justify-content: flex-start;">
+      <div class="header-shape">
+        <div class="logo-group">
           <button class="help-button" id="helpBtn">?</button>
         </div>
-        <div class="title-wrapper" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-          <a href="https://gong-u.goe.go.kr/base/main/view" target="_blank" class="logo-area" style="display: flex; align-items: center;">
-            <img src="source/share.png" alt="Share" class="logo-img" style="height: 32px; width: auto; border-radius: 4px; background: white;" />
+        <div class="title-wrapper">
+          <a href="https://gong-u.goe.go.kr/base/main/view" target="_blank" class="logo-area">
+            <img src="source/share.png" alt="Share" class="logo-img share-logo-img" />
           </a>
-          <span class="header_text" id="header-title" style="margin: 0;">화성오산 공유학교 지도</span>
-          <a href="/" class="title-switch-btn" title="학교 지도로 전환" style="overflow: hidden; background: white; padding: 0; display:flex; align-items:center; justify-content:center; width: 28px; height: 28px; flex-shrink: 0; margin-left: 2px;">
-            <img src="source/hwaologo.svg" alt="학교지도" style="width: 80%; height: 80%; object-fit: contain; margin-left: 2px;" />
+          <span class="header_text" id="header-title">화성오산 공유학교 지도</span>
+          <a href="/" class="title-switch-btn image-switch" title="학교 지도로 전환">
+            <img src="source/hwaologo.svg" alt="학교지도" class="switch-icon contain logo-switch-icon" />
           </a>
         </div>
-        <div style="width: 40px; min-width: 40px;"></div>
+        <div class="header-spacer"></div>
       </div>
     </header>
     
@@ -59,8 +59,8 @@
         </div>
     </div>
 
-    <div id="header-user-status" style="position: absolute; right: 20px; top: 15px; display: flex; align-items: center; z-index: 1000;">
-        <button onclick="location.href='/login'" style="background: #2563eb; color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: background 0.2s;">로그인 / 가입</button>
+    <div id="header-user-status">
+        <button data-action="go-login" class="btn-login">로그인 / 가입</button>
     </div>
 
     <div class="mobile-bottom-bar"></div>
@@ -73,7 +73,7 @@
                 <span class="slider"></span>
             </label>
         </div>
-        <div class="control-row" style="margin-left: 15px;">
+        <div class="control-row favorite-control-row">
             <span class="switch-label">즐겨찾기</span>
             <label class="toggle-switch">
                 <input type="checkbox" id="toggle-favorite-only">
@@ -83,11 +83,11 @@
     </div>
 
     <div id="map"></div>
-    <button id="btn-measure" onclick="DistanceManager.toggle()">📏 거리재기</button>
+    <button id="btn-measure" data-action="toggle-measure">📏 거리재기</button>
 
-    <div id="helpModal" class="help-modal-overlay" style="display:none;">
+    <div id="helpModal" class="help-modal-overlay">
         <div class="help-modal-content">
-            <span class="help-close-btn" onclick="document.getElementById('helpModal').style.display='none'">&times;</span>
+            <span class="help-close-btn" data-action="close-help">&times;</span>
             <div id="helpContentInject"></div>
         </div>
     </div>
