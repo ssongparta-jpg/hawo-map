@@ -225,7 +225,8 @@ const SchoolAge3DMap = {
         popFeatures.forEach(feature => {
             const props = feature.properties || {};
             byAdm.set(props.adm_cd2, {
-                total: Number(props.schoolAgePopulation),
+                schoolAgePopulation: Number(props.schoolAgePopulation),
+                populationTotal: Number(props.populationTotal),
                 byAge: props.agePopulation || {}
             });
         });
@@ -233,7 +234,8 @@ const SchoolAge3DMap = {
         this.features.forEach((feature, index) => {
             const props = feature.properties || {};
             const record = byAdm.get(props.adm_cd2) || {};
-            props.schoolAgePopulation = Number.isFinite(record.total) ? record.total : null;
+            props.schoolAgePopulation = Number.isFinite(record.schoolAgePopulation) ? record.schoolAgePopulation : null;
+            props.populationTotal = Number.isFinite(record.populationTotal) ? record.populationTotal : null;
             props.agePopulation = record.byAge || {};
             props.visualFallback = this.fallbackValue(props, index);
         });
@@ -437,6 +439,8 @@ const SchoolAge3DMap = {
         }
         const total = Number(props.schoolAgePopulation);
         if (Number.isFinite(total)) return total;
+        const populationTotal = Number(props.populationTotal);
+        if (this.selectedAge === 'total' && Number.isFinite(populationTotal)) return populationTotal;
         return props.visualFallback || 1;
     },
 
@@ -493,14 +497,20 @@ const SchoolAge3DMap = {
     },
 
     updatePanel(feature = null) {
-        const live = this.populationData?.source === 'kostat-live';
-        const values = this.features.map(item => Number(item.properties?.schoolAgePopulation)).filter(Number.isFinite);
+        const source = this.populationData?.source || 'kostat-pending';
+        const live = source === 'kostat-live';
+        const totalOnly = source === 'sgis-total';
+        const valueKey = live ? 'schoolAgePopulation' : 'populationTotal';
+        const values = this.features.map(item => Number(item.properties?.[valueKey])).filter(Number.isFinite);
         const total = values.reduce((sum, value) => sum + value, 0);
         const selected = feature?.properties || null;
 
         this.setText('populationDongCount', this.features.length ? `${this.features.length}개` : '-');
         this.setText('populationYear', this.populationData?.year || '-');
-        this.setText('populationStatusTitle', live ? '통계청 실시간 동기화' : '통계청 연동 대기');
+        this.setText(
+            'populationStatusTitle',
+            live ? '통계청 연령별 동기화' : (totalOnly ? 'SGIS 전체 인구 연결' : '통계청 연동 대기')
+        );
         this.setText(
             'populationStatusText',
             live
@@ -509,9 +519,10 @@ const SchoolAge3DMap = {
         );
         this.setText('selectedRegionName', selected ? (selected.adm_nm || '행정동') : '화성·오산 전체');
         this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : '연령을 선택하면 해당 연령의 높이로 지도가 다시 그려집니다.');
+        this.setText('totalPopulationLabel', live ? '6~21세 합계' : (totalOnly ? '전체 인구 합계' : '6~21세 합계'));
         this.setText('totalPopulation', total ? `${this.format(total)}명` : '-');
         const fill = document.getElementById('rangeBarFill');
-        if (fill) fill.style.width = live && total ? '100%' : '38%';
+        if (fill) fill.style.width = (live || totalOnly) && total ? '100%' : '38%';
     },
 
     setStatus(title, text) {
@@ -572,11 +583,21 @@ const SchoolAge3DMap = {
     },
 
     getFeatureLabel(feature) {
-        const value = this.getFeatureValue(feature);
-        const suffix = this.selectedAge === 'total' ? '6~21세' : `${this.selectedAge}세`;
-        const liveValue = Number(feature.properties?.schoolAgePopulation);
-        const isLive = Number.isFinite(liveValue);
-        return `${suffix} ${this.format(value)}명${isLive ? '' : ' (대기)'}`;
+        const props = feature.properties || {};
+        if (this.selectedAge !== 'total') {
+            const ageValue = Number(props.agePopulation?.[this.selectedAge]);
+            return Number.isFinite(ageValue)
+                ? `${this.selectedAge}세 ${this.format(ageValue)}명`
+                : `${this.selectedAge}세 연령별 데이터 대기`;
+        }
+
+        const schoolAgeValue = Number(props.schoolAgePopulation);
+        if (Number.isFinite(schoolAgeValue)) return `6~21세 ${this.format(schoolAgeValue)}명`;
+
+        const populationTotal = Number(props.populationTotal);
+        if (Number.isFinite(populationTotal)) return `전체 인구 ${this.format(populationTotal)}명`;
+
+        return '6~21세 데이터 대기';
     },
 
     setText(id, value) {

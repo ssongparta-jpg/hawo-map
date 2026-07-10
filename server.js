@@ -260,8 +260,6 @@ function buildSchoolAgeRequestUrl(feature, accessToken, year, ageFrom, ageTo) {
     url.searchParams.set('adm_cd', props.adm_cd || '');
     url.searchParams.set('low_search', '0');
     url.searchParams.set('gender', '0');
-    url.searchParams.set('age_from', String(ageFrom));
-    url.searchParams.set('age_to', String(ageTo));
     return url.toString();
 }
 
@@ -350,12 +348,24 @@ async function mapLimit(items, limit, iterator) {
 }
 
 async function fetchLiveSchoolAgeValues(features, year, ageFrom, ageTo) {
+    const hasSchoolAgeTemplate = !!process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE;
     const accessToken = await fetchSgisAccessToken();
-    if (!accessToken && !process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE) return null;
+    if (!accessToken && !hasSchoolAgeTemplate) return null;
 
     const pairs = await mapLimit(features, 4, async (feature) => {
         const url = buildSchoolAgeRequestUrl(feature, accessToken, year, ageFrom, ageTo);
         const data = await fetchJsonUrl(url, 'population');
+        if (!hasSchoolAgeTemplate) {
+            return [
+                feature.properties.adm_cd2,
+                {
+                    schoolAgePopulation: null,
+                    populationTotal: extractPopulationValue(data),
+                    byAge: {}
+                }
+            ];
+        }
+
         let value = extractAgePopulation(data, ageFrom, ageTo);
 
         if (process.env.KOSTAT_FETCH_BY_AGE === 'true' && !Object.keys(value.byAge).length) {
@@ -376,14 +386,28 @@ async function fetchLiveSchoolAgeValues(features, year, ageFrom, ageTo) {
             if (total) value = { total, byAge };
         }
 
-        return [feature.properties.adm_cd2, value];
+        return [
+            feature.properties.adm_cd2,
+            {
+                schoolAgePopulation: value.total,
+                populationTotal: null,
+                byAge: value.byAge
+            }
+        ];
     });
 
     const valueMap = {};
     pairs.forEach(([admCd2, value]) => {
-        if (value && Number.isFinite(value.total)) valueMap[admCd2] = value;
+        if (
+            value &&
+            (Number.isFinite(value.schoolAgePopulation) || Number.isFinite(value.populationTotal))
+        ) {
+            valueMap[admCd2] = value;
+        }
     });
-    return Object.keys(valueMap).length ? valueMap : null;
+    return Object.keys(valueMap).length
+        ? { source: hasSchoolAgeTemplate ? 'kostat-live' : 'sgis-total', values: valueMap }
+        : null;
 }
 
 // 1. 인증 코드 발송 요청
@@ -661,10 +685,13 @@ app.get('/api/school-age-population', async (req, res) => {
         lastSchoolAgeSyncError = null;
 
         try {
-            values = await fetchLiveSchoolAgeValues(features, year, minAge, maxAge);
-            if (values) {
-                source = 'kostat-live';
-                message = '통계청 API에서 동기화되었습니다.';
+            const syncResult = await fetchLiveSchoolAgeValues(features, year, minAge, maxAge);
+            if (syncResult?.values) {
+                values = syncResult.values;
+                source = syncResult.source;
+                message = source === 'kostat-live'
+                    ? '통계청 API에서 연령별 학령인구가 동기화되었습니다.'
+                    : 'SGIS 기본 인구 API 연결은 성공했습니다. 다만 이 API는 age_from/age_to를 받지 않아 현재는 전체 인구만 표시합니다. 정확한 6~21세 값은 KOSTAT_SCHOOL_AGE_URL_TEMPLATE 설정이 필요합니다.';
             }
         } catch (err) {
             lastSchoolAgeSyncError = getPublicErrorMessage(err);
@@ -687,7 +714,8 @@ app.get('/api/school-age-population', async (req, res) => {
                 type: 'Feature',
                 properties: {
                     ...feature.properties,
-                    schoolAgePopulation: values ? values[feature.properties.adm_cd2]?.total ?? null : null,
+                    schoolAgePopulation: values ? values[feature.properties.adm_cd2]?.schoolAgePopulation ?? null : null,
+                    populationTotal: values ? values[feature.properties.adm_cd2]?.populationTotal ?? null : null,
                     agePopulation: values ? values[feature.properties.adm_cd2]?.byAge ?? {} : {}
                 },
                 geometry: feature.geometry
