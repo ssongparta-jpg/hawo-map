@@ -8,6 +8,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs'); // 파일 시스템 모듈을 최상단으로 이동
 const crypto = require('crypto');
+const { execFile } = require('child_process');
 
 const app = express();
 const db = new sqlite3.Database('./database.db');
@@ -72,6 +73,17 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 app.use(express.static(__dirname, { extensions: ['html'] }));
+
+app.get('/api/latest-commit', (req, res) => {
+    execFile('git', ['log', '-1', '--format=%cI'], { cwd: __dirname, timeout: 2500 }, (err, stdout) => {
+        if (err) {
+            return res.json({ success: false, iso: null });
+        }
+        const iso = String(stdout || '').trim();
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, iso });
+    });
+});
 
 // [이메일 전송 설정] Nodemailer
 const transporter = nodemailer.createTransport({

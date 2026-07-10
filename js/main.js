@@ -182,7 +182,6 @@ const App = {
             if (action === 'toggle-measure') DistanceManager.toggle(target);
             if (action === 'go-login') location.href = '/login';
             if (action === 'legend-reset') this.resetLegendFilters();
-            if (action === 'toggle-school-age') SchoolAgePopulationMap.toggle(target);
         });
     }
 };

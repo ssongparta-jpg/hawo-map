@@ -1,0 +1,278 @@
+:root {
+    --page-bg: #eef2f7;
+    --ink: #111827;
+    --muted: #64748b;
+    --line: rgba(148, 163, 184, 0.35);
+    --blue: #2563eb;
+    --green: #10b981;
+    --panel: rgba(255, 255, 255, 0.88);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Noto Sans KR', system-ui, sans-serif;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 24% 18%, rgba(37, 99, 235, 0.16), transparent 32%),
+        radial-gradient(circle at 82% 78%, rgba(16, 185, 129, 0.16), transparent 30%),
+        linear-gradient(135deg, #f8fafc 0%, var(--page-bg) 48%, #e5e7eb 100%);
+}
+
+.school-age-shell {
+    min-height: 100vh;
+    padding: 18px;
+}
+
+.school-age-header {
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    max-width: 1180px;
+    margin: 0 auto 18px;
+    padding: 0 16px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.school-age-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.school-age-brand img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+
+.school-age-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.school-age-nav a,
+.globe-action {
+    border: 1px solid rgba(148, 163, 184, 0.42);
+    border-radius: 999px;
+    background: #ffffff;
+    color: #334155;
+    text-decoration: none;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 850;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.school-age-nav a:hover,
+.globe-action:hover {
+    transform: translateY(-1px);
+    border-color: rgba(37, 99, 235, 0.55);
+    color: var(--blue);
+}
+
+.school-age-main {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 18px;
+    align-items: stretch;
+}
+
+.globe-stage,
+.school-age-panel {
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--panel);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.11);
+}
+
+.globe-stage {
+    min-height: calc(100vh - 112px);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.globe-topline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    position: relative;
+    z-index: 2;
+}
+
+.eyebrow {
+    margin: 0 0 6px;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+h1 {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: 0;
+}
+
+.globe-canvas-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 460px;
+    display: grid;
+    place-items: center;
+}
+
+#schoolAgeGlobe {
+    width: min(72vw, 680px);
+    height: min(72vw, 680px);
+    max-height: calc(100vh - 210px);
+    display: block;
+}
+
+.globe-location-pill {
+    position: absolute;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.86);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 900;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.22);
+}
+
+.school-age-panel {
+    min-height: calc(100vh - 112px);
+    padding: 22px;
+}
+
+.panel-section + .panel-section {
+    margin-top: 22px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+}
+
+.panel-label,
+.metric-label {
+    display: block;
+    margin: 0 0 7px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.school-age-panel h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    line-height: 1.3;
+}
+
+.school-age-panel p {
+    margin: 0;
+    color: #475569;
+    font-size: 13.5px;
+    font-weight: 650;
+    line-height: 1.55;
+}
+
+.panel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.panel-grid div {
+    padding: 14px;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.panel-grid strong {
+    display: block;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.connection-list {
+    margin: 0;
+    padding-left: 18px;
+    color: #334155;
+    font-size: 13.5px;
+    font-weight: 750;
+    line-height: 1.8;
+}
+
+@media (max-width: 900px) {
+    .school-age-main {
+        grid-template-columns: 1fr;
+    }
+    .globe-stage,
+    .school-age-panel {
+        min-height: auto;
+    }
+    .globe-canvas-wrap {
+        min-height: 360px;
+    }
+    #schoolAgeGlobe {
+        width: min(86vw, 560px);
+        height: min(86vw, 560px);
+    }
+}
+
+@media (max-width: 640px) {
+    .school-age-shell {
+        padding: 10px;
+    }
+    .school-age-header {
+        height: auto;
+        min-height: 58px;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 12px;
+    }
+    .school-age-nav {
+        width: 100%;
+    }
+    .school-age-nav a {
+        flex: 1;
+        text-align: center;
+    }
+    .globe-stage,
+    .school-age-panel {
+        border-radius: 18px;
+        padding: 16px;
+    }
+    .globe-topline {
+        flex-direction: column;
+    }
+    h1 {
+        font-size: 23px;
+    }
+    .globe-location-pill {
+        bottom: 10px;
+    }
+}

@@ -137,93 +137,6 @@ input:checked + .slider:before { transform: translateX(16px); }
 .btn-login { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; padding: 8px 18px !important; border-radius: 20px !important; font-size: 14px !important; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.26) !important; }
 .btn-login:hover { background: #1d4ed8 !important; transform: translateY(-2px) !important; }
 
-/* 7. 학령인구 지도 패널 */
-.school-age-panel {
-    position: absolute;
-    right: 20px;
-    top: 78px;
-    z-index: 1400;
-    width: 270px;
-    padding: 14px;
-    border-radius: 14px;
-    border: 1px solid rgba(148,163,184,0.34);
-    background: rgba(255,255,255,0.94);
-    box-shadow: 0 14px 34px rgba(15,23,42,0.18);
-}
-.school-age-panel-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-}
-.school-age-panel-title {
-    font-size: 15px;
-    font-weight: 900;
-    color: #0f172a;
-}
-.school-age-panel-sub {
-    margin-top: 2px;
-    font-size: 11px;
-    font-weight: 800;
-    color: #64748b;
-}
-.school-age-close {
-    width: 24px;
-    height: 24px;
-    border: 0;
-    border-radius: 50%;
-    background: #f1f5f9;
-    color: #475569;
-    font-size: 18px;
-    font-weight: 900;
-    cursor: pointer;
-}
-.school-age-status {
-    margin-top: 12px;
-    padding: 9px 10px;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 800;
-    line-height: 1.45;
-}
-.school-age-status.is-live { background: #ecfdf5; color: #047857; }
-.school-age-status.is-pending { background: #f8fafc; color: #64748b; }
-.school-age-scale {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 8px;
-    align-items: center;
-    margin-top: 12px;
-    color: #64748b;
-    font-size: 11px;
-    font-weight: 800;
-}
-.school-age-scale div {
-    height: 8px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #d9f99d, #67e8f9, #14b8a6, #0f766e);
-}
-.school-age-panel-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: 12px;
-    font-size: 11px;
-    font-weight: 800;
-    color: #64748b;
-}
-.school-age-panel-meta button {
-    border: 0;
-    border-radius: 999px;
-    padding: 5px 9px;
-    background: #0f766e;
-    color: white;
-    font-size: 11px;
-    font-weight: 900;
-    cursor: pointer;
-}
-
 /* =========================================
    6. 모바일 전용 (스마트폰 앱 스타일 3분할 하단 바)
    ========================================= */
@@ -336,10 +249,4 @@ input:checked + .slider:before { transform: translateX(16px); }
         top: 65px !important; left: 50% !important; transform: translateX(-50%) !important; width: 92% !important; 
     }
     #legend, #share-legend { top: 115px !important; left: 10px !important; } 
-    .school-age-panel {
-        top: auto !important;
-        right: 10px !important;
-        bottom: 76px !important;
-        width: min(280px, calc(100vw - 20px)) !important;
-    }
 }

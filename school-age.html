@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>화성오산 학령인구 지도</title>
+  <meta name="description" content="화성시와 오산시의 학령인구를 지구본형 3D 지도 화면으로 확인하기 위한 전용 페이지입니다.">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/school-age.css" />
+</head>
+<body>
+  <div class="school-age-shell">
+    <header class="school-age-header">
+      <a class="school-age-brand" href="/">
+        <img src="source/hwaologo.svg" alt="GOEHS" />
+        <span>학령인구 지도</span>
+      </a>
+      <nav class="school-age-nav" aria-label="지도 이동">
+        <a href="/">학교 지도</a>
+        <a href="/share">공유학교 지도</a>
+      </nav>
+    </header>
+
+    <main class="school-age-main">
+      <section class="globe-stage" aria-label="화성오산 지구본 지도">
+        <div class="globe-topline">
+          <div>
+            <p class="eyebrow">Hwaseong · Osan</p>
+            <h1>화성오산 학령인구 3D 지도</h1>
+          </div>
+          <button type="button" class="globe-action" data-globe-action="reset">화성·오산 보기</button>
+        </div>
+        <div class="globe-canvas-wrap">
+          <canvas id="schoolAgeGlobe" aria-label="대한민국 화성오산 지역을 강조한 지구본형 지도"></canvas>
+          <div class="globe-location-pill">대한민국 · 경기 화성/오산</div>
+        </div>
+      </section>
+
+      <aside class="school-age-panel" aria-label="학령인구 데이터 상태">
+        <div class="panel-section">
+          <p class="panel-label">데이터 상태</p>
+          <h2 id="populationStatusTitle">통계청 연동 준비 중</h2>
+          <p id="populationStatusText">새 지도 구조에 맞춰 통계청 동기화 데이터를 연결할 자리입니다.</p>
+        </div>
+        <div class="panel-grid">
+          <div>
+            <span class="metric-label">행정동</span>
+            <strong id="populationDongCount">-</strong>
+          </div>
+          <div>
+            <span class="metric-label">자료연도</span>
+            <strong id="populationYear">-</strong>
+          </div>
+        </div>
+        <div class="panel-section">
+          <p class="panel-label">다음 연결 지점</p>
+          <ul class="connection-list">
+            <li>지구본 지도 엔진</li>
+            <li>화성/오산 행정동 경계</li>
+            <li>통계청 학령인구 API</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="js/school-age.js" defer></script>
+</body>
+</html>
