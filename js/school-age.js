@@ -10,6 +10,8 @@ const SchoolAge3DMap = {
     features: [],
     populationData: null,
     selectedAge: 'total',
+    selectedYear: null,
+    yearRange: null,
     drag: { active: false, x: 0, y: 0 },
     bounds: null,
     mapOffset: { x: 0, y: 0 },
@@ -35,6 +37,7 @@ const SchoolAge3DMap = {
         this.setupScene();
         this.bindEvents();
         this.renderAgeSelector();
+        await this.loadYearRange();
         await this.loadData();
         this.animate();
     },
@@ -96,6 +99,16 @@ const SchoolAge3DMap = {
             if (viewMode === 'total') this.setAge('total');
         });
 
+        const yearSlider = document.getElementById('yearSlider');
+        if (yearSlider) {
+            yearSlider.addEventListener('input', () => {
+                this.setText('selectedYearLabel', yearSlider.value);
+            });
+            yearSlider.addEventListener('change', () => {
+                this.setYear(yearSlider.value);
+            });
+        }
+
         this.container.addEventListener('pointerdown', (event) => {
             this.drag.active = true;
             this.drag.x = event.clientX;
@@ -139,9 +152,11 @@ const SchoolAge3DMap = {
 
     async loadData() {
         try {
+            this.setLoadingState(true);
+            const yearParam = this.selectedYear ? `&year=${encodeURIComponent(this.selectedYear)}` : '';
             const [geoRes, popRes] = await Promise.all([
                 fetch('data/hwao.geojson', { cache: 'no-store' }),
-                fetch('/api/school-age-population?ageFrom=6&ageTo=21', { cache: 'no-store' }).catch(() => null)
+                fetch(`/api/school-age-population?ageFrom=6&ageTo=21${yearParam}`, { cache: 'no-store' }).catch(() => null)
             ]);
             if (!geoRes.ok) throw new Error('geojson failed');
             const geojson = await geoRes.json();
@@ -155,7 +170,53 @@ const SchoolAge3DMap = {
             this.updatePanel();
         } catch (err) {
             this.setStatus('지도 로드 실패', '행정동 경계 데이터를 불러오지 못했습니다.');
+        } finally {
+            this.setLoadingState(false);
         }
+    },
+
+    async loadYearRange() {
+        const fallbackMax = new Date().getFullYear() - 2;
+        let range = { min: 2000, max: fallbackMax, defaultYear: fallbackMax };
+        try {
+            const res = await fetch('/api/school-age-years', { cache: 'no-store' });
+            if (res.ok) range = await res.json();
+        } catch (err) {
+            // 정적 파일로 열 때는 기본 범위를 사용합니다.
+        }
+
+        const min = Number(range.min) || 2000;
+        const max = Number(range.max) || fallbackMax;
+        const defaultYear = Number(range.defaultYear) || max;
+        this.yearRange = { min, max, defaultYear };
+        this.selectedYear = String(Math.min(max, Math.max(min, defaultYear)));
+        this.renderYearSlider();
+    },
+
+    renderYearSlider() {
+        const slider = document.getElementById('yearSlider');
+        if (!slider || !this.yearRange) return;
+        slider.min = String(this.yearRange.min);
+        slider.max = String(this.yearRange.max);
+        slider.value = this.selectedYear;
+        slider.disabled = false;
+        this.setText('selectedYearLabel', this.selectedYear);
+        this.setText('yearMinLabel', `${this.yearRange.min}`);
+        this.setText('yearMaxLabel', `${this.yearRange.max}`);
+    },
+
+    async setYear(year) {
+        const nextYear = String(year);
+        if (nextYear === this.selectedYear) return;
+        this.selectedYear = nextYear;
+        this.clearHover();
+        this.setText('selectedYearLabel', nextYear);
+        await this.loadData();
+    },
+
+    setLoadingState(loading) {
+        const slider = document.getElementById('yearSlider');
+        if (slider) slider.disabled = loading || !this.yearRange;
     },
 
     attachPopulation() {

@@ -48,6 +48,17 @@
           <h2 id="populationStatusTitle">통계청 연동 준비 중</h2>
           <p id="populationStatusText">화성시·오산시 행정동 경계를 불러오는 중입니다.</p>
         </div>
+        <div class="panel-section">
+          <div class="year-control-head">
+            <p class="panel-label">통계연도</p>
+            <strong id="selectedYearLabel">-</strong>
+          </div>
+          <input type="range" id="yearSlider" class="year-slider" min="2000" max="2024" step="1" value="2024" disabled>
+          <div class="year-range-labels">
+            <span id="yearMinLabel">-</span>
+            <span id="yearMaxLabel">-</span>
+          </div>
+        </div>
         <div class="panel-grid">
           <div>
             <span class="metric-label">행정동</span>

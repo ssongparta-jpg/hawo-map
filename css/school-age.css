@@ -271,6 +271,44 @@ h1 {
     line-height: 1.55;
 }
 
+.year-control-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.year-control-head .panel-label {
+    margin-bottom: 0;
+}
+
+#selectedYearLabel {
+    color: #f8fafc;
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 950;
+}
+
+.year-slider {
+    width: 100%;
+    margin: 18px 0 8px;
+    accent-color: #93c5fd;
+    cursor: pointer;
+}
+
+.year-slider:disabled {
+    cursor: wait;
+    opacity: 0.5;
+}
+
+.year-range-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 850;
+}
+
 .panel-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;

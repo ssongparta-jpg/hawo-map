@@ -22,6 +22,7 @@ const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
 const HWAO_GEOJSON_FILE = path.join(__dirname, 'data', 'hwao.geojson');
 const SCHOOL_AGE_FROM = process.env.SCHOOL_AGE_FROM || '6';
 const SCHOOL_AGE_TO = process.env.SCHOOL_AGE_TO || '21';
+const SCHOOL_AGE_FIRST_YEAR = Number.parseInt(process.env.SGIS_STATS_START_YEAR || '2000', 10);
 const SGIS_AUTH_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json';
 const SGIS_POPULATION_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/stats/searchpopulation.json';
 let schoolAgeCache = { key: null, expires: 0, data: null };
@@ -179,7 +180,17 @@ function getPublicErrorMessage(error) {
 async function fetchJsonUrl(url, label = 'request') {
     if (typeof fetch !== 'function') throw new Error('fetch is not available in this Node runtime');
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`request failed: ${res.status}`);
+    if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        let detail = '';
+        try {
+            const parsed = JSON.parse(body);
+            detail = getSgisErrorMessage(parsed) || parsed?.message || parsed?.errMsg || '';
+        } catch (err) {
+            detail = body.replace(/\s+/g, ' ').slice(0, 220);
+        }
+        throw new Error(`${label} request failed: ${res.status}${detail ? ` ${detail}` : ''}`);
+    }
     const data = await res.json();
     const sgisError = getSgisErrorMessage(data);
     if (sgisError) throw new Error(`${label} ${sgisError}`);
@@ -205,6 +216,28 @@ function parseAgeParam(value, fallback) {
     const parsed = Number.parseInt(String(value ?? ''), 10);
     if (!Number.isFinite(parsed) || parsed < 0 || parsed > 120) return fallback;
     return parsed;
+}
+
+function getSchoolAgeYearRange() {
+    const currentYear = new Date().getFullYear();
+    const startYear = Number.isFinite(SCHOOL_AGE_FIRST_YEAR) ? SCHOOL_AGE_FIRST_YEAR : 2000;
+    const latestFromEnv = Number.parseInt(process.env.SGIS_STATS_LATEST_YEAR || process.env.SGIS_STATS_YEAR || '', 10);
+    const latestYear = Number.isFinite(latestFromEnv) ? latestFromEnv : currentYear - 2;
+    const min = Math.max(1960, Math.min(startYear, latestYear));
+    const max = Math.max(min, Math.min(latestYear, currentYear));
+    return {
+        min,
+        max,
+        defaultYear: max,
+        years: Array.from({ length: max - min + 1 }, (_, index) => min + index)
+    };
+}
+
+function resolveStatsYear(value) {
+    const range = getSchoolAgeYearRange();
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    if (!Number.isFinite(parsed)) return String(range.defaultYear);
+    return String(Math.min(range.max, Math.max(range.min, parsed)));
 }
 
 function buildSchoolAgeRequestUrl(feature, accessToken, year, ageFrom, ageTo) {
@@ -600,8 +633,12 @@ app.get('/api/my-favorites', isLoggedIn, (req, res) => {
     });
 });
 
+app.get('/api/school-age-years', (req, res) => {
+    res.json(getSchoolAgeYearRange());
+});
+
 app.get('/api/school-age-population', async (req, res) => {
-    const year = String(req.query.year || process.env.SGIS_STATS_YEAR || new Date().getFullYear() - 2);
+    const year = resolveStatsYear(req.query.year);
     const ageFrom = parseAgeParam(req.query.ageFrom, Number(SCHOOL_AGE_FROM));
     const ageTo = parseAgeParam(req.query.ageTo, Number(SCHOOL_AGE_TO));
     const minAge = Math.min(ageFrom, ageTo);
