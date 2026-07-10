@@ -182,8 +182,8 @@ h1 {
     flex: 0 0 auto;
     border: 0;
     border-radius: 999px;
-    padding: 7px 10px;
-    min-width: 42px;
+    padding: 8px 12px;
+    min-width: 72px;
     background: transparent;
     color: #cbd5e1;
     font-size: 12px;
@@ -229,6 +229,30 @@ h1 {
     display: block;
     margin-top: 3px;
     font-size: 20px;
+    line-height: 1;
+}
+
+.hover-breakdown {
+    display: grid;
+    gap: 5px;
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.hover-breakdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    color: #d7dee8;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.hover-breakdown-row strong {
+    margin: 0;
+    font-size: 13px;
     line-height: 1;
 }
 

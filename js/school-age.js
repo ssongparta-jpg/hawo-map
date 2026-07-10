@@ -9,9 +9,16 @@ const SchoolAge3DMap = {
     meshes: [],
     features: [],
     populationData: null,
-    selectedAge: 'total',
+    selectedGroup: 'total',
     selectedYear: null,
     yearRange: null,
+    groups: [
+        { id: 'total', label: '전체', shortLabel: '전체', ageLabel: '6~21세' },
+        { id: 'elementary', label: '초등학교', shortLabel: '초등', ageLabel: '6~12세' },
+        { id: 'middle', label: '중학교', shortLabel: '중등', ageLabel: '13~15세' },
+        { id: 'high', label: '고등학교', shortLabel: '고등', ageLabel: '16~18세' },
+        { id: 'university', label: '대학교', shortLabel: '대학', ageLabel: '19~21세' }
+    ],
     drag: { active: false, x: 0, y: 0 },
     bounds: null,
     mapOffset: { x: 0, y: 0 },
@@ -91,12 +98,12 @@ const SchoolAge3DMap = {
     bindEvents() {
         window.addEventListener('resize', () => this.resize());
         document.addEventListener('click', (event) => {
-            const age = event.target.closest('[data-age]')?.dataset.age;
-            if (age) this.setAge(age);
+            const group = event.target.closest('[data-group]')?.dataset.group;
+            if (group) this.setGroup(group);
             const action = event.target.closest('[data-map-action]')?.dataset.mapAction;
             if (action === 'reset') this.resetView();
             const viewMode = event.target.closest('[data-view-mode]')?.dataset.viewMode;
-            if (viewMode === 'total') this.setAge('total');
+            if (viewMode === 'total') this.setGroup('total');
         });
 
         const yearSlider = document.getElementById('yearSlider');
@@ -156,11 +163,15 @@ const SchoolAge3DMap = {
             const yearParam = this.selectedYear ? `&year=${encodeURIComponent(this.selectedYear)}` : '';
             const [geoRes, popRes] = await Promise.all([
                 fetch('data/hwao.geojson', { cache: 'no-store' }),
-                fetch(`/api/school-age-population?ageFrom=6&ageTo=21${yearParam}`, { cache: 'no-store' }).catch(() => null)
+                fetch(`/api/school-age-population?${yearParam.replace(/^&/, '')}`, { cache: 'no-store' }).catch(() => null)
             ]);
             if (!geoRes.ok) throw new Error('geojson failed');
             const geojson = await geoRes.json();
             this.populationData = popRes && popRes.ok ? await popRes.json() : null;
+            if (Array.isArray(this.populationData?.groups) && this.populationData.groups.length) {
+                this.groups = this.populationData.groups;
+                this.renderAgeSelector();
+            }
             this.features = (geojson.features || []).filter(feature => {
                 const sgg = feature.properties?.sggnm || '';
                 return sgg.includes('화성시') || sgg.includes('오산시');
@@ -176,8 +187,8 @@ const SchoolAge3DMap = {
     },
 
     async loadYearRange() {
-        const fallbackMax = new Date().getFullYear() - 2;
-        let range = { min: 2000, max: fallbackMax, defaultYear: fallbackMax };
+        const fallbackObserved = 2024;
+        let range = { min: 2000, max: 2072, defaultYear: fallbackObserved, observedYear: fallbackObserved, forecastFromYear: new Date().getFullYear() + 1 };
         try {
             const res = await fetch('/api/school-age-years', { cache: 'no-store' });
             if (res.ok) range = await res.json();
@@ -186,9 +197,11 @@ const SchoolAge3DMap = {
         }
 
         const min = Number(range.min) || 2000;
-        const max = Number(range.max) || fallbackMax;
+        const max = Number(range.max) || 2072;
         const defaultYear = Number(range.defaultYear) || max;
-        this.yearRange = { min, max, defaultYear };
+        const observedYear = Number(range.observedYear) || defaultYear;
+        const forecastFromYear = Number(range.forecastFromYear) || (new Date().getFullYear() + 1);
+        this.yearRange = { min, max, defaultYear, observedYear, forecastFromYear };
         this.selectedYear = String(Math.min(max, Math.max(min, defaultYear)));
         this.renderYearSlider();
     },
@@ -226,7 +239,7 @@ const SchoolAge3DMap = {
             const props = feature.properties || {};
             byAdm.set(props.adm_cd2, {
                 schoolAgePopulation: Number(props.schoolAgePopulation),
-                populationTotal: Number(props.populationTotal),
+                groupPopulation: props.groupPopulation || {},
                 byAge: props.agePopulation || {}
             });
         });
@@ -235,7 +248,7 @@ const SchoolAge3DMap = {
             const props = feature.properties || {};
             const record = byAdm.get(props.adm_cd2) || {};
             props.schoolAgePopulation = Number.isFinite(record.schoolAgePopulation) ? record.schoolAgePopulation : null;
-            props.populationTotal = Number.isFinite(record.populationTotal) ? record.populationTotal : null;
+            props.groupPopulation = record.groupPopulation || {};
             props.agePopulation = record.byAge || {};
             props.visualFallback = this.fallbackValue(props, index);
         });
@@ -433,14 +446,12 @@ const SchoolAge3DMap = {
 
     getFeatureValue(feature) {
         const props = feature.properties || {};
-        if (this.selectedAge !== 'total') {
-            const ageValue = Number(props.agePopulation?.[this.selectedAge]);
-            if (Number.isFinite(ageValue)) return ageValue;
+        if (this.selectedGroup !== 'total') {
+            const groupValue = Number(props.groupPopulation?.[this.selectedGroup]);
+            if (Number.isFinite(groupValue)) return groupValue;
         }
-        const total = Number(props.schoolAgePopulation);
+        const total = Number(props.groupPopulation?.total ?? props.schoolAgePopulation);
         if (Number.isFinite(total)) return total;
-        const populationTotal = Number(props.populationTotal);
-        if (this.selectedAge === 'total' && Number.isFinite(populationTotal)) return populationTotal;
         return props.visualFallback || 1;
     },
 
@@ -465,23 +476,30 @@ const SchoolAge3DMap = {
         return this.colors.default;
     },
 
+    getSelectedGroup() {
+        return this.groups.find(group => group.id === this.selectedGroup) || this.groups[0];
+    },
+
     renderAgeSelector() {
         const selector = document.getElementById('ageSelector');
         if (!selector) return;
-        const chips = ['total', ...Array.from({ length: 16 }, (_, index) => String(index + 6))];
-        selector.innerHTML = chips.map(age => {
-            const label = age === 'total' ? '전체' : `${age}세`;
-            return `<button type="button" class="age-chip ${age === this.selectedAge ? 'active' : ''}" data-age="${age}">${label}</button>`;
-        }).join('');
+        selector.replaceChildren(...this.groups.map(group => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = `age-chip ${group.id === this.selectedGroup ? 'active' : ''}`;
+            chip.dataset.group = group.id;
+            chip.textContent = group.id === 'total' ? '전체' : `${group.label} (${group.ageLabel})`;
+            return chip;
+        }));
     },
 
-    setAge(age) {
-        this.selectedAge = age;
+    setGroup(group) {
+        this.selectedGroup = group;
         document.querySelectorAll('.age-chip').forEach(chip => {
-            chip.classList.toggle('active', chip.dataset.age === age);
+            chip.classList.toggle('active', chip.dataset.group === group);
         });
         document.querySelectorAll('[data-view-mode="total"]').forEach(btn => {
-            btn.classList.toggle('active', age === 'total');
+            btn.classList.toggle('active', group === 'total');
         });
         if (this.features.length) {
             this.buildMap();
@@ -497,32 +515,33 @@ const SchoolAge3DMap = {
     },
 
     updatePanel(feature = null) {
-        const source = this.populationData?.source || 'kostat-pending';
-        const live = source === 'kostat-live';
-        const totalOnly = source === 'sgis-total';
-        const valueKey = live ? 'schoolAgePopulation' : 'populationTotal';
-        const values = this.features.map(item => Number(item.properties?.[valueKey])).filter(Number.isFinite);
+        const source = this.populationData?.source || 'kosis-pending';
+        const live = source === 'kosis-live';
+        const model = source === 'kosis-model';
+        const values = this.features.map(item => this.getFeatureValue(item)).filter(Number.isFinite);
         const total = values.reduce((sum, value) => sum + value, 0);
         const selected = feature?.properties || null;
+        const selectedGroup = this.getSelectedGroup();
+        const forecast = !!this.populationData?.forecast;
 
         this.setText('populationDongCount', this.features.length ? `${this.features.length}개` : '-');
         this.setText('populationYear', this.populationData?.year || '-');
         this.setText(
             'populationStatusTitle',
-            live ? '통계청 연령별 동기화' : (totalOnly ? 'SGIS 전체 인구 연결' : '통계청 연동 대기')
+            live ? 'KOSIS 학령구간 동기화' : (model ? 'KOSIS 기준 예측 모델' : 'KOSIS 연동 대기')
         );
         this.setText(
             'populationStatusText',
             live
-                ? '6~21세 연령별 학령인구 값을 행정동 단위로 반영했습니다.'
-                : (this.populationData?.message || '서버 API 키가 설정되면 통계청 값으로 높이가 갱신됩니다.')
+                ? `초등·중등·고등·대학 연령대 값을 행정동 단위로 반영했습니다.${forecast ? ' 현재 연도 이후라 예측값으로 표시됩니다.' : ''}`
+                : (this.populationData?.message || 'KOSIS API 템플릿이 설정되면 공식 값으로 높이가 갱신됩니다.')
         );
         this.setText('selectedRegionName', selected ? (selected.adm_nm || '행정동') : '화성·오산 전체');
-        this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : '연령을 선택하면 해당 연령의 높이로 지도가 다시 그려집니다.');
-        this.setText('totalPopulationLabel', live ? '6~21세 합계' : (totalOnly ? '전체 인구 합계' : '6~21세 합계'));
+        this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : `${selectedGroup.label} 구간을 선택하면 해당 합계의 높이로 지도가 다시 그려집니다.`);
+        this.setText('totalPopulationLabel', `${selectedGroup.label} 합계${forecast ? ' (예측)' : ''}`);
         this.setText('totalPopulation', total ? `${this.format(total)}명` : '-');
         const fill = document.getElementById('rangeBarFill');
-        if (fill) fill.style.width = (live || totalOnly) && total ? '100%' : '38%';
+        if (fill) fill.style.width = total ? '100%' : '38%';
     },
 
     setStatus(title, text) {
@@ -580,24 +599,39 @@ const SchoolAge3DMap = {
         card.style.top = `${event.clientY - this.container.getBoundingClientRect().top}px`;
         this.setText('hoverRegion', feature.properties?.adm_nm || '행정동');
         this.setText('hoverValue', this.getFeatureLabel(feature));
+        this.renderHoverBreakdown(feature);
     },
 
     getFeatureLabel(feature) {
         const props = feature.properties || {};
-        if (this.selectedAge !== 'total') {
-            const ageValue = Number(props.agePopulation?.[this.selectedAge]);
-            return Number.isFinite(ageValue)
-                ? `${this.selectedAge}세 ${this.format(ageValue)}명`
-                : `${this.selectedAge}세 연령별 데이터 대기`;
-        }
+        const group = this.getSelectedGroup();
+        const value = Number(group.id === 'total' ? (props.groupPopulation?.total ?? props.schoolAgePopulation) : props.groupPopulation?.[group.id]);
+        const suffix = this.populationData?.forecast ? ' 예측' : '';
+        return Number.isFinite(value)
+            ? `${group.label} ${this.format(value)}명${suffix}`
+            : `${group.label} 데이터 대기`;
+    },
 
-        const schoolAgeValue = Number(props.schoolAgePopulation);
-        if (Number.isFinite(schoolAgeValue)) return `6~21세 ${this.format(schoolAgeValue)}명`;
+    renderHoverBreakdown(feature) {
+        const list = document.getElementById('hoverBreakdown');
+        if (!list) return;
+        const props = feature.properties || {};
+        const rows = this.groups
+            .filter(group => group.id !== 'total')
+            .map(group => {
+                const row = document.createElement('div');
+                row.className = 'hover-breakdown-row';
 
-        const populationTotal = Number(props.populationTotal);
-        if (Number.isFinite(populationTotal)) return `전체 인구 ${this.format(populationTotal)}명`;
+                const label = document.createElement('span');
+                label.textContent = `${group.shortLabel || group.label} (${group.ageLabel})`;
 
-        return '6~21세 데이터 대기';
+                const value = document.createElement('strong');
+                value.textContent = `${this.format(props.groupPopulation?.[group.id])}명`;
+
+                row.append(label, value);
+                return row;
+            });
+        list.replaceChildren(...rows);
     },
 
     setText(id, value) {
