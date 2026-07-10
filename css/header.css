@@ -58,11 +58,24 @@
     flex-shrink: 0;
     margin-left: 2px;
 }
+.title-switch-btn.school-age-switch {
+    border: 1px solid rgba(255,255,255,0.35);
+    background: #10b981;
+    color: #ffffff !important;
+    font-size: 12px;
+    font-weight: 900;
+    padding: 0;
+}
 .switch-icon { width: 100%; height: 100%; display: block; }
 .switch-icon.cover { object-fit: cover; }
 .switch-icon.contain { width: 80%; height: 80%; object-fit: contain; margin: auto; }
 .logo-switch-icon { margin-left: 2px; }
 .title-switch-btn:hover { transform: rotate(180deg) scale(1.04); background: rgba(255,255,255,0.22); }
+.title-switch-btn.school-age-switch:hover,
+.title-switch-btn.school-age-switch.active {
+    transform: translateY(-1px) scale(1.06);
+    background: #059669;
+}
 
 /* 모바일 전용 */
 @media (max-width: 768px) {

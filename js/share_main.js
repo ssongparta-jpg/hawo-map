@@ -326,6 +326,7 @@ const ShareApp = {
             if (action === 'close-help') document.getElementById('helpModal').style.display = 'none';
             if (action === 'toggle-measure') DistanceManager.toggle(target);
             if (action === 'go-login') location.href = '/login';
+            if (action === 'toggle-school-age') SchoolAgePopulationMap.toggle(target);
         });
     }
 };

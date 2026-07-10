@@ -29,10 +29,10 @@
     align-items: center;
     justify-content: center;
     color: var(--marker-color);
-    background: rgba(255, 255, 255, 0.96);
-    border: 2px solid currentColor;
-    border-radius: 50%;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 2px 5px rgba(15,23,42,0.2);
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    filter: drop-shadow(0 1px 0 #ffffff) drop-shadow(0 2px 3px rgba(15,23,42,0.24));
     transform: translate(-50%, -50%);
     text-shadow: none;
     transition: transform 0.12s ease, background 0.12s ease;
@@ -93,7 +93,7 @@
 }
 .custom-combined-marker:hover .marker-symbol {
     transform: translate(-50%, -50%) scale(1.08);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 3px 8px rgba(15,23,42,0.24);
+    box-shadow: none;
 }
 
 /* 기본 이름표(라벨) */
@@ -186,8 +186,9 @@
 
 #map.cursor-crosshair .custom-combined-marker { cursor: crosshair; }
 #map.cursor-crosshair .custom-combined-marker:hover .marker-symbol {
-    background: #fff7ed;
-    box-shadow: 0 0 0 3px rgba(231,76,60,0.16), 0 3px 8px rgba(15,23,42,0.22);
+    background: transparent;
+    box-shadow: none;
+    filter: drop-shadow(0 0 3px rgba(231,76,60,0.45)) drop-shadow(0 2px 3px rgba(15,23,42,0.24));
 }
 
 /* 타입별 이름표 좌측 테두리 색상 */
@@ -263,3 +264,52 @@
 .district-stat-marker .zoom-lv-16, 
 .district-stat-marker .zoom-lv-17, 
 .district-stat-marker .zoom-lv-18 { opacity: 1 !important; }
+
+/* 학령인구 3D 지도 */
+.school-age-bar-icon {
+    pointer-events: none;
+}
+.school-age-bar-wrap {
+    position: relative;
+    width: 46px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+}
+.school-age-bar {
+    width: 18px;
+    min-height: 18px;
+    border-radius: 6px 6px 3px 3px;
+    background: linear-gradient(180deg, #2dd4bf 0%, #0f766e 100%);
+    box-shadow: 7px 7px 0 rgba(15,23,42,0.18), 0 6px 12px rgba(15,23,42,0.22);
+    transform: skewY(-8deg);
+    transform-origin: 50% 100%;
+}
+.school-age-bar::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -6px;
+    width: 18px;
+    height: 10px;
+    border-radius: 50%;
+    background: #99f6e4;
+}
+.school-age-bar-label {
+    margin-top: 4px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.92);
+    color: #0f172a;
+    font-size: 10px;
+    font-weight: 900;
+    box-shadow: 0 2px 5px rgba(15,23,42,0.18);
+}
+.school-age-tooltip {
+    border: 0 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 18px rgba(15,23,42,0.18) !important;
+    font-size: 12px;
+    font-weight: 800;
+}

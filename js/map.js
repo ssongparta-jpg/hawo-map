@@ -65,7 +65,7 @@ const MapManager = {
 
         if (count > 1) stackClass = `has-stack stack-pos-${stackIndex % 8}`;
         const safeName = this.escapeHtml(p.name);
-        const stackBadge = count > 1 && stackIndex === 0
+        const stackBadge = count > 2 && stackIndex === 0
             ? `<div class="marker-stack-badge">${count > 9 ? '9+' : count}</div>`
             : '';
         
@@ -679,5 +679,220 @@ const MapManager = {
             this.map.setView(conf.pos, 14);
             this.map.closePopup();
         }
+    }
+};
+
+const SchoolAgePopulationMap = {
+    active: false,
+    loading: false,
+    layerGroup: L.layerGroup(),
+    barGroup: L.layerGroup(),
+    panel: null,
+    activeButton: null,
+
+    async toggle(button) {
+        if (!MapManager.map || this.loading) return;
+        this.activeButton = button || this.activeButton;
+        if (this.active) {
+            this.hide();
+            return;
+        }
+
+        this.loading = true;
+        this.setButtonState(true, true);
+        try {
+            const data = await this.fetchPopulation();
+            this.show(data);
+        } catch (err) {
+            this.showError('학령인구 데이터를 불러오지 못했습니다.');
+        } finally {
+            this.loading = false;
+            this.setButtonState(this.active, false);
+        }
+    },
+
+    async fetchPopulation() {
+        const res = await fetch('/api/school-age-population');
+        if (!res.ok) throw new Error('population request failed');
+        return res.json();
+    },
+
+    show(data) {
+        this.active = true;
+        this.ensurePane();
+        this.layerGroup.clearLayers();
+        this.barGroup.clearLayers();
+        this.layerGroup.addTo(MapManager.map);
+        this.barGroup.addTo(MapManager.map);
+
+        const features = Array.isArray(data?.features) ? data.features : [];
+        const values = features.map(f => Number(f.properties?.schoolAgePopulation)).filter(Number.isFinite);
+        const max = values.length ? Math.max(...values) : 0;
+        const min = values.length ? Math.min(...values) : 0;
+
+        L.geoJson({ type: 'FeatureCollection', features }, {
+            pane: 'schoolAgePane',
+            style: (feature) => this.getPolygonStyle(feature, min, max),
+            onEachFeature: (feature, layer) => {
+                const props = feature.properties || {};
+                const value = Number(props.schoolAgePopulation);
+                const hasValue = Number.isFinite(value);
+                const name = MapManager.escapeHtml(props.adm_nm || props.name || '행정동');
+                const label = hasValue ? `${this.formatNumber(value)}명` : '연동 대기';
+                layer.bindTooltip(`${name}<br>${label}`, {
+                    sticky: true,
+                    className: 'school-age-tooltip'
+                });
+
+                const center = layer.getBounds().getCenter();
+                this.addPopulationBar(center, props, hasValue ? value : null, max);
+            }
+        }).addTo(this.layerGroup);
+
+        this.renderPanel(data, min, max, values.length);
+        MapManager.map.setView([37.19, 126.99], 11);
+        this.setButtonState(true, false);
+    },
+
+    hide() {
+        this.active = false;
+        this.layerGroup.clearLayers();
+        this.barGroup.clearLayers();
+        if (MapManager.map) {
+            MapManager.map.removeLayer(this.layerGroup);
+            MapManager.map.removeLayer(this.barGroup);
+        }
+        if (this.panel) this.panel.remove();
+        this.panel = null;
+        this.setButtonState(false, false);
+    },
+
+    showError(message) {
+        this.hide();
+        const panel = this.ensurePanel();
+        panel.innerHTML = `
+            <div class="school-age-panel-title">학령인구 지도</div>
+            <div class="school-age-panel-note">${MapManager.escapeHtml(message)}</div>
+        `;
+    },
+
+    ensurePane() {
+        if (!MapManager.map.getPane('schoolAgePane')) {
+            MapManager.map.createPane('schoolAgePane');
+            MapManager.map.getPane('schoolAgePane').style.zIndex = 360;
+        }
+    },
+
+    ensurePanel() {
+        if (this.panel) return this.panel;
+        this.panel = document.createElement('div');
+        this.panel.className = 'school-age-panel';
+        (document.querySelector('.container') || document.body).appendChild(this.panel);
+        this.panel.addEventListener('click', (event) => {
+            const action = event.target.closest('[data-school-age-action]')?.dataset.schoolAgeAction;
+            if (action === 'close') this.hide();
+            if (action === 'refresh') this.refresh();
+        });
+        return this.panel;
+    },
+
+    async refresh() {
+        if (!this.active || this.loading) return;
+        this.loading = true;
+        this.setButtonState(true, true);
+        try {
+            const res = await fetch('/api/school-age-population?refresh=1');
+            if (!res.ok) throw new Error('refresh failed');
+            this.show(await res.json());
+        } catch (err) {
+            this.showError('새로고침에 실패했습니다.');
+        } finally {
+            this.loading = false;
+            this.setButtonState(this.active, false);
+        }
+    },
+
+    renderPanel(data, min, max, syncedCount) {
+        const panel = this.ensurePanel();
+        const isLive = data?.source === 'kostat-live';
+        const status = isLive ? '통계청 동기화' : '통계청 연동 대기';
+        const statusClass = isLive ? 'is-live' : 'is-pending';
+        const year = MapManager.escapeHtml(data?.year || '최신');
+        const note = isLive
+            ? `동별 학령인구 ${this.formatNumber(min)}명 - ${this.formatNumber(max)}명`
+            : '서버 환경변수에 통계청 API 키를 넣으면 실시간 값으로 채워집니다.';
+
+        panel.innerHTML = `
+            <div class="school-age-panel-head">
+                <div>
+                    <div class="school-age-panel-title">학령인구 3D 지도</div>
+                    <div class="school-age-panel-sub">${year}년 · ${MapManager.escapeHtml(status)}</div>
+                </div>
+                <button type="button" class="school-age-close" data-school-age-action="close">×</button>
+            </div>
+            <div class="school-age-status ${statusClass}">${MapManager.escapeHtml(note)}</div>
+            <div class="school-age-scale">
+                <span>낮음</span><div></div><span>높음</span>
+            </div>
+            <div class="school-age-panel-meta">
+                동기화 행정동 ${this.formatNumber(syncedCount)}개
+                <button type="button" data-school-age-action="refresh">새로고침</button>
+            </div>
+        `;
+    },
+
+    addPopulationBar(latlng, props, value, max) {
+        const ratio = value && max ? Math.max(0.12, value / max) : 0.12;
+        const height = Math.round(18 + ratio * 54);
+        const name = MapManager.escapeHtml(props.adm_nm || '행정동');
+        const label = value ? this.formatNumber(value) : '-';
+        const icon = L.divIcon({
+            className: 'school-age-bar-icon',
+            html: `
+                <div class="school-age-bar-wrap" title="${name}">
+                    <div class="school-age-bar" style="height:${height}px"></div>
+                    <div class="school-age-bar-label">${label}</div>
+                </div>
+            `,
+            iconSize: [46, height + 24],
+            iconAnchor: [23, height + 20]
+        });
+        L.marker(latlng, { icon, interactive: false, zIndexOffset: 3000 }).addTo(this.barGroup);
+    },
+
+    getPolygonStyle(feature, min, max) {
+        const value = Number(feature.properties?.schoolAgePopulation);
+        const hasValue = Number.isFinite(value);
+        const ratio = hasValue && max > min ? (value - min) / (max - min) : 0;
+        const fillColor = hasValue ? this.getColor(ratio) : '#94a3b8';
+        return {
+            pane: 'schoolAgePane',
+            fillColor,
+            fillOpacity: hasValue ? 0.62 : 0.22,
+            color: '#ffffff',
+            weight: 1.3,
+            opacity: 0.95
+        };
+    },
+
+    getColor(ratio) {
+        if (ratio > 0.78) return '#0f766e';
+        if (ratio > 0.55) return '#14b8a6';
+        if (ratio > 0.32) return '#67e8f9';
+        return '#d9f99d';
+    },
+
+    setButtonState(active, loading) {
+        document.querySelectorAll('[data-action="toggle-school-age"]').forEach(btn => {
+            btn.classList.toggle('active', active);
+            btn.classList.toggle('loading', loading);
+            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    },
+
+    formatNumber(value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return '-';
+        return num.toLocaleString('ko-KR');
     }
 };

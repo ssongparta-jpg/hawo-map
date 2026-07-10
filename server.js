@@ -18,6 +18,12 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
 
 // 색상 설정 저장 파일 경로 설정
 const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
+const HWAO_GEOJSON_FILE = path.join(__dirname, 'data', 'hwao.geojson');
+const SCHOOL_AGE_FROM = process.env.SCHOOL_AGE_FROM || '6';
+const SCHOOL_AGE_TO = process.env.SCHOOL_AGE_TO || '17';
+const SGIS_AUTH_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json';
+const SGIS_POPULATION_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/stats/searchpopulation.json';
+let schoolAgeCache = { key: null, expires: 0, data: null };
 
 // [관리자 설정] .env 파일에 등록된 관리자 ID와 이메일 매핑
 const ADMINS = {};
@@ -141,6 +147,111 @@ function validateColorsPayload(colors) {
         return colors[group] && typeof colors[group] === 'object' &&
             keys.every(key => isValidHexColor(colors[group][key]));
     });
+}
+
+async function fetchJsonUrl(url) {
+    if (typeof fetch !== 'function') throw new Error('fetch is not available in this Node runtime');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`request failed: ${res.status}`);
+    return res.json();
+}
+
+async function fetchSgisAccessToken() {
+    const consumerKey = process.env.SGIS_CONSUMER_KEY;
+    const consumerSecret = process.env.SGIS_CONSUMER_SECRET;
+    if (!consumerKey || !consumerSecret) return null;
+
+    const url = new URL(SGIS_AUTH_URL);
+    url.searchParams.set('consumer_key', consumerKey);
+    url.searchParams.set('consumer_secret', consumerSecret);
+
+    const data = await fetchJsonUrl(url);
+    return data?.result?.accessToken || data?.result?.access_token || data?.accessToken || null;
+}
+
+function buildSchoolAgeRequestUrl(feature, accessToken, year) {
+    const props = feature.properties || {};
+    const template = process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE;
+    if (template) {
+        return template
+            .replaceAll('{accessToken}', encodeURIComponent(accessToken || ''))
+            .replaceAll('{year}', encodeURIComponent(year))
+            .replaceAll('{admCd}', encodeURIComponent(props.adm_cd || ''))
+            .replaceAll('{admCd2}', encodeURIComponent(props.adm_cd2 || ''))
+            .replaceAll('{sgg}', encodeURIComponent(props.sgg || ''))
+            .replaceAll('{ageFrom}', encodeURIComponent(SCHOOL_AGE_FROM))
+            .replaceAll('{ageTo}', encodeURIComponent(SCHOOL_AGE_TO));
+    }
+
+    const url = new URL(SGIS_POPULATION_URL);
+    url.searchParams.set('accessToken', accessToken);
+    url.searchParams.set('year', year);
+    url.searchParams.set('adm_cd', props.adm_cd || '');
+    url.searchParams.set('low_search', '0');
+    url.searchParams.set('gender', '0');
+    url.searchParams.set('age_from', SCHOOL_AGE_FROM);
+    url.searchParams.set('age_to', SCHOOL_AGE_TO);
+    return url.toString();
+}
+
+function extractPopulationValue(data) {
+    const keys = ['school_age_population', 'schoolAgePopulation', 'population', 'ppltn', 'tot_ppltn', 'tot_ppltn_cnt', 'value', 'dt'];
+    const toNumber = (value) => {
+        const num = Number(String(value ?? '').replace(/,/g, ''));
+        return Number.isFinite(num) ? num : null;
+    };
+
+    const readObject = (obj) => {
+        if (!obj || typeof obj !== 'object') return null;
+        for (const key of keys) {
+            const num = toNumber(obj[key]);
+            if (num !== null) return num;
+        }
+        return null;
+    };
+
+    if (Array.isArray(data)) {
+        const values = data.map(extractPopulationValue).filter(Number.isFinite);
+        return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+    }
+
+    const direct = readObject(data);
+    if (direct !== null) return direct;
+    if (Array.isArray(data?.result)) return extractPopulationValue(data.result);
+    if (data?.result && typeof data.result === 'object') return extractPopulationValue(data.result);
+    if (Array.isArray(data?.data)) return extractPopulationValue(data.data);
+    return null;
+}
+
+async function mapLimit(items, limit, iterator) {
+    const results = [];
+    let index = 0;
+    async function worker() {
+        while (index < items.length) {
+            const current = index++;
+            results[current] = await iterator(items[current], current);
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+    return results;
+}
+
+async function fetchLiveSchoolAgeValues(features, year) {
+    const accessToken = await fetchSgisAccessToken();
+    if (!accessToken && !process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE) return null;
+
+    const pairs = await mapLimit(features, 4, async (feature) => {
+        const url = buildSchoolAgeRequestUrl(feature, accessToken, year);
+        const data = await fetchJsonUrl(url);
+        const value = extractPopulationValue(data);
+        return [feature.properties.adm_cd2, value];
+    });
+
+    const valueMap = {};
+    pairs.forEach(([admCd2, value]) => {
+        if (Number.isFinite(value)) valueMap[admCd2] = value;
+    });
+    return Object.keys(valueMap).length ? valueMap : null;
 }
 
 // 1. 인증 코드 발송 요청
@@ -388,6 +499,61 @@ app.get('/api/my-favorites', isLoggedIn, (req, res) => {
     db.all("SELECT schoolName FROM favorites WHERE userId = ?", [req.session.userId], (err, rows) => {
         res.json({ favorites: rows ? rows.map(r => r.schoolName) : [] });
     });
+});
+
+app.get('/api/school-age-population', async (req, res) => {
+    const year = String(req.query.year || process.env.SGIS_STATS_YEAR || new Date().getFullYear() - 1);
+    const cacheKey = `school-age:${year}:${SCHOOL_AGE_FROM}-${SCHOOL_AGE_TO}`;
+    if (req.query.refresh !== '1' && schoolAgeCache.key === cacheKey && schoolAgeCache.expires > Date.now()) {
+        return res.json(schoolAgeCache.data);
+    }
+
+    try {
+        const geojson = JSON.parse(fs.readFileSync(HWAO_GEOJSON_FILE, 'utf8'));
+        const features = (geojson.features || []).filter(feature => {
+            const sgg = feature.properties?.sggnm || '';
+            return sgg.includes('화성시') || sgg.includes('오산시');
+        });
+
+        let source = 'kostat-pending';
+        let message = 'SGIS_CONSUMER_KEY/SGIS_CONSUMER_SECRET 또는 KOSTAT_SCHOOL_AGE_URL_TEMPLATE 설정이 필요합니다.';
+        let values = null;
+
+        try {
+            values = await fetchLiveSchoolAgeValues(features, year);
+            if (values) {
+                source = 'kostat-live';
+                message = '통계청 API에서 동기화되었습니다.';
+            }
+        } catch (err) {
+            message = '통계청 API 응답을 읽지 못했습니다. 환경변수와 API 권한을 확인하세요.';
+            console.warn('School-age population sync failed:', err.message);
+        }
+
+        const response = {
+            source,
+            year,
+            ageRange: { from: Number(SCHOOL_AGE_FROM), to: Number(SCHOOL_AGE_TO) },
+            message,
+            features: features.map(feature => ({
+                type: 'Feature',
+                properties: {
+                    ...feature.properties,
+                    schoolAgePopulation: values ? values[feature.properties.adm_cd2] ?? null : null
+                },
+                geometry: feature.geometry
+            }))
+        };
+
+        schoolAgeCache = {
+            key: cacheKey,
+            expires: Date.now() + 30 * 60 * 1000,
+            data: response
+        };
+        res.json(response);
+    } catch (err) {
+        res.status(500).json({ success: false, message: '학령인구 지도 데이터를 만들 수 없습니다.' });
+    }
 });
 
 // --- 관리자 전용 패널 API ---
