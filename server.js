@@ -7,12 +7,13 @@ const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs'); // 파일 시스템 모듈을 최상단으로 이동
+const crypto = require('crypto');
 
 const app = express();
 const db = new sqlite3.Database('./database.db');
 const SALT_ROUNDS = 10;
 const PORT = 3000;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'hwao-secret-key';
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
 
 // 색상 설정 저장 파일 경로 설정
@@ -30,10 +31,6 @@ if (process.env.ADMIN_EMAILS) {
 }
 
 app.use(bodyParser.json());
-app.use(express.static(__dirname, { extensions: ['html'] }));
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
-});
 app.use(session({
     secret: SESSION_SECRET,
     resave: false,
@@ -45,6 +42,30 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000
     } // 24시간
 }));
+if (!process.env.SESSION_SECRET) {
+    console.warn('SESSION_SECRET is not set. A temporary session secret is used for this server run.');
+}
+
+function hasAdminSession(req) {
+    const userId = req.session.userId;
+    return !!(userId && ADMINS[userId] && req.session.isAdminAuth);
+}
+
+app.get(['/admin', '/admin.html'], (req, res) => {
+    if (!hasAdminSession(req)) return res.redirect('/login');
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get(['/server/admin.js', '/server/admin.css'], (req, res) => {
+    if (!hasAdminSession(req)) return res.status(403).send('관리자 권한이 필요합니다.');
+    const fileName = path.basename(req.path);
+    res.sendFile(path.join(__dirname, 'server', fileName));
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+app.use(express.static(__dirname, { extensions: ['html'] }));
 
 // [이메일 전송 설정] Nodemailer
 const transporter = nodemailer.createTransport({

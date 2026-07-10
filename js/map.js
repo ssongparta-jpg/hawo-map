@@ -52,18 +52,16 @@ const MapManager = {
 
     getMarkerIcon(p, stackIndex = 0, count = 1) {
         let typeClass = 'is-spec';
-        let symbolChar = '◆';
         let symbolColor = this.safeCssColor(p.color, '#333');
         let stackClass = '';
 
         if (p.type.includes('교육') || p.name.includes('교육지원청')) {
-            symbolChar = '🏢';
             typeClass = 'is-edu'; 
         }
-        else if (p.name.includes('유치원')) { typeClass = 'is-kinder'; symbolChar = '∎'; }
-        else if (p.name.includes('초등학교')) { typeClass = 'is-elem'; symbolChar = '▲'; }
-        else if (p.name.includes('중학교')) { typeClass = 'is-mid'; symbolChar = '●'; }
-        else if (p.name.includes('고등학교')) { typeClass = 'is-high'; symbolChar = '★'; }
+        else if (p.name.includes('유치원')) { typeClass = 'is-kinder'; }
+        else if (p.name.includes('초등학교')) { typeClass = 'is-elem'; }
+        else if (p.name.includes('중학교')) { typeClass = 'is-mid'; }
+        else if (p.name.includes('고등학교')) { typeClass = 'is-high'; }
 
         if (count > 1) stackClass = `has-stack stack-pos-${stackIndex % 8}`;
         const safeName = this.escapeHtml(p.name);
@@ -75,7 +73,7 @@ const MapManager = {
         const html = `
             <div class="custom-combined-marker ${typeClass} ${stackClass}" style="--marker-color:${symbolColor};">
                 <div class="marker-label-box">${safeName}</div>
-                <div class="marker-symbol">${symbolChar}</div>
+                <div class="marker-symbol"></div>
                 ${stackBadge}
             </div>
         `;
@@ -107,6 +105,13 @@ const MapManager = {
         });
 
         this.map.on('popupopen', async (e) => {
+            const popupSource = e.popup?._source;
+            if (window.DistanceManager && DistanceManager.active && popupSource?.properties) {
+                popupSource.closePopup();
+                this.map.closePopup(e.popup);
+                return;
+            }
+
             const popupNode = e.popup.getElement();
             const textarea = popupNode.querySelector('textarea[data-school-name]');
             const saveBtn = popupNode.querySelector('.memo-save-btn');
@@ -173,11 +178,6 @@ const MapManager = {
 
         const mapContainer = this.map.getContainer();
         if (!mapContainer) return;
-        mapContainer.classList.forEach(cls => {
-            if (cls.startsWith('map-zoom-')) mapContainer.classList.remove(cls);
-        });
-        mapContainer.classList.add(`map-zoom-${zoom}`);
-        mapContainer.classList.toggle('compact-marker-stack', zoom <= 14);
         const labelZoom = MapConfig.isSharedMode ? 13 : 15;
         mapContainer.classList.toggle('view-labels-mode', zoom >= labelZoom);
     },
@@ -297,6 +297,8 @@ const MapManager = {
                 this.handleDistanceMarkerClick(marker, { originalEvent: event });
             };
 
+            L.DomEvent.on(icon, 'pointerdown', pickPoint, this);
+            L.DomEvent.on(icon, 'mousedown', pickPoint, this);
             L.DomEvent.on(icon, 'click', pickPoint, this);
             L.DomEvent.on(icon, 'touchend', pickPoint, this);
         };

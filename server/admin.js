@@ -23,10 +23,6 @@ const AdminApp = {
         return this.escapeHtml(value).replace(/`/g, '&#96;');
     },
 
-    escapeJsString(value) {
-        return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    },
-
     async init() {
         this.bindEvents();
         try {

@@ -222,7 +222,10 @@ const DistanceManager = {
         
         if (MapManager && MapManager.map) {
             MapManager.map.on('click', (e) => {
-                if (this.active && !this.isPaused) this.addPoint(e.latlng);
+                if (this.active && !this.isPaused) {
+                    MapManager.map.closePopup();
+                    this.addPoint(e.latlng);
+                }
             });
             MapManager.map.on('mousemove', (e) => {
                 if (this.active && !this.isPaused && this.points.length > 0) this.drawTempLine(e.latlng);

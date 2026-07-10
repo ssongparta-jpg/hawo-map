@@ -4,7 +4,7 @@
 
 /* 1. 기본 Leaflet 팝업 프레임 커스텀 */
 .custom-popup { z-index: 20000 !important; } 
-.custom-popup .leaflet-popup-content-wrapper { background: rgba(255, 255, 255, 0.96); border-radius: 14px; box-shadow: 0 18px 42px rgba(15,23,42,0.24); padding: 0; overflow: visible !important; border: 1px solid rgba(148,163,184,0.28); backdrop-filter: blur(16px); }
+.custom-popup .leaflet-popup-content-wrapper { background: rgba(255, 255, 255, 0.98); border-radius: 14px; box-shadow: 0 14px 32px rgba(15,23,42,0.22); padding: 0; overflow: visible !important; border: 1px solid rgba(148,163,184,0.28); }
 .custom-popup .leaflet-popup-close-button { z-index: 20100 !important; color: #999 !important; font-size: 18px !important; top: 10px !important; right: 10px !important; }
 .custom-popup .leaflet-popup-content { width: 310px !important; margin: 0; }
 
