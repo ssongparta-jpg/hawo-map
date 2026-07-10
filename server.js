@@ -25,6 +25,7 @@ const SCHOOL_AGE_TO = process.env.SCHOOL_AGE_TO || '21';
 const SGIS_AUTH_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json';
 const SGIS_POPULATION_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/stats/searchpopulation.json';
 let schoolAgeCache = { key: null, expires: 0, data: null };
+let lastSchoolAgeSyncError = null;
 
 // [관리자 설정] .env 파일에 등록된 관리자 ID와 이메일 매핑
 const ADMINS = {};
@@ -161,11 +162,28 @@ function validateColorsPayload(colors) {
     });
 }
 
-async function fetchJsonUrl(url) {
+function getSgisErrorMessage(data) {
+    const errCd = data?.errCd ?? data?.err_cd ?? data?.errorCode ?? data?.error_code;
+    if (errCd === undefined || errCd === null || String(errCd) === '0') return null;
+    const message = data?.errMsg || data?.err_msg || data?.errorMsg || data?.message || 'SGIS API 오류';
+    return `SGIS ${errCd}: ${message}`;
+}
+
+function getPublicErrorMessage(error) {
+    return String(error?.message || error || '알 수 없는 오류')
+        .replace(/accessToken=[^&\s]+/gi, 'accessToken=***')
+        .replace(/consumer_key=[^&\s]+/gi, 'consumer_key=***')
+        .replace(/consumer_secret=[^&\s]+/gi, 'consumer_secret=***');
+}
+
+async function fetchJsonUrl(url, label = 'request') {
     if (typeof fetch !== 'function') throw new Error('fetch is not available in this Node runtime');
     const res = await fetch(url);
     if (!res.ok) throw new Error(`request failed: ${res.status}`);
-    return res.json();
+    const data = await res.json();
+    const sgisError = getSgisErrorMessage(data);
+    if (sgisError) throw new Error(`${label} ${sgisError}`);
+    return data;
 }
 
 async function fetchSgisAccessToken() {
@@ -177,8 +195,10 @@ async function fetchSgisAccessToken() {
     url.searchParams.set('consumer_key', consumerKey);
     url.searchParams.set('consumer_secret', consumerSecret);
 
-    const data = await fetchJsonUrl(url);
-    return data?.result?.accessToken || data?.result?.access_token || data?.accessToken || null;
+    const data = await fetchJsonUrl(url, 'auth');
+    const token = data?.result?.accessToken || data?.result?.access_token || data?.accessToken || null;
+    if (!token) throw new Error('auth accessToken 없음');
+    return token;
 }
 
 function parseAgeParam(value, fallback) {
@@ -302,7 +322,7 @@ async function fetchLiveSchoolAgeValues(features, year, ageFrom, ageTo) {
 
     const pairs = await mapLimit(features, 4, async (feature) => {
         const url = buildSchoolAgeRequestUrl(feature, accessToken, year, ageFrom, ageTo);
-        const data = await fetchJsonUrl(url);
+        const data = await fetchJsonUrl(url, 'population');
         let value = extractAgePopulation(data, ageFrom, ageTo);
 
         if (process.env.KOSTAT_FETCH_BY_AGE === 'true' && !Object.keys(value.byAge).length) {
@@ -311,7 +331,7 @@ async function fetchLiveSchoolAgeValues(features, year, ageFrom, ageTo) {
                 3,
                 async (age) => {
                     const ageUrl = buildSchoolAgeRequestUrl(feature, accessToken, year, age, age);
-                    const ageData = await fetchJsonUrl(ageUrl);
+                    const ageData = await fetchJsonUrl(ageUrl, 'population-by-age');
                     return [age, extractPopulationValue(ageData)];
                 }
             );
@@ -581,7 +601,7 @@ app.get('/api/my-favorites', isLoggedIn, (req, res) => {
 });
 
 app.get('/api/school-age-population', async (req, res) => {
-    const year = String(req.query.year || process.env.SGIS_STATS_YEAR || new Date().getFullYear() - 1);
+    const year = String(req.query.year || process.env.SGIS_STATS_YEAR || new Date().getFullYear() - 2);
     const ageFrom = parseAgeParam(req.query.ageFrom, Number(SCHOOL_AGE_FROM));
     const ageTo = parseAgeParam(req.query.ageTo, Number(SCHOOL_AGE_TO));
     const minAge = Math.min(ageFrom, ageTo);
@@ -601,6 +621,7 @@ app.get('/api/school-age-population', async (req, res) => {
         let source = 'kostat-pending';
         let message = 'SGIS_CONSUMER_KEY/SGIS_CONSUMER_SECRET 또는 KOSTAT_SCHOOL_AGE_URL_TEMPLATE 설정이 필요합니다.';
         let values = null;
+        lastSchoolAgeSyncError = null;
 
         try {
             values = await fetchLiveSchoolAgeValues(features, year, minAge, maxAge);
@@ -609,8 +630,9 @@ app.get('/api/school-age-population', async (req, res) => {
                 message = '통계청 API에서 동기화되었습니다.';
             }
         } catch (err) {
-            message = '통계청 API 응답을 읽지 못했습니다. 환경변수와 API 권한을 확인하세요.';
-            console.warn('School-age population sync failed:', err.message);
+            lastSchoolAgeSyncError = getPublicErrorMessage(err);
+            message = `통계청 API 응답을 읽지 못했습니다: ${lastSchoolAgeSyncError}`;
+            console.warn('School-age population sync failed:', lastSchoolAgeSyncError);
         }
 
         const response = {
@@ -618,6 +640,12 @@ app.get('/api/school-age-population', async (req, res) => {
             year,
             ageRange: { from: minAge, to: maxAge },
             message,
+            diagnostics: {
+                hasConsumerKey: !!process.env.SGIS_CONSUMER_KEY,
+                hasConsumerSecret: !!process.env.SGIS_CONSUMER_SECRET,
+                hasUrlTemplate: !!process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE,
+                lastError: lastSchoolAgeSyncError
+            },
             features: features.map(feature => ({
                 type: 'Feature',
                 properties: {
