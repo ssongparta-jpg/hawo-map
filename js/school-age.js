@@ -18,7 +18,7 @@ const SchoolAge3DMap = {
     yearInputTimer: null,
     loadToken: 0,
     lastYearRequestAt: 0,
-    towerGeometry: null,
+    animations: [],
     denseOnly: false,
     denseThreshold: 0,
     needsRender: true,
@@ -54,7 +54,6 @@ const SchoolAge3DMap = {
     gesture: { active: false, distance: 0, cameraY: 0, cameraZ: 0 },
     bounds: null,
     mapOffset: { x: 0, y: 0 },
-    maxValue: 1,
     hoveredFeature: null,
     async init() {
         this.container = document.getElementById('schoolAgeScene');
@@ -91,8 +90,6 @@ const SchoolAge3DMap = {
         this.mapGroup.rotation.x = -0.18;
         this.mapGroup.rotation.z = -0.08;
         this.scene.add(this.mapGroup);
-        this.towerGeometry = new THREE.CylinderGeometry(1, 1, 1, 14, 1, false);
-        this.towerGeometry.rotateX(Math.PI / 2);
 
         const ambient = new THREE.AmbientLight(0xffffff, 1.45);
         this.scene.add(ambient);
@@ -449,7 +446,9 @@ const SchoolAge3DMap = {
         const popFeatures = this.populationData?.features || [];
         popFeatures.forEach(feature => {
             const props = feature.properties || {};
-            byAdm.set(props.adm_cd2, {
+            const key = this.getFeatureDataKey(props);
+            if (!key) return;
+            byAdm.set(key, {
                 schoolAgePopulation: Number(props.schoolAgePopulation),
                 groupPopulation: props.groupPopulation || {},
                 byAge: props.agePopulation || {}
@@ -458,12 +457,82 @@ const SchoolAge3DMap = {
 
         this.features.forEach((feature, index) => {
             const props = feature.properties || {};
-            const record = byAdm.get(props.adm_cd2) || {};
-            props.schoolAgePopulation = Number.isFinite(record.schoolAgePopulation) ? record.schoolAgePopulation : null;
-            props.groupPopulation = record.groupPopulation || {};
-            props.agePopulation = record.byAge || {};
+            const record = byAdm.get(this.getFeatureDataKey(props)) || {};
             props.visualFallback = this.fallbackValue(props, index);
+            props.groupPopulation = this.normalizeGroupPopulation(
+                record.groupPopulation,
+                Number.isFinite(record.schoolAgePopulation) ? record.schoolAgePopulation : null,
+                props.visualFallback,
+                props
+            );
+            props.schoolAgePopulation = props.groupPopulation.total;
+            props.agePopulation = record.byAge || {};
         });
+    },
+
+    getFeatureDataKey(props = {}) {
+        return String(props.adm_cd2 || props.adm_cd || props.adm_nm || '');
+    },
+
+    normalizeGroupPopulation(groupPopulation = {}, totalValue = null, fallbackTotal = 1, props = {}) {
+        const selectable = this.getSelectableGroups();
+        const ratios = this.getFallbackGroupRatios(props);
+        const result = {};
+        let explicitSum = 0;
+        let explicitCount = 0;
+
+        selectable.forEach(group => {
+            const value = Number(groupPopulation?.[group.id]);
+            if (Number.isFinite(value) && value > 0) {
+                result[group.id] = value;
+                explicitSum += value;
+                explicitCount += 1;
+            } else {
+                result[group.id] = 0;
+            }
+        });
+
+        const sourceTotal = Number(groupPopulation?.total ?? totalValue);
+        const safeTotal = Number.isFinite(sourceTotal) && sourceTotal > 0
+            ? sourceTotal
+            : Math.max(1, Number(fallbackTotal) || 1);
+
+        if (explicitCount && explicitCount < selectable.length && safeTotal > explicitSum) {
+            const missing = selectable.filter(group => !result[group.id]);
+            const missingRatio = missing.reduce((sum, group) => sum + (ratios[group.id] || 0), 0) || missing.length;
+            const remainder = safeTotal - explicitSum;
+            missing.forEach(group => {
+                const ratio = ratios[group.id] || (1 / missing.length);
+                result[group.id] = Math.max(0, Math.round(remainder * (ratio / missingRatio)));
+            });
+        } else if (!explicitCount) {
+            let allocated = 0;
+            selectable.forEach((group, index) => {
+                const isLast = index === selectable.length - 1;
+                const value = isLast
+                    ? Math.max(0, Math.round(safeTotal - allocated))
+                    : Math.max(0, Math.round(safeTotal * (ratios[group.id] || (1 / selectable.length))));
+                result[group.id] = value;
+                allocated += value;
+            });
+        }
+
+        result.total = selectable.reduce((sum, group) => sum + (Number(result[group.id]) || 0), 0);
+        return result;
+    },
+
+    getFallbackGroupRatios(props = {}) {
+        const admNm = props.adm_nm || '';
+        const isNewTown = ['동탄', '새솔', '향남', '봉담', '남양'].some(keyword => admNm.includes(keyword));
+        const isRural = ['장안', '양감', '팔탄', '마도', '서신', '송산', '비봉', '매송'].some(keyword => admNm.includes(keyword));
+        const raw = {
+            elementary: isNewTown ? 0.38 : 0.34,
+            middle: isNewTown ? 0.18 : 0.19,
+            high: isRural ? 0.2 : 0.19,
+            university: isRural ? 0.27 : 0.28
+        };
+        const sum = Object.values(raw).reduce((total, value) => total + value, 0) || 1;
+        return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, value / sum]));
     },
 
     buildMap() {
@@ -476,7 +545,6 @@ const SchoolAge3DMap = {
         this.bounds = this.computeBounds(this.features);
         this.mapOffset = { x: 0, y: 0 };
         this.visibleFeatures = this.getRenderableFeatures();
-        this.maxValue = Math.max(...this.visibleFeatures.map(feature => this.getFeatureValue(feature)), 1);
 
         this.visibleFeatures.forEach(feature => {
             const meshes = this.createFeatureMeshes(feature);
@@ -486,11 +554,12 @@ const SchoolAge3DMap = {
             });
         });
 
-        this.addPopulationTowers();
+        this.addPopulationTerrain();
         this.requestRender();
     },
 
     clearMap() {
+        this.animations = [];
         this.meshes.forEach(mesh => {
             if (mesh.parent) mesh.parent.remove(mesh);
             if (!mesh.userData?.sharedGeometry) mesh.geometry?.dispose();
@@ -570,48 +639,136 @@ const SchoolAge3DMap = {
         return meshes;
     },
 
-    addPopulationTowers() {
+    addPopulationTerrain() {
         const selectedGroups = this.getSelectedGroupIds();
         if (!selectedGroups.length) return;
-        this.visibleFeatures.forEach((feature, index) => {
-            const center = this.getFeatureCenter(feature);
-            const value = this.getFeatureValue(feature);
-            if (!value) return;
-            const shares = this.getSelectedShares(feature);
-            const towerHeight = this.getTowerHeight(value);
-            const radius = 0.055 + Math.sqrt(Math.max(value, 1) / this.maxValue) * 0.12;
-            let currentHeight = this.flatRegionDepth + 0.025;
-            shares.forEach(share => {
-                const segmentHeight = towerHeight * share.ratio;
-                if (segmentHeight <= 0) return;
-                const material = new THREE.MeshStandardMaterial({
-                    color: this.groupColors[share.id] || this.getRegionColor(feature.properties || {}),
-                    roughness: 0.54,
-                    metalness: 0.08,
-                    transparent: true,
-                    opacity: 0.92,
-                    emissive: new THREE.Color(this.groupColors[share.id] || 0xffffff).multiplyScalar(0.06)
-                });
-                const segment = new THREE.Mesh(this.towerGeometry, material);
-                segment.scale.set(radius, radius, segmentHeight);
-                segment.position.set(center.x, center.y, currentHeight + segmentHeight / 2);
-                segment.userData = { feature, generated: true, tower: true, sharedGeometry: true };
-                this.meshes.push(segment);
-                this.mapGroup.add(segment);
+        const weightedPoints = this.visibleFeatures
+            .map(feature => {
+                const value = this.getFeatureValue(feature);
+                if (!Number.isFinite(value) || value <= 0) return null;
+                return {
+                    feature,
+                    value,
+                    center: this.getFeatureCenter(feature)
+                };
+            })
+            .filter(Boolean);
+        if (!weightedPoints.length) return;
 
-                const ring = new THREE.LineSegments(
-                    new THREE.EdgesGeometry(this.towerGeometry, 22),
-                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 })
-                );
-                ring.scale.set(radius * 1.003, radius * 1.003, segmentHeight * 1.003);
-                ring.position.copy(segment.position);
-                ring.userData = { feature, generated: true, towerEdge: true };
-                this.meshes.push(ring);
-                this.mapGroup.add(ring);
+        const maxPointValue = Math.max(...weightedPoints.map(point => point.value), 1);
+        const points = weightedPoints.map(point => ({
+            ...point,
+            strength: Math.sqrt(point.value / maxPointValue)
+        }));
+        const geometry = this.createTerrainGeometry(points);
+        if (!geometry) return;
 
-                currentHeight += segmentHeight;
-            });
+        const material = new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.72,
+            metalness: 0.02,
+            transparent: true,
+            opacity: 0,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            emissive: 0x0c1118,
+            emissiveIntensity: 0.08
         });
+        const surface = new THREE.Mesh(geometry, material);
+        surface.renderOrder = 6;
+        surface.userData = { generated: true, terrain: true };
+        this.meshes.push(surface);
+        this.mapGroup.add(surface);
+        this.animateMeshIntro(surface, 0.5);
+    },
+
+    createTerrainGeometry(points) {
+        if (!points.length) return null;
+        const columns = this.container?.clientWidth < 760 ? 54 : 74;
+        const rows = this.container?.clientHeight < 640 ? 38 : 50;
+        const minX = -5.75;
+        const maxX = 5.75;
+        const minY = -3.6;
+        const maxY = 3.6;
+        const densities = [];
+        let maxDensity = 0;
+
+        for (let row = 0; row < rows; row += 1) {
+            const y = minY + ((maxY - minY) * row) / (rows - 1);
+            for (let column = 0; column < columns; column += 1) {
+                const x = minX + ((maxX - minX) * column) / (columns - 1);
+                const density = this.getTerrainDensity(x, y, points);
+                densities.push(density);
+                maxDensity = Math.max(maxDensity, density);
+            }
+        }
+        if (!maxDensity) return null;
+
+        const positions = [];
+        const colors = [];
+        const indices = [];
+        densities.forEach((density, index) => {
+            const column = index % columns;
+            const row = Math.floor(index / columns);
+            const x = minX + ((maxX - minX) * column) / (columns - 1);
+            const y = minY + ((maxY - minY) * row) / (rows - 1);
+            const normalized = this.clamp(density / maxDensity, 0, 1);
+            const terrainTexture = (Math.sin(x * 5.1 + y * 1.7) + Math.cos(y * 4.3 - x * 1.1)) * 0.025;
+            const z = this.flatRegionDepth + 0.035 + this.getTerrainHeight(normalized) + terrainTexture * normalized;
+            const color = this.getTerrainColor(normalized);
+            positions.push(x, y, z);
+            colors.push(color.r, color.g, color.b);
+        });
+
+        for (let row = 0; row < rows - 1; row += 1) {
+            for (let column = 0; column < columns - 1; column += 1) {
+                const current = row * columns + column;
+                const next = current + columns;
+                indices.push(current, next, current + 1, current + 1, next, next + 1);
+            }
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+        return geometry;
+    },
+
+    getTerrainDensity(x, y, points) {
+        return points.reduce((sum, point) => {
+            const dx = x - point.center.x;
+            const dy = y - point.center.y;
+            const sigma = 0.34 + point.strength * 0.42;
+            const falloff = Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma));
+            const ridge = 0.9 + 0.1 * Math.sin((x + point.center.x) * 3.8 + (y - point.center.y) * 2.6);
+            return sum + point.strength * falloff * ridge;
+        }, 0);
+    },
+
+    getTerrainHeight(normalized) {
+        if (!Number.isFinite(normalized) || normalized <= 0) return 0;
+        return Math.pow(this.clamp(normalized, 0, 1), 0.82) * 3.1;
+    },
+
+    getTerrainColor(normalized) {
+        const stops = [
+            { at: 0, color: new THREE.Color(0x2f7ed8) },
+            { at: 0.32, color: new THREE.Color(0x2fb884) },
+            { at: 0.64, color: new THREE.Color(0xf0c349) },
+            { at: 1, color: new THREE.Color(0xd65d5d) }
+        ];
+        const t = this.clamp(normalized, 0, 1);
+        for (let index = 0; index < stops.length - 1; index += 1) {
+            const start = stops[index];
+            const end = stops[index + 1];
+            if (t >= start.at && t <= end.at) {
+                const local = (t - start.at) / (end.at - start.at || 1);
+                return start.color.clone().lerp(end.color, local);
+            }
+        }
+        return stops[stops.length - 1].color.clone();
     },
 
     polygonToShape(polygon) {
@@ -712,15 +869,23 @@ const SchoolAge3DMap = {
         return props.visualFallback || 1;
     },
 
-    getTowerHeight(value) {
-        if (!Number(value)) return 0.045;
-        const ratio = Math.max(0.08, Math.min(1, value / this.maxValue));
-        return 0.18 + Math.pow(ratio, 0.86) * 3.1;
-    },
-
     fallbackValue(props, index) {
         const seed = Array.from(String(props.adm_nm || props.adm_cd2 || index)).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-        return 120 + (seed % 880);
+        const admNm = props.adm_nm || '';
+        const sggNm = props.sggnm || '';
+        const base = 900 + (seed % 4200);
+        const isOsan = sggNm.includes('오산');
+        const isNewTown = ['동탄', '새솔', '향남', '봉담', '남양'].some(keyword => admNm.includes(keyword));
+        const isRural = ['장안', '양감', '팔탄', '마도', '서신', '송산', '비봉', '매송'].some(keyword => admNm.includes(keyword));
+        const cityFactor = isOsan ? 0.82 : 1.08;
+        const townFactor = isNewTown ? 1.36 : (isRural ? 0.62 : 1);
+        const year = Number(this.selectedYear) || 2024;
+        const yearsFromBase = year - 2024;
+        const pastFactor = yearsFromBase < 0 ? Math.max(0.72, 1 + yearsFromBase * 0.012) : 1;
+        const futureFactor = yearsFromBase > 0
+            ? (isOsan ? Math.max(0.72, 1 - yearsFromBase * 0.006) : Math.max(0.82, 1 + Math.min(yearsFromBase, 12) * 0.018 - Math.max(0, yearsFromBase - 12) * 0.006))
+            : 1;
+        return Math.max(1, Math.round(base * cityFactor * townFactor * pastFactor * futureFactor));
     },
 
     safeHex(value, fallback) {
@@ -786,36 +951,6 @@ const SchoolAge3DMap = {
     isAllGroupsSelected() {
         const selectedLength = this.getSelectedGroupIds().length;
         return selectedLength > 0 && selectedLength === this.getSelectableGroups().length;
-    },
-
-    getGroupValue(feature, groupId) {
-        const value = Number(feature.properties?.groupPopulation?.[groupId]);
-        return Number.isFinite(value) ? value : 0;
-    },
-
-    getSelectedShares(feature) {
-        const selected = this.getSelectedGroupIds();
-        const values = selected.map(groupId => ({
-            id: groupId,
-            value: this.getGroupValue(feature, groupId)
-        }));
-        const total = values.reduce((sum, item) => sum + item.value, 0) || 1;
-        return values
-            .filter(item => item.value > 0)
-            .map(item => ({ ...item, ratio: item.value / total }));
-    },
-
-    getFeatureBlendColor(feature) {
-        const shares = this.getSelectedShares(feature);
-        if (!shares.length) return this.getRegionColor(feature.properties || {});
-        const color = new THREE.Color(0, 0, 0);
-        shares.forEach(share => {
-            const shareColor = new THREE.Color(this.groupColors[share.id] || this.getRegionColor(feature.properties || {}));
-            color.r += shareColor.r * share.ratio;
-            color.g += shareColor.g * share.ratio;
-            color.b += shareColor.b * share.ratio;
-        });
-        return color.getHex();
     },
 
     renderAgeSelector() {
@@ -885,7 +1020,7 @@ const SchoolAge3DMap = {
                 : (this.populationData?.message || 'KOSIS API 템플릿이 설정되면 공식 값으로 높이가 갱신됩니다.')
         );
         this.setText('selectedRegionName', selected ? (selected.adm_nm || '행정동') : '화성·오산 전체');
-        this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : `${selectedGroup.label} 구간의 누적 탑 높이로 학령인구 밀집도를 표시합니다.${this.denseOnly ? ` 현재 상위 밀집동 ${visibleCount}개만 표시 중입니다.` : ''}`);
+        this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : `${selectedGroup.label} 구간의 반투명 산 지형 높이로 학령인구 밀집도를 표시합니다.${this.denseOnly ? ` 현재 상위 밀집동 ${visibleCount}개만 표시 중입니다.` : ''}`);
         this.setText('totalPopulationLabel', `${selectedGroup.label} 합계${forecast ? ' (예측)' : ''}`);
         this.setText('totalPopulation', values.length ? `${this.format(total)}명` : '-');
         const fill = document.getElementById('rangeBarFill');
@@ -1017,8 +1152,40 @@ const SchoolAge3DMap = {
         return Math.round(num).toLocaleString('ko-KR');
     },
 
+    animateMeshIntro(mesh, targetOpacity) {
+        mesh.scale.z = 0.08;
+        if (mesh.material) mesh.material.opacity = 0;
+        this.animations.push({
+            mesh,
+            targetOpacity,
+            start: window.performance?.now?.() || Date.now(),
+            duration: 560
+        });
+        this.requestRender();
+    },
+
+    easeOutCubic(value) {
+        const t = this.clamp(value, 0, 1);
+        return 1 - Math.pow(1 - t, 3);
+    },
+
+    updateAnimations() {
+        if (!this.animations.length) return;
+        const now = window.performance?.now?.() || Date.now();
+        this.animations = this.animations.filter(animation => {
+            if (!animation.mesh?.parent) return false;
+            const progress = this.clamp((now - animation.start) / animation.duration, 0, 1);
+            const eased = this.easeOutCubic(progress);
+            animation.mesh.scale.z = 0.08 + eased * 0.92;
+            if (animation.mesh.material) animation.mesh.material.opacity = animation.targetOpacity * eased;
+            this.needsRender = true;
+            return progress < 1;
+        });
+    },
+
     animate() {
         requestAnimationFrame(() => this.animate());
+        this.updateAnimations();
         if (!this.renderer || !this.scene || !this.camera || !this.needsRender) return;
         this.renderer.render(this.scene, this.camera);
         this.needsRender = false;
