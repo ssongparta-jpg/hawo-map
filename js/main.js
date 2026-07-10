@@ -1,5 +1,6 @@
 const App = {
     selectedLegendTypes: new Set(),
+    legendTypeColors: new Map(),
 
     async init() {
         console.log("앱 초기화 시작...");
@@ -19,6 +20,7 @@ const App = {
             ]);
             
             if (hRows) HelpManager.init(hRows);
+            this.buildLegendTypeColors(lRows);
             if (lRows) this.renderLegend(lRows);
             
             const groupedSchools = {};
@@ -37,8 +39,10 @@ const App = {
                 const lat = parseFloat(c[1]?.v || 0);
                 const lng = parseFloat(c[2]?.v || 0);
                 
+                const type = c[3]?.v || '';
+                const rowColor = c[11]?.v || '#333';
                 const p = {
-                    type: c[3]?.v || '', 
+                    type,
                     name: c[4]?.v || '이름 없음', 
                     adrs: c[5]?.v || '',
                     establish: (c[15]?.v || '').trim(),
@@ -48,7 +52,7 @@ const App = {
                     stdnt_per_tchr: parseNum(c[9]?.v),
                     class_cnt: parseNum(c[14]?.v),
                     shape: c[10]?.v || '●', 
-                    color: c[11]?.v || '#333', 
+                    color: this.resolveSchoolColor(type, rowColor),
                     url: c[13]?.v,
                     principal: getCellValue(c[16]),                 
                     vice_principal: getCellValue(c[17]),            
@@ -100,6 +104,33 @@ const App = {
         const res = await fetch(`https://docs.google.com/spreadsheets/d/${MapConfig.SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`);
         const txt = await res.text();
         return JSON.parse(txt.substring(47).slice(0, -2)).table.rows;
+    },
+
+    normalizeType(type) {
+        return String(type || '').replace(/\s+/g, '').trim();
+    },
+
+    buildLegendTypeColors(rows) {
+        this.legendTypeColors.clear();
+        if (!Array.isArray(rows)) return;
+        rows.forEach(row => {
+            const type = row.c?.[1]?.v;
+            if (!type || type === '공유학교') return;
+            const color = MapManager.safeCssColor(row.c?.[3]?.v || '', '');
+            if (color) this.legendTypeColors.set(this.normalizeType(type), color);
+        });
+    },
+
+    resolveSchoolColor(type, rowColor) {
+        const normalized = this.normalizeType(type);
+        if (this.legendTypeColors.has(normalized)) return this.legendTypeColors.get(normalized);
+
+        const matched = [...this.legendTypeColors.entries()].find(([legendType]) => {
+            return normalized.includes(legendType) || legendType.includes(normalized);
+        });
+        if (matched) return matched[1];
+
+        return MapManager.safeCssColor(rowColor, '#333');
     },
 
     renderLegend(rows) {

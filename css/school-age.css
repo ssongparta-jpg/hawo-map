@@ -1,11 +1,14 @@
 :root {
-    --page-bg: #eef2f7;
-    --ink: #111827;
-    --muted: #64748b;
-    --line: rgba(148, 163, 184, 0.35);
-    --blue: #2563eb;
-    --green: #10b981;
-    --panel: rgba(255, 255, 255, 0.88);
+    --bg: #111317;
+    --panel: rgba(22, 24, 29, 0.82);
+    --panel-solid: #181b21;
+    --line: rgba(255, 255, 255, 0.12);
+    --text: #f8fafc;
+    --muted: #9aa4b2;
+    --blue: #2f8edb;
+    --gold: #d89a2b;
+    --green: #5c9d62;
+    --rose: #c04a7a;
 }
 
 * { box-sizing: border-box; }
@@ -13,17 +16,21 @@
 body {
     margin: 0;
     min-height: 100vh;
+    overflow: hidden;
     font-family: 'Noto Sans KR', system-ui, sans-serif;
-    color: var(--ink);
+    color: var(--text);
     background:
-        radial-gradient(circle at 24% 18%, rgba(37, 99, 235, 0.16), transparent 32%),
-        radial-gradient(circle at 82% 78%, rgba(16, 185, 129, 0.16), transparent 30%),
-        linear-gradient(135deg, #f8fafc 0%, var(--page-bg) 48%, #e5e7eb 100%);
+        radial-gradient(circle at 24% 18%, rgba(47, 142, 219, 0.2), transparent 34%),
+        radial-gradient(circle at 82% 80%, rgba(192, 74, 122, 0.16), transparent 28%),
+        linear-gradient(135deg, #15171c 0%, #24201d 48%, #111317 100%);
 }
 
 .school-age-shell {
     min-height: 100vh;
     padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
 .school-age-header {
@@ -32,20 +39,18 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 18px;
-    max-width: 1180px;
-    margin: 0 auto 18px;
     padding: 0 16px;
     border: 1px solid var(--line);
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.82);
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    background: rgba(18, 20, 25, 0.76);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
 }
 
 .school-age-brand {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    color: var(--ink);
+    color: var(--text);
     text-decoration: none;
     font-size: 18px;
     font-weight: 900;
@@ -55,6 +60,7 @@ body {
     width: 34px;
     height: 34px;
     object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
 }
 
 .school-age-nav {
@@ -64,66 +70,70 @@ body {
 }
 
 .school-age-nav a,
-.globe-action {
-    border: 1px solid rgba(148, 163, 184, 0.42);
+.view-mode-btn {
+    border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 999px;
-    background: #ffffff;
-    color: #334155;
+    background: rgba(255, 255, 255, 0.08);
+    color: #dbe4f0;
     text-decoration: none;
     padding: 8px 12px;
     font-size: 13px;
     font-weight: 850;
     cursor: pointer;
-    transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .school-age-nav a:hover,
-.globe-action:hover {
+.view-mode-btn:hover,
+.view-mode-btn.active {
     transform: translateY(-1px);
-    border-color: rgba(37, 99, 235, 0.55);
-    color: var(--blue);
+    border-color: rgba(96, 165, 250, 0.68);
+    background: rgba(96, 165, 250, 0.18);
 }
 
 .school-age-main {
-    max-width: 1180px;
-    margin: 0 auto;
+    flex: 1;
+    min-height: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 330px;
-    gap: 18px;
-    align-items: stretch;
+    gap: 14px;
 }
 
-.globe-stage,
-.school-age-panel {
+.map-stage {
+    position: relative;
+    min-height: 0;
     border: 1px solid var(--line);
     border-radius: 22px;
-    background: var(--panel);
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.11);
-}
-
-.globe-stage {
-    min-height: calc(100vh - 112px);
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
+    background: linear-gradient(160deg, rgba(33, 36, 43, 0.92), rgba(15, 17, 22, 0.96));
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
 }
 
-.globe-topline {
+.stage-topline {
+    position: absolute;
+    left: 22px;
+    top: 20px;
+    right: 22px;
+    z-index: 4;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
-    position: relative;
-    z-index: 2;
+    gap: 14px;
+    pointer-events: none;
+}
+
+.stage-topline > *,
+.age-strip,
+.hover-card {
+    pointer-events: auto;
 }
 
 .eyebrow {
     margin: 0 0 6px;
-    color: var(--blue);
+    color: #93c5fd;
     font-size: 12px;
     font-weight: 900;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
@@ -134,38 +144,102 @@ h1 {
     letter-spacing: 0;
 }
 
-.globe-canvas-wrap {
-    position: relative;
-    flex: 1;
-    min-height: 460px;
-    display: grid;
-    place-items: center;
+.stage-actions {
+    display: flex;
+    gap: 8px;
 }
 
-#schoolAgeGlobe {
-    width: min(72vw, 680px);
-    height: min(72vw, 680px);
-    max-height: calc(100vh - 210px);
-    display: block;
-}
-
-.globe-location-pill {
+.map-scene {
     position: absolute;
-    left: 50%;
-    bottom: 26px;
-    transform: translateX(-50%);
-    padding: 9px 14px;
+    inset: 0;
+}
+
+.map-scene canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.age-strip {
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    bottom: 22px;
+    z-index: 4;
+    display: flex;
+    gap: 6px;
+    padding: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
-    background: rgba(17, 24, 39, 0.86);
-    color: #ffffff;
-    font-size: 13px;
+    background: rgba(12, 14, 18, 0.62);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.age-strip::-webkit-scrollbar { display: none; }
+
+.age-chip {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 10px;
+    min-width: 42px;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 12px;
     font-weight: 900;
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.22);
+    cursor: pointer;
+}
+
+.age-chip.active {
+    color: #08111f;
+    background: #f8fafc;
+}
+
+.scene-hint {
+    position: absolute;
+    right: 22px;
+    bottom: 82px;
+    z-index: 4;
+    color: rgba(248, 250, 252, 0.76);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.hover-card {
+    position: absolute;
+    z-index: 5;
+    min-width: 170px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: rgba(15, 17, 22, 0.86);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.28);
+    transform: translate(14px, 14px);
+}
+
+.hover-card span {
+    display: block;
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.hover-card strong {
+    display: block;
+    margin-top: 3px;
+    font-size: 20px;
+    line-height: 1;
 }
 
 .school-age-panel {
-    min-height: calc(100vh - 112px);
+    min-height: 0;
     padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--panel);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+    overflow: auto;
 }
 
 .panel-section + .panel-section {
@@ -191,7 +265,7 @@ h1 {
 
 .school-age-panel p {
     margin: 0;
-    color: #475569;
+    color: #c1c8d4;
     font-size: 13.5px;
     font-weight: 650;
     line-height: 1.55;
@@ -207,8 +281,8 @@ h1 {
 .panel-grid div {
     padding: 14px;
     border-radius: 14px;
-    background: #f8fafc;
-    border: 1px solid rgba(226, 232, 240, 0.9);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.11);
 }
 
 .panel-grid strong {
@@ -217,29 +291,39 @@ h1 {
     line-height: 1;
 }
 
-.connection-list {
-    margin: 0;
-    padding-left: 18px;
-    color: #334155;
-    font-size: 13.5px;
-    font-weight: 750;
-    line-height: 1.8;
+.total-population {
+    font-size: 34px;
+    line-height: 1;
+    font-weight: 950;
 }
 
-@media (max-width: 900px) {
+.range-bar {
+    height: 9px;
+    margin-top: 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.range-bar span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--blue), var(--gold), var(--green), var(--rose));
+    transition: width 0.24s ease;
+}
+
+@media (max-width: 980px) {
+    body { overflow: auto; }
     .school-age-main {
         grid-template-columns: 1fr;
     }
-    .globe-stage,
+    .map-stage {
+        min-height: 620px;
+    }
     .school-age-panel {
         min-height: auto;
-    }
-    .globe-canvas-wrap {
-        min-height: 360px;
-    }
-    #schoolAgeGlobe {
-        width: min(86vw, 560px);
-        height: min(86vw, 560px);
     }
 }
 
@@ -249,7 +333,6 @@ h1 {
     }
     .school-age-header {
         height: auto;
-        min-height: 58px;
         align-items: flex-start;
         flex-direction: column;
         padding: 12px;
@@ -261,18 +344,26 @@ h1 {
         flex: 1;
         text-align: center;
     }
-    .globe-stage,
-    .school-age-panel {
+    .map-stage {
+        min-height: 560px;
         border-radius: 18px;
-        padding: 16px;
     }
-    .globe-topline {
+    .stage-topline {
+        left: 14px;
+        right: 14px;
+        top: 14px;
         flex-direction: column;
     }
     h1 {
         font-size: 23px;
     }
-    .globe-location-pill {
-        bottom: 10px;
+    .age-strip {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        border-radius: 18px;
+    }
+    .scene-hint {
+        display: none;
     }
 }

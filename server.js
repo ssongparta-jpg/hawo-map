@@ -21,7 +21,7 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
 const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
 const HWAO_GEOJSON_FILE = path.join(__dirname, 'data', 'hwao.geojson');
 const SCHOOL_AGE_FROM = process.env.SCHOOL_AGE_FROM || '6';
-const SCHOOL_AGE_TO = process.env.SCHOOL_AGE_TO || '17';
+const SCHOOL_AGE_TO = process.env.SCHOOL_AGE_TO || '21';
 const SGIS_AUTH_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/auth/authentication.json';
 const SGIS_POPULATION_URL = 'https://sgisapi.kostat.go.kr/OpenAPI3/stats/searchpopulation.json';
 let schoolAgeCache = { key: null, expires: 0, data: null };
@@ -181,7 +181,13 @@ async function fetchSgisAccessToken() {
     return data?.result?.accessToken || data?.result?.access_token || data?.accessToken || null;
 }
 
-function buildSchoolAgeRequestUrl(feature, accessToken, year) {
+function parseAgeParam(value, fallback) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 120) return fallback;
+    return parsed;
+}
+
+function buildSchoolAgeRequestUrl(feature, accessToken, year, ageFrom, ageTo) {
     const props = feature.properties || {};
     const template = process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE;
     if (template) {
@@ -191,8 +197,8 @@ function buildSchoolAgeRequestUrl(feature, accessToken, year) {
             .replaceAll('{admCd}', encodeURIComponent(props.adm_cd || ''))
             .replaceAll('{admCd2}', encodeURIComponent(props.adm_cd2 || ''))
             .replaceAll('{sgg}', encodeURIComponent(props.sgg || ''))
-            .replaceAll('{ageFrom}', encodeURIComponent(SCHOOL_AGE_FROM))
-            .replaceAll('{ageTo}', encodeURIComponent(SCHOOL_AGE_TO));
+            .replaceAll('{ageFrom}', encodeURIComponent(ageFrom))
+            .replaceAll('{ageTo}', encodeURIComponent(ageTo));
     }
 
     const url = new URL(SGIS_POPULATION_URL);
@@ -201,8 +207,8 @@ function buildSchoolAgeRequestUrl(feature, accessToken, year) {
     url.searchParams.set('adm_cd', props.adm_cd || '');
     url.searchParams.set('low_search', '0');
     url.searchParams.set('gender', '0');
-    url.searchParams.set('age_from', SCHOOL_AGE_FROM);
-    url.searchParams.set('age_to', SCHOOL_AGE_TO);
+    url.searchParams.set('age_from', String(ageFrom));
+    url.searchParams.set('age_to', String(ageTo));
     return url.toString();
 }
 
@@ -235,6 +241,48 @@ function extractPopulationValue(data) {
     return null;
 }
 
+function extractAgePopulation(data, ageFrom, ageTo) {
+    const byAge = {};
+    const ageKeys = ['age', 'age_cd', 'ageCd', 'age_code', 'ageCode', 'surv_age', 'itm', 'itm_nm', 'c1_nm'];
+    const readAge = (obj) => {
+        for (const key of ageKeys) {
+            const raw = obj?.[key];
+            if (raw === undefined || raw === null) continue;
+            const match = String(raw).match(/\d{1,3}/);
+            if (!match) continue;
+            const age = Number.parseInt(match[0], 10);
+            if (age >= ageFrom && age <= ageTo) return age;
+        }
+        return null;
+    };
+
+    const walk = (node) => {
+        if (Array.isArray(node)) {
+            node.forEach(walk);
+            return;
+        }
+        if (!node || typeof node !== 'object') return;
+
+        const age = readAge(node);
+        const value = extractPopulationValue(node);
+        if (age !== null && Number.isFinite(value)) {
+            byAge[age] = (byAge[age] || 0) + value;
+        }
+
+        Object.values(node).forEach(valueNode => {
+            if (valueNode && typeof valueNode === 'object') walk(valueNode);
+        });
+    };
+
+    walk(data);
+    const totalFromAges = Object.values(byAge).reduce((sum, value) => sum + value, 0);
+    const total = totalFromAges || extractPopulationValue(data);
+    return {
+        total: Number.isFinite(total) ? total : null,
+        byAge
+    };
+}
+
 async function mapLimit(items, limit, iterator) {
     const results = [];
     let index = 0;
@@ -248,20 +296,39 @@ async function mapLimit(items, limit, iterator) {
     return results;
 }
 
-async function fetchLiveSchoolAgeValues(features, year) {
+async function fetchLiveSchoolAgeValues(features, year, ageFrom, ageTo) {
     const accessToken = await fetchSgisAccessToken();
     if (!accessToken && !process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE) return null;
 
     const pairs = await mapLimit(features, 4, async (feature) => {
-        const url = buildSchoolAgeRequestUrl(feature, accessToken, year);
+        const url = buildSchoolAgeRequestUrl(feature, accessToken, year, ageFrom, ageTo);
         const data = await fetchJsonUrl(url);
-        const value = extractPopulationValue(data);
+        let value = extractAgePopulation(data, ageFrom, ageTo);
+
+        if (process.env.KOSTAT_FETCH_BY_AGE === 'true' && !Object.keys(value.byAge).length) {
+            const agePairs = await mapLimit(
+                Array.from({ length: ageTo - ageFrom + 1 }, (_, index) => ageFrom + index),
+                3,
+                async (age) => {
+                    const ageUrl = buildSchoolAgeRequestUrl(feature, accessToken, year, age, age);
+                    const ageData = await fetchJsonUrl(ageUrl);
+                    return [age, extractPopulationValue(ageData)];
+                }
+            );
+            const byAge = {};
+            agePairs.forEach(([age, ageValue]) => {
+                if (Number.isFinite(ageValue)) byAge[age] = ageValue;
+            });
+            const total = Object.values(byAge).reduce((sum, ageValue) => sum + ageValue, 0);
+            if (total) value = { total, byAge };
+        }
+
         return [feature.properties.adm_cd2, value];
     });
 
     const valueMap = {};
     pairs.forEach(([admCd2, value]) => {
-        if (Number.isFinite(value)) valueMap[admCd2] = value;
+        if (value && Number.isFinite(value.total)) valueMap[admCd2] = value;
     });
     return Object.keys(valueMap).length ? valueMap : null;
 }
@@ -515,7 +582,11 @@ app.get('/api/my-favorites', isLoggedIn, (req, res) => {
 
 app.get('/api/school-age-population', async (req, res) => {
     const year = String(req.query.year || process.env.SGIS_STATS_YEAR || new Date().getFullYear() - 1);
-    const cacheKey = `school-age:${year}:${SCHOOL_AGE_FROM}-${SCHOOL_AGE_TO}`;
+    const ageFrom = parseAgeParam(req.query.ageFrom, Number(SCHOOL_AGE_FROM));
+    const ageTo = parseAgeParam(req.query.ageTo, Number(SCHOOL_AGE_TO));
+    const minAge = Math.min(ageFrom, ageTo);
+    const maxAge = Math.max(ageFrom, ageTo);
+    const cacheKey = `school-age:${year}:${minAge}-${maxAge}`;
     if (req.query.refresh !== '1' && schoolAgeCache.key === cacheKey && schoolAgeCache.expires > Date.now()) {
         return res.json(schoolAgeCache.data);
     }
@@ -532,7 +603,7 @@ app.get('/api/school-age-population', async (req, res) => {
         let values = null;
 
         try {
-            values = await fetchLiveSchoolAgeValues(features, year);
+            values = await fetchLiveSchoolAgeValues(features, year, minAge, maxAge);
             if (values) {
                 source = 'kostat-live';
                 message = '통계청 API에서 동기화되었습니다.';
@@ -545,13 +616,14 @@ app.get('/api/school-age-population', async (req, res) => {
         const response = {
             source,
             year,
-            ageRange: { from: Number(SCHOOL_AGE_FROM), to: Number(SCHOOL_AGE_TO) },
+            ageRange: { from: minAge, to: maxAge },
             message,
             features: features.map(feature => ({
                 type: 'Feature',
                 properties: {
                     ...feature.properties,
-                    schoolAgePopulation: values ? values[feature.properties.adm_cd2] ?? null : null
+                    schoolAgePopulation: values ? values[feature.properties.adm_cd2]?.total ?? null : null,
+                    agePopulation: values ? values[feature.properties.adm_cd2]?.byAge ?? {} : {}
                 },
                 geometry: feature.geometry
             }))

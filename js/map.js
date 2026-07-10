@@ -60,10 +60,11 @@ const MapManager = {
         if (type.includes('교육') || name.includes('교육지원청')) {
             typeClass = 'is-edu'; 
         }
-        else if (name.includes('유치원')) { typeClass = 'is-kinder'; }
-        else if (name.includes('초등학교')) { typeClass = 'is-elem'; }
-        else if (name.includes('중학교')) { typeClass = 'is-mid'; }
-        else if (name.includes('고등학교')) { typeClass = 'is-high'; }
+        else if (type.includes('유치') || name.includes('유치원')) { typeClass = 'is-kinder'; }
+        else if (type.includes('초등') || name.includes('초등학교')) { typeClass = 'is-elem'; }
+        else if (type.includes('중학') || name.includes('중학교')) { typeClass = 'is-mid'; }
+        else if (type.includes('고등') || name.includes('고등학교')) { typeClass = 'is-high'; }
+        else if (type.includes('특수')) { typeClass = 'is-spec'; }
 
         if (count > 1) stackClass = `has-stack stack-pos-${stackIndex % 8}`;
         const safeName = this.escapeHtml(name);
