@@ -18,10 +18,11 @@ const SchoolAge3DMap = {
     yearInputTimer: null,
     loadToken: 0,
     lastYearRequestAt: 0,
-    moundGeometry: null,
+    towerGeometry: null,
     denseOnly: false,
     denseThreshold: 0,
     needsRender: true,
+    flatRegionDepth: 0.045,
     groups: [
         { id: 'total', label: '전체', shortLabel: '전체', ageLabel: '6~21세' },
         { id: 'elementary', label: '초등학교', shortLabel: '초등', ageLabel: '6~12세' },
@@ -35,6 +36,19 @@ const SchoolAge3DMap = {
         high: 0xf2c04b,
         university: 0xd65d91
     },
+    districtColors: {
+        dongtan: '#e9c40e',
+        byeongjeom: '#473198',
+        hyohaeng: '#3299e7',
+        manse: '#a9d1ec',
+        osan: '#FF6392',
+        default: '#60758A'
+    },
+    districtBorders: {
+        hwaseong: '#0047AB',
+        osan: '#e7733d',
+        default: '#111317'
+    },
     drag: { active: false, x: 0, y: 0, moved: false },
     pointers: new Map(),
     gesture: { active: false, distance: 0, cameraY: 0, cameraZ: 0 },
@@ -42,15 +56,6 @@ const SchoolAge3DMap = {
     mapOffset: { x: 0, y: 0 },
     maxValue: 1,
     hoveredFeature: null,
-    colors: {
-        dongtan: 0xd89a2b,
-        byeongjeom: 0x5c9d62,
-        hyohaeng: 0x2f8edb,
-        manse: 0xc04a7a,
-        osan: 0x2d7fb8,
-        default: 0x60758a
-    },
-
     async init() {
         this.container = document.getElementById('schoolAgeScene');
         if (!this.container) return;
@@ -62,6 +67,7 @@ const SchoolAge3DMap = {
         this.setupScene();
         this.bindEvents();
         this.renderAgeSelector();
+        await this.loadDistrictColors();
         await this.loadYearRange();
         await this.loadData();
         this.animate();
@@ -85,7 +91,8 @@ const SchoolAge3DMap = {
         this.mapGroup.rotation.x = -0.18;
         this.mapGroup.rotation.z = -0.08;
         this.scene.add(this.mapGroup);
-        this.moundGeometry = this.createMoundGeometry(1, 1, 20, 6);
+        this.towerGeometry = new THREE.CylinderGeometry(1, 1, 1, 14, 1, false);
+        this.towerGeometry.rotateX(Math.PI / 2);
 
         const ambient = new THREE.AmbientLight(0xffffff, 1.45);
         this.scene.add(ambient);
@@ -116,6 +123,17 @@ const SchoolAge3DMap = {
 
     bindEvents() {
         window.addEventListener('resize', () => this.resize());
+        const refreshDistrictColors = async () => {
+            await this.loadDistrictColors();
+            if (this.features.length) {
+                this.buildMap();
+                this.updatePanel(this.hoveredFeature);
+            }
+        };
+        window.addEventListener('focus', refreshDistrictColors);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) refreshDistrictColors();
+        });
         document.addEventListener('click', (event) => {
             const group = event.target.closest('[data-group]')?.dataset.group;
             if (group) this.setGroup(group);
@@ -290,6 +308,30 @@ const SchoolAge3DMap = {
         this.updatePanel();
     },
 
+    async loadDistrictColors() {
+        try {
+            const res = await fetch('/api/colors', { cache: 'no-store' });
+            if (!res.ok) throw new Error('colors unavailable');
+            const colors = await res.json();
+            const general = colors?.general || {};
+            this.districtColors = {
+                ...this.districtColors,
+                dongtan: this.safeHex(general.dongtanFill, this.districtColors.dongtan),
+                byeongjeom: this.safeHex(general.byeongjeomFill, this.districtColors.byeongjeom),
+                hyohaeng: this.safeHex(general.hyohoengFill, this.districtColors.hyohaeng),
+                manse: this.safeHex(general.manseFill, this.districtColors.manse),
+                osan: this.safeHex(general.osanFill, this.districtColors.osan)
+            };
+            this.districtBorders = {
+                ...this.districtBorders,
+                hwaseong: this.safeHex(general.hwaseongBorder, this.districtBorders.hwaseong),
+                osan: this.safeHex(general.osanBorder, this.districtBorders.osan)
+            };
+        } catch (err) {
+            // 관리자 색상 파일이 없을 때는 일반 학교 지도 기본 색상을 사용합니다.
+        }
+    },
+
     async loadData() {
         const token = ++this.loadToken;
         try {
@@ -444,7 +486,7 @@ const SchoolAge3DMap = {
             });
         });
 
-        this.addDensityMounds();
+        this.addPopulationTowers();
         this.requestRender();
     },
 
@@ -480,35 +522,35 @@ const SchoolAge3DMap = {
 
     createFeatureMeshes(feature) {
         const props = feature.properties || {};
-        const color = this.getFeatureBlendColor(feature);
-        const value = this.getFeatureValue(feature);
-        const height = this.getHeight(value);
+        const color = this.getRegionColor(props);
+        const borderColor = this.getRegionBorderColor(props);
+        const depth = this.flatRegionDepth;
         const meshes = [];
 
         this.getPolygons(feature.geometry).forEach(polygon => {
             const shape = this.polygonToShape(polygon);
             if (!shape) return;
             const geometry = new THREE.ExtrudeGeometry(shape, {
-                depth: height,
+                depth,
                 bevelEnabled: true,
-                bevelSize: 0.018,
-                bevelThickness: 0.016,
-                bevelSegments: 2
+                bevelSize: 0.006,
+                bevelThickness: 0.006,
+                bevelSegments: 1
             });
             geometry.computeVertexNormals();
             const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
                 color,
-                roughness: 0.72,
-                metalness: 0.02,
+                roughness: 0.66,
+                metalness: 0.04,
                 transparent: true,
-                opacity: 0.88,
-                emissive: new THREE.Color(color).multiplyScalar(0.05)
+                opacity: 0.94,
+                emissive: new THREE.Color(color).multiplyScalar(0.035)
             }));
             mesh.userData = { feature, baseColor: color, isRegion: true, regionMesh: true, generated: true };
             meshes.push(mesh);
 
             const edgeGeometry = new THREE.EdgesGeometry(geometry, 34);
-            const edge = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0x111317, transparent: true, opacity: 0.18 }));
+            const edge = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: borderColor, transparent: true, opacity: 0.36 }));
             edge.userData = { feature, isRegion: true, generated: true, edgeFor: mesh };
             meshes.push(edge);
 
@@ -520,7 +562,7 @@ const SchoolAge3DMap = {
                 depthWrite: false,
                 side: THREE.DoubleSide
             }));
-            pickMesh.position.z = height + 0.03;
+            pickMesh.position.z = depth + 0.03;
             pickMesh.userData = { feature, isRegion: true, pickMesh: true, generated: true };
             meshes.push(pickMesh);
             this.pickMeshes.push(pickMesh);
@@ -528,72 +570,48 @@ const SchoolAge3DMap = {
         return meshes;
     },
 
-    addDensityMounds() {
+    addPopulationTowers() {
+        const selectedGroups = this.getSelectedGroupIds();
+        if (!selectedGroups.length) return;
         this.visibleFeatures.forEach((feature, index) => {
             const center = this.getFeatureCenter(feature);
             const value = this.getFeatureValue(feature);
-            const baseHeight = this.getHeight(value);
+            if (!value) return;
             const shares = this.getSelectedShares(feature);
-            const radiusBase = 0.2 + Math.sqrt(Math.max(value, 1) / this.maxValue) * 0.54;
-            const moundHeight = 0.22 + baseHeight * 0.58;
-            shares.forEach((share, shareIndex) => {
-                const groupOffset = shares.length === 1 ? 0 : radiusBase * 0.2;
-                const angle = (shareIndex / Math.max(1, shares.length)) * Math.PI * 2 + index * 0.37;
-                const radius = radiusBase * (0.52 + share.ratio * 0.72);
-                const height = moundHeight * (0.26 + share.ratio * 0.94);
+            const towerHeight = this.getTowerHeight(value);
+            const radius = 0.055 + Math.sqrt(Math.max(value, 1) / this.maxValue) * 0.12;
+            let currentHeight = this.flatRegionDepth + 0.025;
+            shares.forEach(share => {
+                const segmentHeight = towerHeight * share.ratio;
+                if (segmentHeight <= 0) return;
                 const material = new THREE.MeshStandardMaterial({
                     color: this.groupColors[share.id] || this.getRegionColor(feature.properties || {}),
-                    roughness: 0.76,
-                    metalness: 0.02,
+                    roughness: 0.54,
+                    metalness: 0.08,
                     transparent: true,
-                    opacity: 0.44,
-                    depthWrite: false
+                    opacity: 0.92,
+                    emissive: new THREE.Color(this.groupColors[share.id] || 0xffffff).multiplyScalar(0.06)
                 });
-                const mound = new THREE.Mesh(this.moundGeometry, material);
-                mound.scale.set(radius * 1.18, radius * 0.86, height);
-                mound.rotation.z = angle * 0.28;
-                mound.position.set(
-                    center.x + Math.cos(angle) * groupOffset,
-                    center.y + Math.sin(angle) * groupOffset,
-                    baseHeight + 0.025
+                const segment = new THREE.Mesh(this.towerGeometry, material);
+                segment.scale.set(radius, radius, segmentHeight);
+                segment.position.set(center.x, center.y, currentHeight + segmentHeight / 2);
+                segment.userData = { feature, generated: true, tower: true, sharedGeometry: true };
+                this.meshes.push(segment);
+                this.mapGroup.add(segment);
+
+                const ring = new THREE.LineSegments(
+                    new THREE.EdgesGeometry(this.towerGeometry, 22),
+                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 })
                 );
-                mound.userData = { feature, generated: true, mound: true, sharedGeometry: true };
-                this.meshes.push(mound);
-                this.mapGroup.add(mound);
+                ring.scale.set(radius * 1.003, radius * 1.003, segmentHeight * 1.003);
+                ring.position.copy(segment.position);
+                ring.userData = { feature, generated: true, towerEdge: true };
+                this.meshes.push(ring);
+                this.mapGroup.add(ring);
+
+                currentHeight += segmentHeight;
             });
         });
-    },
-
-    createMoundGeometry(radius = 1, height = 1, segments = 24, rings = 7) {
-        const vertices = [0, 0, height];
-        const indices = [];
-        for (let ring = 1; ring <= rings; ring += 1) {
-            const t = ring / rings;
-            const ringRadius = radius * t;
-            const z = height * Math.pow(1 - t, 1.65);
-            for (let segment = 0; segment < segments; segment += 1) {
-                const angle = (segment / segments) * Math.PI * 2;
-                vertices.push(Math.cos(angle) * ringRadius, Math.sin(angle) * ringRadius, z);
-            }
-        }
-        for (let segment = 0; segment < segments; segment += 1) {
-            const next = segment === segments - 1 ? 0 : segment + 1;
-            indices.push(0, 1 + next, 1 + segment);
-        }
-        for (let ring = 1; ring < rings; ring += 1) {
-            const currentStart = 1 + (ring - 1) * segments;
-            const nextStart = 1 + ring * segments;
-            for (let segment = 0; segment < segments; segment += 1) {
-                const next = segment === segments - 1 ? 0 : segment + 1;
-                indices.push(currentStart + segment, currentStart + next, nextStart + segment);
-                indices.push(currentStart + next, nextStart + next, nextStart + segment);
-            }
-        }
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setIndex(indices);
-        geometry.computeVertexNormals();
-        return geometry;
     },
 
     polygonToShape(polygon) {
@@ -679,6 +697,7 @@ const SchoolAge3DMap = {
     getFeatureValue(feature) {
         const props = feature.properties || {};
         const selected = this.getSelectedGroupIds();
+        if (!selected.length) return 0;
         const groupPopulation = props.groupPopulation || {};
         const selectedTotal = selected.reduce((sum, groupId) => {
             const value = Number(groupPopulation[groupId]);
@@ -687,14 +706,16 @@ const SchoolAge3DMap = {
         const hasSelectedGroupData = selected.some(groupId => Object.prototype.hasOwnProperty.call(groupPopulation, groupId));
         if (hasSelectedGroupData) return selectedTotal;
         const total = Number(groupPopulation.total ?? props.schoolAgePopulation);
-        if (Number.isFinite(total) && total > 0) return total;
+        if (Number.isFinite(total) && total > 0) {
+            return this.isAllGroupsSelected() ? total : total * (selected.length / Math.max(1, this.getSelectableGroups().length));
+        }
         return props.visualFallback || 1;
     },
 
-    getHeight(value) {
+    getTowerHeight(value) {
         if (!Number(value)) return 0.045;
         const ratio = Math.max(0.08, Math.min(1, value / this.maxValue));
-        return 0.06 + Math.pow(ratio, 0.78) * 0.74;
+        return 0.18 + Math.pow(ratio, 0.86) * 3.1;
     },
 
     fallbackValue(props, index) {
@@ -702,19 +723,47 @@ const SchoolAge3DMap = {
         return 120 + (seed % 880);
     },
 
-    getRegionColor(props) {
+    safeHex(value, fallback) {
+        return typeof value === 'string' && /^#[0-9A-Fa-f]{6}$/.test(value) ? value : fallback;
+    },
+
+    hexToNumber(value, fallback = 0x60758a) {
+        const safe = this.safeHex(value, null);
+        return safe ? Number.parseInt(safe.slice(1), 16) : fallback;
+    },
+
+    getDistrictKey(props) {
         const admNm = props.adm_nm || '';
         const sgg = props.sggnm || '';
-        if (sgg.includes('오산')) return this.colors.osan;
-        if (['동탄', '오산동'].some(keyword => admNm.includes(keyword))) return this.colors.dongtan;
-        if (['진안', '병점', '반월', '화산', '안녕'].some(keyword => admNm.includes(keyword))) return this.colors.byeongjeom;
-        if (['봉담', '비봉', '매송', '정남', '기배'].some(keyword => admNm.includes(keyword))) return this.colors.hyohaeng;
-        if (['향남', '우정', '팔탄', '장안', '양감', '마도', '송산', '서신', '남양', '새솔'].some(keyword => admNm.includes(keyword))) return this.colors.manse;
-        return this.colors.default;
+        if (sgg.includes('오산')) return 'osan';
+        if (['동탄', '오산동'].some(keyword => admNm.includes(keyword))) return 'dongtan';
+        if (['진안', '병점', '반월', '화산', '안녕', '송산동'].some(keyword => admNm.includes(keyword))) return 'byeongjeom';
+        if (['봉담', '비봉', '매송', '정남', '기배'].some(keyword => admNm.includes(keyword))) return 'hyohaeng';
+        if (['향남', '우정', '팔탄', '장안', '양감', '마도', '송산면', '서신', '남양', '새솔'].some(keyword => admNm.includes(keyword))) return 'manse';
+        return 'default';
+    },
+
+    getRegionColor(props) {
+        const key = this.getDistrictKey(props);
+        return this.hexToNumber(this.districtColors[key] || this.districtColors.default);
+    },
+
+    getRegionBorderColor(props) {
+        const sgg = props.sggnm || '';
+        const key = sgg.includes('오산') ? 'osan' : (sgg.includes('화성') ? 'hwaseong' : 'default');
+        return this.hexToNumber(this.districtBorders[key] || this.districtBorders.default, 0x111317);
     },
 
     getSelectedGroup() {
         const selected = this.getSelectedGroupIds();
+        if (!selected.length) {
+            return {
+                id: 'none',
+                label: '선택 없음',
+                shortLabel: '없음',
+                ageLabel: '학령 구간 미선택'
+            };
+        }
         if (selected.length === this.getSelectableGroups().length) return this.groups[0];
         if (selected.length === 1) return this.groups.find(group => group.id === selected[0]) || this.groups[0];
         return {
@@ -731,12 +780,12 @@ const SchoolAge3DMap = {
 
     getSelectedGroupIds() {
         const validIds = new Set(this.getSelectableGroups().map(group => group.id));
-        const selected = this.selectedGroups.filter(groupId => validIds.has(groupId));
-        return selected.length ? selected : [...validIds];
+        return this.selectedGroups.filter(groupId => validIds.has(groupId));
     },
 
     isAllGroupsSelected() {
-        return this.getSelectedGroupIds().length === this.getSelectableGroups().length;
+        const selectedLength = this.getSelectedGroupIds().length;
+        return selectedLength > 0 && selectedLength === this.getSelectableGroups().length;
     },
 
     getGroupValue(feature, groupId) {
@@ -786,10 +835,10 @@ const SchoolAge3DMap = {
     setGroup(group) {
         const selectable = this.getSelectableGroups().map(item => item.id);
         if (group === 'total') {
-            this.selectedGroups = selectable;
+            this.selectedGroups = this.isAllGroupsSelected() ? [] : selectable;
         } else if (selectable.includes(group)) {
-            const current = new Set(this.getSelectedGroupIds());
-            if (current.has(group) && current.size > 1) current.delete(group);
+            const current = new Set(this.selectedGroups.filter(groupId => selectable.includes(groupId)));
+            if (current.has(group)) current.delete(group);
             else current.add(group);
             this.selectedGroups = selectable.filter(groupId => current.has(groupId));
         }
@@ -836,11 +885,11 @@ const SchoolAge3DMap = {
                 : (this.populationData?.message || 'KOSIS API 템플릿이 설정되면 공식 값으로 높이가 갱신됩니다.')
         );
         this.setText('selectedRegionName', selected ? (selected.adm_nm || '행정동') : '화성·오산 전체');
-        this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : `${selectedGroup.label} 구간의 합계와 지분으로 지형 높이가 갱신됩니다.${this.denseOnly ? ` 현재 상위 밀집동 ${visibleCount}개만 표시 중입니다.` : ''}`);
+        this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : `${selectedGroup.label} 구간의 누적 탑 높이로 학령인구 밀집도를 표시합니다.${this.denseOnly ? ` 현재 상위 밀집동 ${visibleCount}개만 표시 중입니다.` : ''}`);
         this.setText('totalPopulationLabel', `${selectedGroup.label} 합계${forecast ? ' (예측)' : ''}`);
-        this.setText('totalPopulation', total ? `${this.format(total)}명` : '-');
+        this.setText('totalPopulation', values.length ? `${this.format(total)}명` : '-');
         const fill = document.getElementById('rangeBarFill');
-        if (fill) fill.style.width = total ? '100%' : '38%';
+        if (fill) fill.style.width = values.length && total > 0 ? '100%' : '0%';
     },
 
     setStatus(title, text) {
@@ -921,6 +970,7 @@ const SchoolAge3DMap = {
         const group = this.getSelectedGroup();
         const value = this.getFeatureValue(feature);
         const suffix = this.populationData?.forecast ? ' 예측' : '';
+        if (group.id === 'none') return '학령 구간 선택 없음';
         return Number.isFinite(value)
             ? `${group.label} ${this.format(value)}명${suffix}`
             : `${group.label} 데이터 대기`;
