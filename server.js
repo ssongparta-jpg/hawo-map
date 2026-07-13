@@ -648,12 +648,26 @@ async function fetchMoisCsvSchoolAgeValues(features, year) {
 
 async function fetchLiveSchoolAgeValues(features, year) {
     const preferMois = SCHOOL_AGE_DATA_SOURCE === 'mois' || SCHOOL_AGE_DATA_SOURCE === 'jumin';
+    const allowMoisFallback = ['auto', 'fallback', 'kosis-fallback'].includes(SCHOOL_AGE_DATA_SOURCE);
+    let kosisError = null;
     if (!preferMois) {
-        const kosisResult = await fetchKosisSchoolAgeValues(features, year);
-        if (kosisResult) return kosisResult;
+        try {
+            const kosisResult = await fetchKosisSchoolAgeValues(features, year);
+            if (kosisResult) return kosisResult;
+        } catch (err) {
+            if (!allowMoisFallback) throw err;
+            kosisError = err;
+        }
     }
-    const moisResult = await fetchMoisCsvSchoolAgeValues(features, year);
-    if (moisResult) return moisResult;
+    if (preferMois || allowMoisFallback) {
+        try {
+            const moisResult = await fetchMoisCsvSchoolAgeValues(features, year);
+            if (moisResult) return moisResult;
+        } catch (err) {
+            if (kosisError) throw kosisError;
+            throw err;
+        }
+    }
     return null;
 }
 
@@ -937,9 +951,15 @@ app.get('/api/school-age-population', async (req, res) => {
         const geojson = JSON.parse(fs.readFileSync(geojsonFile, 'utf8'));
         const features = (geojson.features || []).filter(isHwaoFeature);
 
-        let source = SCHOOL_AGE_DATA_SOURCE === 'mois' || SCHOOL_AGE_DATA_SOURCE === 'jumin' ? 'mois-model' : 'kosis-model';
+        const preferMois = SCHOOL_AGE_DATA_SOURCE === 'mois' || SCHOOL_AGE_DATA_SOURCE === 'jumin';
+        const allowMoisFallback = ['auto', 'fallback', 'kosis-fallback'].includes(SCHOOL_AGE_DATA_SOURCE);
+        let source = preferMois ? 'mois-model' : 'kosis-model';
         let statsYm = requestedStatsYm;
-        let message = 'KOSIS 통계표 선택 URL이 설정되면 KOSIS 기준 학령인구를 우선 표시합니다. KOSIS 연결이 없으면 행안부 주민등록 1세 단위 자료로 대체됩니다.';
+        let message = preferMois
+            ? '행안부 주민등록 1세 단위 자료로 학령인구를 표시합니다. 실시간 자료를 읽지 못하면 로컬 예측 모델로 대체됩니다.'
+            : (allowMoisFallback
+                ? 'KOSIS 통계표 선택 URL이 설정되면 KOSIS 기준 학령인구를 우선 표시하고, 실패할 때만 행안부 자료로 대체합니다.'
+                : 'KOSIS 통계표 선택 URL이 설정되면 KOSIS 기준 학령인구만 사용합니다. 행안부 CSV는 연도 전환 속도를 위해 건너뜁니다.');
         let values = null;
         const forecast = isSchoolAgeForecastYear(year);
         lastSchoolAgeSyncError = null;
@@ -957,11 +977,11 @@ app.get('/api/school-age-population', async (req, res) => {
                 }
             } catch (err) {
                 lastSchoolAgeSyncError = getPublicErrorMessage(err);
-                message = `KOSIS/행안부 인구통계를 읽지 못해 로컬 예측 모델로 표시합니다: ${lastSchoolAgeSyncError}`;
+                message = `${allowMoisFallback || preferMois ? 'KOSIS/행안부' : 'KOSIS'} 인구통계를 읽지 못해 로컬 예측 모델로 표시합니다: ${lastSchoolAgeSyncError}`;
                 console.warn('School-age population sync failed:', lastSchoolAgeSyncError);
             }
         } else {
-            message = '선택한 연도는 행안부 주민등록 실측 공표 범위를 넘어 로컬 예측 모델로 표시합니다.';
+            message = '선택한 연도는 공식 실측 공표 범위를 넘어 로컬 예측 모델로 표시합니다.';
         }
 
         if (!values) {

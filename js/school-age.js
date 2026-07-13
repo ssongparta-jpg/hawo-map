@@ -792,10 +792,10 @@ const SchoolAge3DMap = {
         const min = Math.max(0, this.minFeatureValue || 0);
         const max = Math.max(this.maxFeatureValue || 1, min + 1);
         const normalized = this.clamp((value - min) / (max - min), 0, 1);
-        const readableCurve = Math.pow(normalized, 0.74);
+        const contrastCurve = Math.pow(normalized, 1.28);
         const admNm = this.getFeatureName(feature.properties || {});
-        const dongtanLean = admNm.includes('동탄') ? 1.08 : 1;
-        return this.flatRegionDepth + 0.08 + Math.min(0.78, readableCurve * 0.72 * dongtanLean);
+        const dongtanLean = admNm.includes('동탄') ? 1.12 : 1;
+        return this.flatRegionDepth + 0.035 + Math.min(1.34, contrastCurve * 1.22 * dongtanLean);
     },
 
     getPopulationColor(feature) {
