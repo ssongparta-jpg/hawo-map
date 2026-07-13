@@ -20,6 +20,8 @@ const SchoolAge3DMap = {
         'data/hwao.geojson'
     ],
     populationData: null,
+    populationCache: new Map(),
+    populationAbortController: null,
     selectedGroups: ['elementary', 'middle', 'high', 'university'],
     selectedYear: null,
     yearRange: null,
@@ -259,6 +261,15 @@ const SchoolAge3DMap = {
         this.needsRender = true;
     },
 
+    cancelPopulationRequest() {
+        if (this.populationAbortController) {
+            this.populationAbortController.abort();
+            this.populationAbortController = null;
+        }
+        this.loadToken += 1;
+        this.setLoadingState(false);
+    },
+
     clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
     },
@@ -357,36 +368,100 @@ const SchoolAge3DMap = {
         throw new Error('geojson failed');
     },
 
-    async loadData() {
+    async loadData(options = {}) {
+        const year = String(options.year ?? this.selectedYear ?? '');
         const token = ++this.loadToken;
         try {
             this.setLoadingState(true);
-            const yearParam = this.selectedYear ? `&year=${encodeURIComponent(this.selectedYear)}` : '';
-            const popPromise = fetch(`/api/school-age-population?${yearParam.replace(/^&/, '')}`, { cache: 'no-store' }).catch(() => null);
             await this.loadBoundaryGeojson();
-            const popRes = await popPromise;
-            if (token !== this.loadToken) return;
-            const geojson = this.geojson;
+
+            if (!options.force && year && this.populationCache.has(year)) {
+                if (token !== this.loadToken) return;
+                this.populationData = this.populationCache.get(year);
+                this.applyPopulationData({ animate: false });
+                return;
+            }
+
+            if (this.populationAbortController) this.populationAbortController.abort();
+            const controller = new AbortController();
+            this.populationAbortController = controller;
+            const query = year ? `?year=${encodeURIComponent(year)}` : '';
+            const popRes = await fetch(`/api/school-age-population${query}`, {
+                cache: 'no-store',
+                signal: controller.signal
+            }).catch(err => {
+                if (err?.name === 'AbortError') return 'aborted';
+                return null;
+            });
+            if (popRes === 'aborted' || token !== this.loadToken || controller.signal.aborted) return;
+            if (this.populationAbortController === controller) this.populationAbortController = null;
             this.populationData = popRes && popRes.ok ? await popRes.json() : null;
             if (token !== this.loadToken) return;
-            if (Array.isArray(this.populationData?.groups) && this.populationData.groups.length) {
-                this.groups = this.populationData.groups;
-                this.renderAgeSelector();
-            }
-            this.features = (geojson.features || []).filter(feature => {
-                const props = feature.properties || {};
-                const city = this.getFeatureCityName(props);
-                const name = this.getFeatureName(props);
-                return city.includes('화성시') || city.includes('오산시') || name.includes('화성시') || name.includes('오산시');
-            });
-            this.attachPopulation();
-            this.buildMap();
-            this.updatePanel();
+            if (year && this.populationData) this.populationCache.set(year, this.populationData);
+            this.applyPopulationData({ animate: true });
         } catch (err) {
-            this.setStatus('지도 로드 실패', '행정동 경계 데이터를 불러오지 못했습니다.');
+            if (err?.name !== 'AbortError') this.setStatus('지도 로드 실패', '행정동 경계 데이터를 불러오지 못했습니다.');
         } finally {
             if (token === this.loadToken) this.setLoadingState(false);
         }
+    },
+
+    applyPopulationData({ animate = true } = {}) {
+        const geojson = this.geojson;
+        if (!geojson) return;
+        if (Array.isArray(this.populationData?.groups) && this.populationData.groups.length) {
+            this.groups = this.populationData.groups;
+            this.renderAgeSelector();
+        }
+        this.features = (geojson.features || []).filter(feature => {
+            const props = feature.properties || {};
+            const city = this.getFeatureCityName(props);
+            const name = this.getFeatureName(props);
+            return city.includes('화성시') || city.includes('오산시') || name.includes('화성시') || name.includes('오산시');
+        });
+        this.attachPopulation();
+        if (!this.meshes.length || this.denseOnly) this.buildMap();
+        else this.updateMapVisuals({ animate });
+        this.updatePanel();
+    },
+
+    applyYearPreview(year) {
+        if (!this.geojson || !this.features.length) return;
+        const cacheKey = String(year);
+        if (this.populationCache.has(cacheKey)) {
+            this.populationData = this.populationCache.get(cacheKey);
+            this.applyPopulationData({ animate: false });
+            return;
+        }
+
+        const numericYear = Number(year);
+        const forecastFromYear = Number(this.yearRange?.forecastFromYear) || (new Date().getFullYear() + 1);
+        this.populationData = {
+            source: 'local-preview',
+            year: numericYear,
+            statsYm: String(year),
+            forecast: numericYear >= forecastFromYear,
+            groups: this.groups,
+            message: '연도 이동 중에는 로컬 예측값으로 먼저 갱신하고, 선택을 멈추면 공식 통계를 동기화합니다.'
+        };
+        this.features.forEach((feature, index) => {
+            const props = feature.properties || {};
+            props.visualFallback = this.fallbackValue(props, index, year);
+            props.groupPopulation = this.normalizeGroupPopulation({}, null, props.visualFallback, props);
+            props.schoolAgePopulation = props.groupPopulation.total;
+            props.agePopulation = {};
+        });
+        if (this.denseOnly) this.buildMap();
+        else this.updateMapVisuals({ animate: false });
+        this.updatePanel();
+    },
+
+    scheduleOfficialYearLoad(year, delay = 280) {
+        window.clearTimeout(this.yearInputTimer);
+        this.yearInputTimer = window.setTimeout(() => {
+            this.lastYearRequestAt = window.performance?.now?.() || Date.now();
+            this.loadData({ year: String(year) });
+        }, delay);
     },
 
     async loadYearRange() {
@@ -427,16 +502,9 @@ const SchoolAge3DMap = {
         this.selectedYear = nextYear;
         this.setText('selectedYearLabel', nextYear);
         this.updateYearSliderProgress();
-        const now = window.performance?.now?.() || Date.now();
-        const delay = Math.max(0, 120 - (now - this.lastYearRequestAt));
-        const run = () => {
-            this.lastYearRequestAt = window.performance?.now?.() || Date.now();
-            this.clearHover();
-            this.loadData();
-        };
-        window.clearTimeout(this.yearInputTimer);
-        if (delay <= 12) run();
-        else this.yearInputTimer = window.setTimeout(run, delay);
+        this.cancelPopulationRequest();
+        this.applyYearPreview(nextYear);
+        this.scheduleOfficialYearLoad(nextYear);
     },
 
     async setYear(year, immediate = false) {
@@ -445,10 +513,12 @@ const SchoolAge3DMap = {
         this.selectedYear = nextYear;
         window.clearTimeout(this.yearInputTimer);
         this.lastYearRequestAt = window.performance?.now?.() || Date.now();
-        this.clearHover();
         this.setText('selectedYearLabel', nextYear);
         this.updateYearSliderProgress();
-        await this.loadData();
+        this.cancelPopulationRequest();
+        this.applyYearPreview(nextYear);
+        if (immediate) await this.loadData({ year: nextYear });
+        else this.scheduleOfficialYearLoad(nextYear);
     },
 
     updateYearSliderProgress() {
@@ -618,6 +688,51 @@ const SchoolAge3DMap = {
                 this.meshes.push(mesh);
                 this.mapGroup.add(mesh);
             });
+        });
+
+        this.requestRender();
+    },
+
+    updateMapVisuals({ animate = true } = {}) {
+        if (!this.meshes.length) return;
+        this.visibleFeatures = this.getRenderableFeatures();
+        this.updateReliefScale();
+        this.animations = this.animations.filter(animation => {
+            if (animation.kind === 'year-scale') return false;
+            return animate || (!animation.mesh?.userData?.regionMesh && !animation.mesh?.userData?.edgeFor);
+        });
+
+        this.meshes.forEach(mesh => {
+            const feature = mesh.userData?.feature;
+            if (!feature) return;
+            const depth = this.getFeatureReliefDepth(feature);
+
+            if (mesh.userData?.regionMesh) {
+                const color = this.getPopulationColor(feature);
+                const baseDepth = mesh.userData.geometryDepth || depth || this.flatRegionDepth;
+                const nextScale = baseDepth ? depth / baseDepth : 1;
+                mesh.userData.baseColor = color;
+                mesh.material?.color?.setHex(color);
+                if (mesh.material?.emissive) {
+                    mesh.material.emissive.setHex(color);
+                    mesh.material.emissive.multiplyScalar(mesh.userData.feature === this.hoveredFeature ? 0.22 : 0.06);
+                }
+                if (animate) this.animateScaleZ(mesh, nextScale);
+                else mesh.scale.z = nextScale;
+                return;
+            }
+
+            if (mesh.userData?.edgeFor) {
+                const baseDepth = mesh.userData.geometryDepth || depth || this.flatRegionDepth;
+                const nextScale = baseDepth ? depth / baseDepth : 1;
+                if (animate) this.animateScaleZ(mesh, nextScale);
+                else mesh.scale.z = nextScale;
+                return;
+            }
+
+            if (mesh.userData?.labelSprite) {
+                mesh.position.z = depth + 0.22;
+            }
         });
 
         this.requestRender();
@@ -815,6 +930,7 @@ const SchoolAge3DMap = {
             mesh.userData = {
                 feature,
                 baseColor: color,
+                geometryDepth: depth,
                 isRegion: true,
                 regionMesh: true,
                 generated: true
@@ -825,7 +941,7 @@ const SchoolAge3DMap = {
 
             const edgeGeometry = new THREE.EdgesGeometry(geometry, 34);
             const edge = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: borderColor, transparent: true, opacity: 0.4 }));
-            edge.userData = { feature, isRegion: true, generated: true, edgeFor: mesh };
+            edge.userData = { feature, geometryDepth: depth, isRegion: true, generated: true, edgeFor: mesh };
             meshes.push(edge);
             this.animateMeshIntro(edge);
         });
@@ -935,7 +1051,7 @@ const SchoolAge3DMap = {
         return props.visualFallback || 1;
     },
 
-    fallbackValue(props, index) {
+    fallbackValue(props, index, yearOverride = this.selectedYear) {
         const admNm = this.getFeatureName(props);
         const seed = Array.from(String(admNm || this.getFeatureDataKey(props) || index)).reduce((sum, char) => sum + char.charCodeAt(0), 0);
         const sggNm = this.getFeatureCityName(props);
@@ -945,7 +1061,7 @@ const SchoolAge3DMap = {
         const isRural = ['장안', '양감', '팔탄', '마도', '서신', '송산', '비봉', '매송'].some(keyword => admNm.includes(keyword));
         const cityFactor = isOsan ? 0.82 : 1.08;
         const townFactor = isNewTown ? 1.36 : (isRural ? 0.62 : 1);
-        const year = Number(this.selectedYear) || 2024;
+        const year = Number(yearOverride) || 2024;
         const yearsFromBase = year - 2024;
         const pastFactor = yearsFromBase < 0 ? Math.max(0.72, 1 + yearsFromBase * 0.012) : 1;
         const futureFactor = yearsFromBase > 0
@@ -1226,9 +1342,30 @@ const SchoolAge3DMap = {
     animateMeshIntro(mesh) {
         mesh.scale.z = 0.08;
         this.animations.push({
+            kind: 'intro',
             mesh,
             start: window.performance?.now?.() || Date.now(),
-            duration: 560
+            duration: 560,
+            fromZ: 0.08,
+            toZ: 1
+        });
+        this.requestRender();
+    },
+
+    animateScaleZ(mesh, toZ, duration = 180) {
+        if (!mesh || !Number.isFinite(toZ) || toZ <= 0) return;
+        if (Math.abs(mesh.scale.z - toZ) < 0.01) {
+            mesh.scale.z = toZ;
+            return;
+        }
+        this.animations = this.animations.filter(animation => animation.mesh !== mesh);
+        this.animations.push({
+            kind: 'year-scale',
+            mesh,
+            start: window.performance?.now?.() || Date.now(),
+            duration,
+            fromZ: mesh.scale.z,
+            toZ
         });
         this.requestRender();
     },
@@ -1245,7 +1382,9 @@ const SchoolAge3DMap = {
             if (!animation.mesh?.parent) return false;
             const progress = this.clamp((now - animation.start) / animation.duration, 0, 1);
             const eased = this.easeOutCubic(progress);
-            animation.mesh.scale.z = 0.08 + eased * 0.92;
+            const fromZ = Number.isFinite(animation.fromZ) ? animation.fromZ : 0.08;
+            const toZ = Number.isFinite(animation.toZ) ? animation.toZ : 1;
+            animation.mesh.scale.z = fromZ + (toZ - fromZ) * eased;
             this.needsRender = true;
             return progress < 1;
         });

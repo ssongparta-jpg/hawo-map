@@ -39,7 +39,7 @@ const KOSIS_SCHOOL_AGE_URL_TEMPLATE = process.env.KOSIS_SCHOOL_AGE_URL_TEMPLATE 
 const SCHOOL_AGE_FIRST_YEAR = Number.parseInt(process.env.MOIS_STATS_START_YEAR || '2008', 10);
 const SCHOOL_AGE_OBSERVED_YEAR = Number.parseInt(process.env.MOIS_OBSERVED_LATEST_YEAR || '', 10);
 const SCHOOL_AGE_FORECAST_YEAR = Number.parseInt(process.env.MOIS_FORECAST_LATEST_YEAR || '2072', 10);
-let schoolAgeCache = { key: null, expires: 0, data: null };
+const schoolAgeCache = new Map();
 let lastSchoolAgeSyncError = null;
 
 const SCHOOL_AGE_GROUPS = [
@@ -927,9 +927,11 @@ app.get('/api/school-age-population', async (req, res) => {
     const geojsonStat = fs.statSync(geojsonFile);
     const requestedStatsYm = getMoisStatsYmForYear(year);
     const cacheKey = `school-age-groups:${year}:${requestedStatsYm}:${minAge}-${maxAge}:${path.basename(geojsonFile)}:${geojsonStat.mtimeMs}`;
-    if (req.query.refresh !== '1' && schoolAgeCache.key === cacheKey && schoolAgeCache.expires > Date.now()) {
-        return res.json(schoolAgeCache.data);
+    const cachedSchoolAge = schoolAgeCache.get(cacheKey);
+    if (req.query.refresh !== '1' && cachedSchoolAge?.expires > Date.now()) {
+        return res.json(cachedSchoolAge.data);
     }
+    if (cachedSchoolAge?.expires <= Date.now()) schoolAgeCache.delete(cacheKey);
 
     try {
         const geojson = JSON.parse(fs.readFileSync(geojsonFile, 'utf8'));
@@ -1014,11 +1016,14 @@ app.get('/api/school-age-population', async (req, res) => {
             })
         };
 
-        schoolAgeCache = {
-            key: cacheKey,
+        schoolAgeCache.set(cacheKey, {
             expires: Date.now() + 30 * 60 * 1000,
             data: response
-        };
+        });
+        if (schoolAgeCache.size > 24) {
+            const oldestKey = schoolAgeCache.keys().next().value;
+            schoolAgeCache.delete(oldestKey);
+        }
         res.json(response);
     } catch (err) {
         res.status(500).json({ success: false, message: '학령인구 지도 데이터를 만들 수 없습니다.' });
