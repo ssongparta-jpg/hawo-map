@@ -33,6 +33,9 @@ const MOIS_JUMIN_CSV_URL = process.env.MOIS_JUMIN_CSV_URL || 'https://jumin.mois
 const DATA_GO_KR_SERVICE_KEY = process.env.DATA_GO_KR_SERVICE_KEY || process.env.PUBLIC_DATA_SERVICE_KEY || process.env.DATAGO_SERVICE_KEY || process.env.MOIS_API_KEY || '';
 const DATA_GO_KR_ADMIN_AGE_URL = process.env.DATA_GO_KR_ADMIN_AGE_URL || 'https://apis.data.go.kr/1741000/admmSexdAgePpltn/selectAdmmSexdAgePpltn';
 const DATA_GO_KR_LEGAL_AGE_URL = process.env.DATA_GO_KR_LEGAL_AGE_URL || 'https://apis.data.go.kr/1741000/stdgSexdAgePpltn/selectStdgSexdAgePpltn';
+const SCHOOL_AGE_DATA_SOURCE = String(process.env.SCHOOL_AGE_DATA_SOURCE || 'kosis').toLowerCase();
+const KOSIS_API_KEY = process.env.KOSIS_API_KEY || process.env.KOSTAT_API_KEY || '';
+const KOSIS_SCHOOL_AGE_URL_TEMPLATE = process.env.KOSIS_SCHOOL_AGE_URL_TEMPLATE || process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE || '';
 const SCHOOL_AGE_FIRST_YEAR = Number.parseInt(process.env.MOIS_STATS_START_YEAR || '2008', 10);
 const SCHOOL_AGE_OBSERVED_YEAR = Number.parseInt(process.env.MOIS_OBSERVED_LATEST_YEAR || '', 10);
 const SCHOOL_AGE_FORECAST_YEAR = Number.parseInt(process.env.MOIS_FORECAST_LATEST_YEAR || '2072', 10);
@@ -190,6 +193,8 @@ function getSgisErrorMessage(data) {
 
 function getPublicErrorMessage(error) {
     return String(error?.message || error || '알 수 없는 오류')
+        .replace(/apiKey=[^&\s]+/gi, 'apiKey=***')
+        .replace(/KOSIS_API_KEY=[^&\s]+/gi, 'KOSIS_API_KEY=***')
         .replace(/accessToken=[^&\s]+/gi, 'accessToken=***')
         .replace(/consumer_key=[^&\s]+/gi, 'consumer_key=***')
         .replace(/consumer_secret=[^&\s]+/gi, 'consumer_secret=***')
@@ -421,6 +426,130 @@ function buildGroupPopulationFromAges(byAge) {
     return groupPopulation;
 }
 
+function buildKosisRequestUrl(feature, year, group) {
+    if (!KOSIS_SCHOOL_AGE_URL_TEMPLATE) return null;
+    const props = feature.properties || {};
+    return KOSIS_SCHOOL_AGE_URL_TEMPLATE
+        .replaceAll('{apiKey}', encodeURIComponent(KOSIS_API_KEY))
+        .replaceAll('{year}', encodeURIComponent(year))
+        .replaceAll('{admCd}', encodeURIComponent(props.adm_cd || props.admmCd || ''))
+        .replaceAll('{admCd2}', encodeURIComponent(props.adm_cd2 || props.admmCd || ''))
+        .replaceAll('{lawdCd}', encodeURIComponent(props.lawd_cd || props.bjd_cd || props.stdgCd || props.emd_cd || props.EMD_CD || ''))
+        .replaceAll('{featureCd}', encodeURIComponent(getFeatureDataKey(props)))
+        .replaceAll('{sgg}', encodeURIComponent(props.sgg || ''))
+        .replaceAll('{sggNm}', encodeURIComponent(getFeatureCityName(props)))
+        .replaceAll('{admNm}', encodeURIComponent(props.adm_nm || getFeatureName(props)))
+        .replaceAll('{featureNm}', encodeURIComponent(getFeatureName(props)))
+        .replaceAll('{group}', encodeURIComponent(group.id))
+        .replaceAll('{ageFrom}', encodeURIComponent(group.from))
+        .replaceAll('{ageTo}', encodeURIComponent(group.to));
+}
+
+function extractPopulationValue(data) {
+    const keys = ['school_age_population', 'schoolAgePopulation', 'population', 'ppltn', 'tot_ppltn', 'tot_ppltn_cnt', 'value', 'VALUE', 'dt', 'DT'];
+    const readValue = (obj) => {
+        if (!obj || typeof obj !== 'object') return null;
+        for (const key of keys) {
+            const value = parsePopulationNumber(obj[key]);
+            if (Number.isFinite(value)) return value;
+        }
+        return null;
+    };
+
+    if (Array.isArray(data)) {
+        const values = data.map(extractPopulationValue).filter(value => Number.isFinite(value));
+        return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+    }
+    const direct = readValue(data);
+    if (direct !== null) return direct;
+    if (Array.isArray(data?.result)) return extractPopulationValue(data.result);
+    if (data?.result && typeof data.result === 'object') return extractPopulationValue(data.result);
+    if (Array.isArray(data?.data)) return extractPopulationValue(data.data);
+    return null;
+}
+
+function extractAgePopulation(data, ageFrom, ageTo) {
+    const byAge = {};
+    const ageKeys = ['age', 'AGE', 'age_cd', 'AGE_CD', 'ageCd', 'age_code', 'ageCode', 'surv_age', 'SURV_AGE', 'itm', 'ITM', 'itm_nm', 'ITM_NM', 'c1_nm', 'C1_NM', 'C2_NM', 'C3_NM'];
+    const readAge = (obj) => {
+        for (const key of ageKeys) {
+            const raw = obj?.[key];
+            if (raw === undefined || raw === null) continue;
+            const match = String(raw).match(/\d{1,3}/);
+            if (!match) continue;
+            const age = Number.parseInt(match[0], 10);
+            if (age >= ageFrom && age <= ageTo) return age;
+        }
+        return null;
+    };
+
+    const walk = (node) => {
+        if (Array.isArray(node)) {
+            node.forEach(walk);
+            return;
+        }
+        if (!node || typeof node !== 'object') return;
+        const age = readAge(node);
+        const value = extractPopulationValue(node);
+        if (age !== null && Number.isFinite(value)) byAge[age] = (byAge[age] || 0) + value;
+        Object.values(node).forEach(child => {
+            if (child && typeof child === 'object') walk(child);
+        });
+    };
+
+    walk(data);
+    const total = Object.values(byAge).reduce((sum, value) => sum + value, 0);
+    return { total: total || extractPopulationValue(data), byAge };
+}
+
+async function mapLimit(items, limit, iterator) {
+    const results = [];
+    let index = 0;
+    async function worker() {
+        while (index < items.length) {
+            const current = index;
+            index += 1;
+            results[current] = await iterator(items[current], current);
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+    return results;
+}
+
+async function fetchKosisSchoolAgeValues(features, year) {
+    if (!KOSIS_SCHOOL_AGE_URL_TEMPLATE) return null;
+    const pairs = await mapLimit(features, 3, async (feature) => {
+        const groupPairs = await mapLimit(SCHOOL_AGE_GROUPS, 2, async (group) => {
+            const url = buildKosisRequestUrl(feature, year, group);
+            const data = await fetchJsonUrl(url, `kosis-${group.id}`);
+            const ageValue = extractAgePopulation(data, group.from, group.to);
+            const value = Object.keys(ageValue.byAge).length
+                ? Object.values(ageValue.byAge).reduce((sum, agePopulation) => sum + agePopulation, 0)
+                : extractPopulationValue(data);
+            return [group.id, value];
+        });
+        const groupPopulation = {};
+        groupPairs.forEach(([groupId, value]) => {
+            if (Number.isFinite(value)) groupPopulation[groupId] = value;
+        });
+        groupPopulation.total = Object.values(groupPopulation).reduce((sum, value) => sum + value, 0);
+        return [
+            getFeatureDataKey(feature.properties),
+            {
+                schoolAgePopulation: groupPopulation.total || null,
+                groupPopulation,
+                byAge: {}
+            }
+        ];
+    });
+
+    const values = {};
+    pairs.forEach(([featureKey, value]) => {
+        if (value && Number.isFinite(value.schoolAgePopulation)) values[featureKey] = value;
+    });
+    return Object.keys(values).length ? { source: 'kosis-live', values } : null;
+}
+
 function parseMoisSchoolAgeCsv(text) {
     const lines = text.split(/\r?\n/).filter(line => line.trim());
     if (lines.length < 2) return new Map();
@@ -518,7 +647,14 @@ async function fetchMoisCsvSchoolAgeValues(features, year) {
 }
 
 async function fetchLiveSchoolAgeValues(features, year) {
-    return fetchMoisCsvSchoolAgeValues(features, year);
+    const preferMois = SCHOOL_AGE_DATA_SOURCE === 'mois' || SCHOOL_AGE_DATA_SOURCE === 'jumin';
+    if (!preferMois) {
+        const kosisResult = await fetchKosisSchoolAgeValues(features, year);
+        if (kosisResult) return kosisResult;
+    }
+    const moisResult = await fetchMoisCsvSchoolAgeValues(features, year);
+    if (moisResult) return moisResult;
+    return null;
 }
 
 // 1. 인증 코드 발송 요청
@@ -799,9 +935,9 @@ app.get('/api/school-age-population', async (req, res) => {
         const geojson = JSON.parse(fs.readFileSync(geojsonFile, 'utf8'));
         const features = (geojson.features || []).filter(isHwaoFeature);
 
-        let source = 'mois-model';
+        let source = SCHOOL_AGE_DATA_SOURCE === 'mois' || SCHOOL_AGE_DATA_SOURCE === 'jumin' ? 'mois-model' : 'kosis-model';
         let statsYm = requestedStatsYm;
-        let message = '행안부 주민등록 인구통계 1세 단위 자료로 화성시·오산시 학령인구를 표시합니다. 실시간 자료를 읽지 못하면 로컬 예측 모델로 대체됩니다.';
+        let message = 'KOSIS 통계표 선택 URL이 설정되면 KOSIS 기준 학령인구를 우선 표시합니다. KOSIS 연결이 없으면 행안부 주민등록 1세 단위 자료로 대체됩니다.';
         let values = null;
         const forecast = isSchoolAgeForecastYear(year);
         lastSchoolAgeSyncError = null;
@@ -813,11 +949,13 @@ app.get('/api/school-age-population', async (req, res) => {
                     values = syncResult.values;
                     source = syncResult.source;
                     statsYm = syncResult.statsYm || statsYm;
-                    message = '행안부 주민등록 인구통계 1세 단위 CSV에서 초등·중등·고등·대학 연령대가 동기화되었습니다.';
+                    message = syncResult.source === 'kosis-live'
+                        ? 'KOSIS 통계자료 API에서 초등·중등·고등·대학 연령대가 동기화되었습니다.'
+                        : '행안부 주민등록 인구통계 1세 단위 CSV에서 초등·중등·고등·대학 연령대가 동기화되었습니다.';
                 }
             } catch (err) {
                 lastSchoolAgeSyncError = getPublicErrorMessage(err);
-                message = `행안부 주민등록 인구통계를 읽지 못해 로컬 예측 모델로 표시합니다: ${lastSchoolAgeSyncError}`;
+                message = `KOSIS/행안부 인구통계를 읽지 못해 로컬 예측 모델로 표시합니다: ${lastSchoolAgeSyncError}`;
                 console.warn('School-age population sync failed:', lastSchoolAgeSyncError);
             }
         } else {
@@ -849,6 +987,9 @@ app.get('/api/school-age-population', async (req, res) => {
             },
             message,
             diagnostics: {
+                selectedDataSource: SCHOOL_AGE_DATA_SOURCE,
+                hasKosisApiKey: !!KOSIS_API_KEY,
+                hasKosisUrlTemplate: !!KOSIS_SCHOOL_AGE_URL_TEMPLATE,
                 hasDataGoKrServiceKey: !!DATA_GO_KR_SERVICE_KEY,
                 dataGoKrAdminApi: DATA_GO_KR_ADMIN_AGE_URL,
                 dataGoKrLegalApi: DATA_GO_KR_LEGAL_AGE_URL,

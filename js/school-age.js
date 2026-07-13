@@ -628,8 +628,7 @@ const SchoolAge3DMap = {
         this.meshes.forEach(mesh => {
             if (mesh.parent) mesh.parent.remove(mesh);
             if (!mesh.userData?.sharedGeometry) mesh.geometry?.dispose();
-            if (Array.isArray(mesh.material)) mesh.material.forEach(material => material.dispose());
-            else mesh.material?.dispose();
+            this.disposeMaterial(mesh.material);
         });
         this.meshes = [];
         this.pickMeshes = [];
@@ -637,9 +636,18 @@ const SchoolAge3DMap = {
             if (child.userData?.generated) {
                 this.mapGroup.remove(child);
                 if (!child.userData?.sharedGeometry) child.geometry?.dispose();
-                child.material?.dispose();
+                this.disposeMaterial(child.material);
             }
         });
+    },
+
+    disposeMaterial(material) {
+        if (Array.isArray(material)) {
+            material.forEach(item => this.disposeMaterial(item));
+            return;
+        }
+        material?.map?.dispose?.();
+        material?.dispose?.();
     },
 
     getRenderableFeatures() {
@@ -675,6 +683,85 @@ const SchoolAge3DMap = {
         return this.flatRegionDepth + 0.08 + Math.min(0.78, readableCurve * 0.72 * dongtanLean);
     },
 
+    getPopulationColor(feature) {
+        const value = this.getFeatureValue(feature);
+        if (!Number.isFinite(value) || value <= 0) return 0xdaf3ff;
+        const min = Math.max(0, this.minFeatureValue || 0);
+        const max = Math.max(this.maxFeatureValue || 1, min + 1);
+        const ratio = max > min ? this.clamp((value - min) / (max - min), 0, 1) : 0.5;
+        const curved = Math.pow(ratio, 0.82);
+        const color = new THREE.Color(0xdff6ff).lerp(new THREE.Color(0x075ec9), curved);
+        return color.getHex();
+    },
+
+    getFeatureShortName(props = {}) {
+        const li = props.liNm || props.li_nm || props.LI_KOR_NM || '';
+        if (li) return String(li).trim();
+        const name = this.getFeatureName(props).replace(/\([^)]*\)/g, '').trim();
+        const parts = name.split(/\s+/).filter(Boolean);
+        return parts[parts.length - 1] || name || this.boundaryLevelLabel;
+    },
+
+    createFeatureLabel(feature, depth) {
+        const center = this.getFeatureCenter(feature);
+        const labelText = this.getFeatureShortName(feature.properties || {});
+        if (!labelText) return null;
+        const canvas = document.createElement('canvas');
+        const width = 256;
+        const height = 92;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.font = '800 28px "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const measured = Math.min(width - 34, Math.max(82, ctx.measureText(labelText).width + 32));
+        const boxX = (width - measured) / 2;
+        const boxY = 20;
+        const boxH = 50;
+        ctx.fillStyle = 'rgba(240, 249, 255, 0.88)';
+        ctx.strokeStyle = 'rgba(7, 94, 201, 0.42)';
+        ctx.lineWidth = 2;
+        this.roundRect(ctx, boxX, boxY, measured, boxH, 14);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#073763';
+        ctx.fillText(labelText, width / 2, boxY + boxH / 2 + 1, measured - 22);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
+        });
+        const sprite = new THREE.Sprite(material);
+        sprite.position.set(center.x, center.y, depth + 0.22);
+        const scale = this.clamp(measured / 150, 0.62, 1.25);
+        sprite.scale.set(scale, scale * 0.36, 1);
+        sprite.userData = { feature, generated: true, labelSprite: true };
+        return sprite;
+    },
+
+    roundRect(ctx, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + width - r, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+        ctx.lineTo(x + width, y + height - r);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+        ctx.lineTo(x + r, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    },
+
     getSelectedGroupTotals(features = this.visibleFeatures) {
         const selected = this.getSelectedGroupIds();
         return selected.map(groupId => ({
@@ -703,7 +790,7 @@ const SchoolAge3DMap = {
 
     createFeatureMeshes(feature) {
         const props = feature.properties || {};
-        const color = this.getRegionColor(props);
+        const color = this.getPopulationColor(feature);
         const borderColor = this.getRegionBorderColor(props);
         const depth = this.getFeatureReliefDepth(feature);
         const meshes = [];
@@ -742,6 +829,11 @@ const SchoolAge3DMap = {
             meshes.push(edge);
             this.animateMeshIntro(edge);
         });
+
+        if (meshes.some(mesh => mesh.userData?.regionMesh)) {
+            const label = this.createFeatureLabel(feature, depth);
+            if (label) meshes.push(label);
+        }
         return meshes;
     },
 
@@ -960,8 +1052,9 @@ const SchoolAge3DMap = {
 
     updatePanel(feature = null) {
         const source = this.populationData?.source || 'mois-pending';
-        const live = source === 'mois-jumin-csv' || source === 'data-go-kr-live';
-        const model = source === 'mois-model';
+        const kosis = source.startsWith('kosis');
+        const live = source === 'kosis-live' || source === 'mois-jumin-csv' || source === 'data-go-kr-live';
+        const model = source === 'kosis-model' || source === 'mois-model';
         const panelFeatures = this.denseOnly ? this.visibleFeatures : this.features;
         const values = panelFeatures.map(item => this.getFeatureValue(item)).filter(Number.isFinite);
         const total = values.reduce((sum, value) => sum + value, 0);
@@ -975,13 +1068,15 @@ const SchoolAge3DMap = {
         this.setText('populationYear', this.populationData?.statsYm || this.populationData?.year || '-');
         this.setText(
             'populationStatusTitle',
-            live ? '행안부 주민등록 동기화' : (model ? '주민등록 기준 예측 모델' : '행안부 연동 대기')
+            live
+                ? (kosis ? 'KOSIS 학령인구 동기화' : '행안부 주민등록 동기화')
+                : (model ? (kosis ? 'KOSIS 기준 예측 모델' : '주민등록 기준 예측 모델') : '공식 통계 연동 대기')
         );
         this.setText(
             'populationStatusText',
             live
                 ? `초등·중등·고등·대학 연령대 값을 ${this.boundaryLevelLabel} 단위로 반영했습니다.${forecast ? ' 현재 연도 이후라 예측값으로 표시됩니다.' : ''}`
-                : (this.populationData?.message || '행안부 주민등록 인구통계가 연결되면 공식 값으로 높이가 갱신됩니다.')
+                : (this.populationData?.message || 'KOSIS 또는 행안부 통계가 연결되면 공식 값으로 높이가 갱신됩니다.')
         );
         this.setText('selectedRegionName', selected ? (this.getFeatureName(selected) || this.boundaryLevelLabel) : '화성·오산 전체');
         this.setText(
