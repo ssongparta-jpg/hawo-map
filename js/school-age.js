@@ -499,6 +499,8 @@ const SchoolAge3DMap = {
     getFeatureDataKey(props = {}) {
         return String(
             props.featureKey ||
+            props.stdgCd ||
+            props.admmCd ||
             props.adm_cd2 ||
             props.adm_cd ||
             props.bjd_cd ||
@@ -512,9 +514,9 @@ const SchoolAge3DMap = {
     },
 
     getFeatureName(props = {}) {
-        const city = props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '';
-        const emd = props.bjd_nm || props.lawd_nm || props.emd_nm || props.EMD_KOR_NM || '';
-        const li = props.li_nm || props.LI_KOR_NM || '';
+        const city = props.sggNm || props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '';
+        const emd = props.stdgNm || props.dongNm || props.bjd_nm || props.lawd_nm || props.emd_nm || props.EMD_KOR_NM || '';
+        const li = props.liNm || props.li_nm || props.LI_KOR_NM || '';
         if (li && emd) return String(`${city ? `${city} ` : ''}${emd} ${li}`).trim();
         return String(
             props.adm_nm ||
@@ -527,13 +529,13 @@ const SchoolAge3DMap = {
     },
 
     getFeatureCityName(props = {}) {
-        return String(props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '');
+        return String(props.sggNm || props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '');
     },
 
     detectBoundaryLevel(geojson) {
         const keys = new Set((geojson.features || []).flatMap(feature => Object.keys(feature.properties || {})));
-        if (['LI_CD', 'LI_KOR_NM', 'li_cd', 'li_nm'].some(key => keys.has(key))) return '법정리';
-        if (['bjd_cd', 'bjd_nm', 'lawd_cd', 'lawd_nm', 'EMD_CD', 'EMD_KOR_NM'].some(key => keys.has(key))) return '법정동·리';
+        if (['LI_CD', 'LI_KOR_NM', 'li_cd', 'li_nm', 'liNm'].some(key => keys.has(key))) return '법정리';
+        if (['stdgCd', 'stdgNm', 'bjd_cd', 'bjd_nm', 'lawd_cd', 'lawd_nm', 'EMD_CD', 'EMD_KOR_NM'].some(key => keys.has(key))) return '법정동·리';
         return '행정동';
     },
 
@@ -957,9 +959,9 @@ const SchoolAge3DMap = {
     },
 
     updatePanel(feature = null) {
-        const source = this.populationData?.source || 'kosis-pending';
-        const live = source === 'kosis-live';
-        const model = source === 'kosis-model';
+        const source = this.populationData?.source || 'mois-pending';
+        const live = source === 'mois-jumin-csv' || source === 'data-go-kr-live';
+        const model = source === 'mois-model';
         const panelFeatures = this.denseOnly ? this.visibleFeatures : this.features;
         const values = panelFeatures.map(item => this.getFeatureValue(item)).filter(Number.isFinite);
         const total = values.reduce((sum, value) => sum + value, 0);
@@ -970,16 +972,16 @@ const SchoolAge3DMap = {
 
         const visibleCount = this.visibleFeatures?.length || this.features.length;
         this.setText('populationDongCount', visibleCount ? `${visibleCount}개` : '-');
-        this.setText('populationYear', this.populationData?.year || '-');
+        this.setText('populationYear', this.populationData?.statsYm || this.populationData?.year || '-');
         this.setText(
             'populationStatusTitle',
-            live ? 'KOSIS 학령구간 동기화' : (model ? 'KOSIS 기준 예측 모델' : 'KOSIS 연동 대기')
+            live ? '행안부 주민등록 동기화' : (model ? '주민등록 기준 예측 모델' : '행안부 연동 대기')
         );
         this.setText(
             'populationStatusText',
             live
                 ? `초등·중등·고등·대학 연령대 값을 ${this.boundaryLevelLabel} 단위로 반영했습니다.${forecast ? ' 현재 연도 이후라 예측값으로 표시됩니다.' : ''}`
-                : (this.populationData?.message || 'KOSIS API 템플릿이 설정되면 공식 값으로 높이가 갱신됩니다.')
+                : (this.populationData?.message || '행안부 주민등록 인구통계가 연결되면 공식 값으로 높이가 갱신됩니다.')
         );
         this.setText('selectedRegionName', selected ? (this.getFeatureName(selected) || this.boundaryLevelLabel) : '화성·오산 전체');
         this.setText(

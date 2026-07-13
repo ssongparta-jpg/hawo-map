@@ -29,9 +29,13 @@ const HWAO_DETAIL_GEOJSON_FILES = [
 ].filter(Boolean);
 const SCHOOL_AGE_FROM = process.env.SCHOOL_AGE_FROM || '6';
 const SCHOOL_AGE_TO = process.env.SCHOOL_AGE_TO || '21';
-const SCHOOL_AGE_FIRST_YEAR = Number.parseInt(process.env.KOSIS_STATS_START_YEAR || '2000', 10);
-const SCHOOL_AGE_OBSERVED_YEAR = Number.parseInt(process.env.KOSIS_OBSERVED_LATEST_YEAR || '2024', 10);
-const SCHOOL_AGE_FORECAST_YEAR = Number.parseInt(process.env.KOSIS_FORECAST_LATEST_YEAR || '2072', 10);
+const MOIS_JUMIN_CSV_URL = process.env.MOIS_JUMIN_CSV_URL || 'https://jumin.mois.go.kr/downloadCsvAge.do?searchYearMonth=month&xlsStats=3';
+const DATA_GO_KR_SERVICE_KEY = process.env.DATA_GO_KR_SERVICE_KEY || process.env.PUBLIC_DATA_SERVICE_KEY || process.env.DATAGO_SERVICE_KEY || process.env.MOIS_API_KEY || '';
+const DATA_GO_KR_ADMIN_AGE_URL = process.env.DATA_GO_KR_ADMIN_AGE_URL || 'https://apis.data.go.kr/1741000/admmSexdAgePpltn/selectAdmmSexdAgePpltn';
+const DATA_GO_KR_LEGAL_AGE_URL = process.env.DATA_GO_KR_LEGAL_AGE_URL || 'https://apis.data.go.kr/1741000/stdgSexdAgePpltn/selectStdgSexdAgePpltn';
+const SCHOOL_AGE_FIRST_YEAR = Number.parseInt(process.env.MOIS_STATS_START_YEAR || '2008', 10);
+const SCHOOL_AGE_OBSERVED_YEAR = Number.parseInt(process.env.MOIS_OBSERVED_LATEST_YEAR || '', 10);
+const SCHOOL_AGE_FORECAST_YEAR = Number.parseInt(process.env.MOIS_FORECAST_LATEST_YEAR || '2072', 10);
 let schoolAgeCache = { key: null, expires: 0, data: null };
 let lastSchoolAgeSyncError = null;
 
@@ -188,7 +192,8 @@ function getPublicErrorMessage(error) {
     return String(error?.message || error || '알 수 없는 오류')
         .replace(/accessToken=[^&\s]+/gi, 'accessToken=***')
         .replace(/consumer_key=[^&\s]+/gi, 'consumer_key=***')
-        .replace(/consumer_secret=[^&\s]+/gi, 'consumer_secret=***');
+        .replace(/consumer_secret=[^&\s]+/gi, 'consumer_secret=***')
+        .replace(/serviceKey=[^&\s]+/gi, 'serviceKey=***');
 }
 
 async function fetchJsonUrl(url, label = 'request') {
@@ -211,10 +216,32 @@ async function fetchJsonUrl(url, label = 'request') {
     return data;
 }
 
+function pad2(value) {
+    return String(value).padStart(2, '0');
+}
+
+function getLatestMoisStatsYm() {
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth();
+    if (month === 0) {
+        year -= 1;
+        month = 12;
+    }
+    return { year, month, ym: `${year}${pad2(month)}` };
+}
+
+function getMoisStatsYmForYear(year) {
+    const latest = getLatestMoisStatsYm();
+    const numericYear = Number(year) || latest.year;
+    if (numericYear >= latest.year) return latest.ym;
+    return `${numericYear}12`;
+}
+
 function getSchoolAgeYearRange() {
-    const currentYear = new Date().getFullYear();
+    const latest = getLatestMoisStatsYm();
     const startYear = Number.isFinite(SCHOOL_AGE_FIRST_YEAR) ? SCHOOL_AGE_FIRST_YEAR : 2000;
-    const observedYear = Number.isFinite(SCHOOL_AGE_OBSERVED_YEAR) ? SCHOOL_AGE_OBSERVED_YEAR : Math.max(2000, currentYear - 2);
+    const observedYear = Number.isFinite(SCHOOL_AGE_OBSERVED_YEAR) ? SCHOOL_AGE_OBSERVED_YEAR : latest.year;
     const forecastYear = Number.isFinite(SCHOOL_AGE_FORECAST_YEAR) ? SCHOOL_AGE_FORECAST_YEAR : observedYear;
     const min = Math.max(1960, Math.min(startYear, forecastYear));
     const max = Math.max(min, Math.max(observedYear, forecastYear));
@@ -224,7 +251,7 @@ function getSchoolAgeYearRange() {
         max,
         observedYear,
         defaultYear,
-        forecastFromYear: currentYear + 1,
+        forecastFromYear: observedYear + 1,
         years: Array.from({ length: max - min + 1 }, (_, index) => min + index)
     };
 }
@@ -247,9 +274,9 @@ function getHwaoGeojsonFile() {
 }
 
 function getFeatureName(props = {}) {
-    const city = props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '';
-    const emd = props.bjd_nm || props.lawd_nm || props.emd_nm || props.EMD_KOR_NM || '';
-    const li = props.li_nm || props.LI_KOR_NM || '';
+    const city = props.sggNm || props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '';
+    const emd = props.stdgNm || props.dongNm || props.bjd_nm || props.lawd_nm || props.emd_nm || props.EMD_KOR_NM || '';
+    const li = props.liNm || props.li_nm || props.LI_KOR_NM || '';
     if (li && emd) return String(`${city ? `${city} ` : ''}${emd} ${li}`).trim();
     return String(
         props.adm_nm ||
@@ -262,11 +289,14 @@ function getFeatureName(props = {}) {
 }
 
 function getFeatureCityName(props = {}) {
-    return String(props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '');
+    return String(props.sggNm || props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '');
 }
 
 function getFeatureDataKey(props = {}) {
     return String(
+        props.featureKey ||
+        props.stdgCd ||
+        props.admmCd ||
         props.adm_cd2 ||
         props.adm_cd ||
         props.bjd_cd ||
@@ -287,120 +317,7 @@ function isHwaoFeature(feature) {
 }
 
 function isSchoolAgeForecastYear(year) {
-    return Number(year) > new Date().getFullYear();
-}
-
-function buildSchoolAgeRequestUrl(feature, year, group) {
-    const props = feature.properties || {};
-    const template = process.env.KOSIS_SCHOOL_AGE_URL_TEMPLATE || process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE;
-    if (!template) return null;
-    const apiKey = process.env.KOSIS_API_KEY || process.env.KOSTAT_API_KEY || '';
-    return template
-        .replaceAll('{apiKey}', encodeURIComponent(apiKey))
-        .replaceAll('{year}', encodeURIComponent(year))
-        .replaceAll('{admCd}', encodeURIComponent(props.adm_cd || ''))
-        .replaceAll('{admCd2}', encodeURIComponent(props.adm_cd2 || ''))
-        .replaceAll('{lawdCd}', encodeURIComponent(props.lawd_cd || props.bjd_cd || props.emd_cd || props.EMD_CD || ''))
-        .replaceAll('{featureCd}', encodeURIComponent(getFeatureDataKey(props)))
-        .replaceAll('{sgg}', encodeURIComponent(props.sgg || ''))
-        .replaceAll('{sggNm}', encodeURIComponent(getFeatureCityName(props)))
-        .replaceAll('{admNm}', encodeURIComponent(props.adm_nm || getFeatureName(props)))
-        .replaceAll('{featureNm}', encodeURIComponent(getFeatureName(props)))
-        .replaceAll('{group}', encodeURIComponent(group.id))
-        .replaceAll('{ageFrom}', encodeURIComponent(group.from))
-        .replaceAll('{ageTo}', encodeURIComponent(group.to));
-}
-
-function extractPopulationValue(data) {
-    const keys = ['school_age_population', 'schoolAgePopulation', 'population', 'ppltn', 'tot_ppltn', 'tot_ppltn_cnt', 'value', 'VALUE', 'dt', 'DT'];
-    const toNumber = (value) => {
-        const num = Number(String(value ?? '').replace(/,/g, ''));
-        return Number.isFinite(num) ? num : null;
-    };
-
-    const readObject = (obj) => {
-        if (!obj || typeof obj !== 'object') return null;
-        for (const key of keys) {
-            const num = toNumber(obj[key]);
-            if (num !== null) return num;
-        }
-        return null;
-    };
-
-    if (Array.isArray(data)) {
-        const values = data.map(extractPopulationValue).filter(Number.isFinite);
-        return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
-    }
-
-    const direct = readObject(data);
-    if (direct !== null) return direct;
-    if (Array.isArray(data?.result)) return extractPopulationValue(data.result);
-    if (data?.result && typeof data.result === 'object') return extractPopulationValue(data.result);
-    if (Array.isArray(data?.data)) return extractPopulationValue(data.data);
-    return null;
-}
-
-function extractAgePopulation(data, ageFrom, ageTo) {
-    const byAge = {};
-    const ageKeys = ['age', 'AGE', 'age_cd', 'AGE_CD', 'ageCd', 'age_code', 'ageCode', 'surv_age', 'SURV_AGE', 'itm', 'ITM', 'itm_nm', 'ITM_NM', 'c1_nm', 'C1_NM', 'C2_NM', 'C3_NM'];
-    const readAge = (obj) => {
-        for (const key of ageKeys) {
-            const raw = obj?.[key];
-            if (raw === undefined || raw === null) continue;
-            const match = String(raw).match(/\d{1,3}/);
-            if (!match) continue;
-            const age = Number.parseInt(match[0], 10);
-            if (age >= ageFrom && age <= ageTo) return age;
-        }
-        return null;
-    };
-
-    const walk = (node) => {
-        if (Array.isArray(node)) {
-            node.forEach(walk);
-            return;
-        }
-        if (!node || typeof node !== 'object') return;
-
-        const age = readAge(node);
-        const value = extractPopulationValue(node);
-        if (age !== null && Number.isFinite(value)) {
-            byAge[age] = (byAge[age] || 0) + value;
-        }
-
-        Object.values(node).forEach(valueNode => {
-            if (valueNode && typeof valueNode === 'object') walk(valueNode);
-        });
-    };
-
-    walk(data);
-    const totalFromAges = Object.values(byAge).reduce((sum, value) => sum + value, 0);
-    const total = totalFromAges || extractPopulationValue(data);
-    return {
-        total: Number.isFinite(total) ? total : null,
-        byAge
-    };
-}
-
-async function mapLimit(items, limit, iterator) {
-    const results = [];
-    let index = 0;
-    async function worker() {
-        while (index < items.length) {
-            const current = index++;
-            results[current] = await iterator(items[current], current);
-        }
-    }
-    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-    return results;
-}
-
-function extractSchoolAgeGroupValue(data, group) {
-    const value = extractAgePopulation(data, group.from, group.to);
-    if (Object.keys(value.byAge).length) {
-        return Object.values(value.byAge).reduce((sum, ageValue) => sum + ageValue, 0);
-    }
-    return extractPopulationValue(data);
+    return Number(year) > getSchoolAgeYearRange().observedYear;
 }
 
 function getSchoolAgeSeed(text) {
@@ -442,36 +359,166 @@ function getSchoolAgeModelValues(feature, year) {
     };
 }
 
-async function fetchLiveSchoolAgeValues(features, year) {
-    const template = process.env.KOSIS_SCHOOL_AGE_URL_TEMPLATE || process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE;
-    if (!template) return null;
+function parsePopulationNumber(value) {
+    const num = Number(String(value ?? '').replace(/,/g, '').trim());
+    return Number.isFinite(num) ? num : 0;
+}
 
-    const pairs = await mapLimit(features, 3, async (feature) => {
-        const groupPairs = await mapLimit(SCHOOL_AGE_GROUPS, 2, async (group) => {
-            const url = buildSchoolAgeRequestUrl(feature, year, group);
-            const data = await fetchJsonUrl(url, `kosis-${group.id}`);
-            return [group.id, extractSchoolAgeGroupValue(data, group)];
-        });
-        const groupPopulation = {};
-        groupPairs.forEach(([groupId, value]) => {
-            if (Number.isFinite(value)) groupPopulation[groupId] = value;
-        });
-        groupPopulation.total = Object.values(groupPopulation).reduce((sum, value) => sum + value, 0);
-        return [
-            getFeatureDataKey(feature.properties),
-            {
-                schoolAgePopulation: groupPopulation.total || null,
-                groupPopulation,
-                byAge: {}
+function parseCsvLine(line) {
+    const cells = [];
+    let value = '';
+    let quoted = false;
+    for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        if (char === '"') {
+            if (quoted && line[i + 1] === '"') {
+                value += '"';
+                i += 1;
+            } else {
+                quoted = !quoted;
             }
-        ];
+        } else if (char === ',' && !quoted) {
+            cells.push(value.trim());
+            value = '';
+        } else {
+            value += char;
+        }
+    }
+    cells.push(value.trim());
+    return cells;
+}
+
+function parseMoisRegionCell(value) {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^(.*)\((\d{10})\)\s*$/);
+    if (!match) return { name: raw, code: '' };
+    return {
+        name: match[1].replace(/\s+/g, ' ').trim(),
+        code: match[2]
+    };
+}
+
+function decodeMoisCsv(buffer) {
+    const utf8 = Buffer.from(buffer).toString('utf8');
+    if (!utf8.includes('�')) return utf8;
+    try {
+        return new TextDecoder('euc-kr').decode(buffer);
+    } catch (err) {
+        return Buffer.from(buffer).toString('binary');
+    }
+}
+
+function buildGroupPopulationFromAges(byAge) {
+    const groupPopulation = {};
+    SCHOOL_AGE_GROUPS.forEach(group => {
+        let total = 0;
+        for (let age = group.from; age <= group.to; age += 1) {
+            total += Number(byAge[age]) || 0;
+        }
+        groupPopulation[group.id] = total;
+    });
+    groupPopulation.total = Object.values(groupPopulation).reduce((sum, value) => sum + value, 0);
+    return groupPopulation;
+}
+
+function parseMoisSchoolAgeCsv(text) {
+    const lines = text.split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) return new Map();
+    const headers = parseCsvLine(lines[0]);
+    const ageColumns = headers.map((header, index) => {
+        const match = String(header).match(/_계_(\d{1,3})세$/);
+        return match ? { index, age: Number.parseInt(match[1], 10) } : null;
+    }).filter(Boolean);
+    const records = new Map();
+
+    lines.slice(1).forEach(line => {
+        const cells = parseCsvLine(line);
+        const region = parseMoisRegionCell(cells[0]);
+        if (!region.code || (!region.name.includes('화성시') && !region.name.includes('오산시'))) return;
+        const byAge = {};
+        ageColumns.forEach(column => {
+            byAge[column.age] = parsePopulationNumber(cells[column.index]);
+        });
+        const groupPopulation = buildGroupPopulationFromAges(byAge);
+        records.set(region.code, {
+            schoolAgePopulation: groupPopulation.total,
+            groupPopulation,
+            byAge,
+            name: region.name,
+            code: region.code
+        });
     });
 
-    const valueMap = {};
-    pairs.forEach(([featureKey, value]) => {
-        if (value && Number.isFinite(value.schoolAgePopulation)) valueMap[featureKey] = value;
+    return records;
+}
+
+function getFeatureDataKeys(props = {}) {
+    return [
+        props.featureKey,
+        props.stdgCd,
+        props.admmCd,
+        props.adm_cd2,
+        props.adm_cd,
+        props.bjd_cd,
+        props.lawd_cd,
+        props.emd_cd,
+        props.EMD_CD,
+        props.LI_CD,
+        props.SIG_CD,
+        getFeatureDataKey(props)
+    ].map(value => String(value || '').trim()).filter(Boolean);
+}
+
+async function fetchMoisCsvSchoolAgeValues(features, year) {
+    if (typeof fetch !== 'function') throw new Error('fetch is not available in this Node runtime');
+    const targetYm = getMoisStatsYmForYear(year);
+    const targetYear = targetYm.slice(0, 4);
+    const targetMonth = targetYm.slice(4, 6);
+    const body = new URLSearchParams({
+        sltOrgType: '1',
+        sltOrgLvl1: 'A',
+        sltOrgLvl2: '',
+        sum: 'sum',
+        gender: '',
+        sltUndefType: '',
+        searchYearStart: targetYear,
+        searchMonthStart: targetMonth,
+        searchYearEnd: targetYear,
+        searchMonthEnd: targetMonth,
+        sltOrderType: '1',
+        sltOrderValue: 'ASC',
+        sltArgTypes: '1',
+        sltArgTypeA: String(SCHOOL_AGE_FROM),
+        sltArgTypeB: String(SCHOOL_AGE_TO),
+        category: 'month'
     });
-    return Object.keys(valueMap).length ? { source: 'kosis-live', values: valueMap } : null;
+    const res = await fetch(MOIS_JUMIN_CSV_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+    });
+    if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(`MOIS CSV request failed: ${res.status}${detail ? ` ${detail.replace(/\s+/g, ' ').slice(0, 180)}` : ''}`);
+    }
+
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const text = decodeMoisCsv(buffer);
+    const csvRecords = parseMoisSchoolAgeCsv(text);
+    const values = {};
+    features.forEach(feature => {
+        const props = feature.properties || {};
+        const key = getFeatureDataKeys(props).find(candidate => csvRecords.has(candidate));
+        if (key) values[getFeatureDataKey(props)] = csvRecords.get(key);
+    });
+
+    return Object.keys(values).length
+        ? { source: 'mois-jumin-csv', statsYm: targetYm, values }
+        : null;
+}
+
+async function fetchLiveSchoolAgeValues(features, year) {
+    return fetchMoisCsvSchoolAgeValues(features, year);
 }
 
 // 1. 인증 코드 발송 요청
@@ -742,7 +789,8 @@ app.get('/api/school-age-population', async (req, res) => {
     const maxAge = Math.max(ageFrom, ageTo);
     const geojsonFile = getHwaoGeojsonFile();
     const geojsonStat = fs.statSync(geojsonFile);
-    const cacheKey = `school-age-groups:${year}:${minAge}-${maxAge}:${path.basename(geojsonFile)}:${geojsonStat.mtimeMs}`;
+    const requestedStatsYm = getMoisStatsYmForYear(year);
+    const cacheKey = `school-age-groups:${year}:${requestedStatsYm}:${minAge}-${maxAge}:${path.basename(geojsonFile)}:${geojsonStat.mtimeMs}`;
     if (req.query.refresh !== '1' && schoolAgeCache.key === cacheKey && schoolAgeCache.expires > Date.now()) {
         return res.json(schoolAgeCache.data);
     }
@@ -751,22 +799,29 @@ app.get('/api/school-age-population', async (req, res) => {
         const geojson = JSON.parse(fs.readFileSync(geojsonFile, 'utf8'));
         const features = (geojson.features || []).filter(isHwaoFeature);
 
-        let source = 'kosis-model';
-        let message = 'KOSIS 인구상황판의 학령 구간 기준으로 화성시·오산시의 설정된 경계 단위를 표시합니다. 공식 연령별 API URL 템플릿이 설정되면 실제 통계값으로 대체됩니다.';
+        let source = 'mois-model';
+        let statsYm = requestedStatsYm;
+        let message = '행안부 주민등록 인구통계 1세 단위 자료로 화성시·오산시 학령인구를 표시합니다. 실시간 자료를 읽지 못하면 로컬 예측 모델로 대체됩니다.';
         let values = null;
+        const forecast = isSchoolAgeForecastYear(year);
         lastSchoolAgeSyncError = null;
 
-        try {
-            const syncResult = await fetchLiveSchoolAgeValues(features, year);
-            if (syncResult?.values) {
-                values = syncResult.values;
-                source = syncResult.source;
-                message = 'KOSIS 학령 구간 API에서 초등·중등·고등·대학 연령대가 동기화되었습니다.';
+        if (!forecast) {
+            try {
+                const syncResult = await fetchLiveSchoolAgeValues(features, year);
+                if (syncResult?.values) {
+                    values = syncResult.values;
+                    source = syncResult.source;
+                    statsYm = syncResult.statsYm || statsYm;
+                    message = '행안부 주민등록 인구통계 1세 단위 CSV에서 초등·중등·고등·대학 연령대가 동기화되었습니다.';
+                }
+            } catch (err) {
+                lastSchoolAgeSyncError = getPublicErrorMessage(err);
+                message = `행안부 주민등록 인구통계를 읽지 못해 로컬 예측 모델로 표시합니다: ${lastSchoolAgeSyncError}`;
+                console.warn('School-age population sync failed:', lastSchoolAgeSyncError);
             }
-        } catch (err) {
-            lastSchoolAgeSyncError = getPublicErrorMessage(err);
-            message = `KOSIS API 응답을 읽지 못해 로컬 예측 모델로 표시합니다: ${lastSchoolAgeSyncError}`;
-            console.warn('School-age population sync failed:', lastSchoolAgeSyncError);
+        } else {
+            message = '선택한 연도는 행안부 주민등록 실측 공표 범위를 넘어 로컬 예측 모델로 표시합니다.';
         }
 
         if (!values) {
@@ -776,12 +831,12 @@ app.get('/api/school-age-population', async (req, res) => {
             ]));
         }
 
-        const forecast = isSchoolAgeForecastYear(year);
         if (forecast) message += ' 선택한 연도는 현재 연도 이후이므로 예측값으로 표시됩니다.';
 
         const response = {
             source,
             year,
+            statsYm,
             forecast,
             ageRange: { from: minAge, to: maxAge },
             groups: [
@@ -794,8 +849,9 @@ app.get('/api/school-age-population', async (req, res) => {
             },
             message,
             diagnostics: {
-                hasKosisApiKey: !!(process.env.KOSIS_API_KEY || process.env.KOSTAT_API_KEY),
-                hasUrlTemplate: !!(process.env.KOSIS_SCHOOL_AGE_URL_TEMPLATE || process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE),
+                hasDataGoKrServiceKey: !!DATA_GO_KR_SERVICE_KEY,
+                dataGoKrAdminApi: DATA_GO_KR_ADMIN_AGE_URL,
+                dataGoKrLegalApi: DATA_GO_KR_LEGAL_AGE_URL,
                 lastError: lastSchoolAgeSyncError,
                 boundaryFile: path.basename(geojsonFile),
                 boundaryFeatureCount: features.length
