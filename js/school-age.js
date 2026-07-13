@@ -378,7 +378,7 @@ const SchoolAge3DMap = {
             if (!options.force && year && this.populationCache.has(year)) {
                 if (token !== this.loadToken) return;
                 this.populationData = this.populationCache.get(year);
-                this.applyPopulationData({ animate: false });
+                this.applyPopulationData({ animate: options.animate !== false });
                 return;
             }
 
@@ -398,7 +398,7 @@ const SchoolAge3DMap = {
             this.populationData = popRes && popRes.ok ? await popRes.json() : null;
             if (token !== this.loadToken) return;
             if (year && this.populationData) this.populationCache.set(year, this.populationData);
-            this.applyPopulationData({ animate: true });
+            this.applyPopulationData({ animate: options.animate !== false });
         } catch (err) {
             if (err?.name !== 'AbortError') this.setStatus('지도 로드 실패', '행정동 경계 데이터를 불러오지 못했습니다.');
         } finally {
@@ -430,7 +430,7 @@ const SchoolAge3DMap = {
         const cacheKey = String(year);
         if (this.populationCache.has(cacheKey)) {
             this.populationData = this.populationCache.get(cacheKey);
-            this.applyPopulationData({ animate: false });
+            this.applyPopulationData({ animate: true });
             return;
         }
 
@@ -451,8 +451,8 @@ const SchoolAge3DMap = {
             props.schoolAgePopulation = props.groupPopulation.total;
             props.agePopulation = {};
         });
-        if (this.denseOnly) this.buildMap();
-        else this.updateMapVisuals({ animate: false });
+        if (this.denseOnly && !this.meshes.length) this.buildMap();
+        else this.updateMapVisuals({ animate: true });
         this.updatePanel();
     },
 
@@ -697,10 +697,12 @@ const SchoolAge3DMap = {
         if (!this.meshes.length) return;
         this.visibleFeatures = this.getRenderableFeatures();
         this.updateReliefScale();
-        this.animations = this.animations.filter(animation => {
-            if (animation.kind === 'year-scale') return false;
-            return animate || (!animation.mesh?.userData?.regionMesh && !animation.mesh?.userData?.edgeFor);
-        });
+        if (!animate) {
+            this.animations = this.animations.filter(animation => {
+                const userData = animation.mesh?.userData || {};
+                return !userData.regionMesh && !userData.edgeFor;
+            });
+        }
 
         this.meshes.forEach(mesh => {
             const feature = mesh.userData?.feature;
@@ -1352,27 +1354,51 @@ const SchoolAge3DMap = {
         this.requestRender();
     },
 
-    animateScaleZ(mesh, toZ, duration = 180) {
+    animateScaleZ(mesh, toZ, duration = 260) {
         if (!mesh || !Number.isFinite(toZ) || toZ <= 0) return;
-        if (Math.abs(mesh.scale.z - toZ) < 0.01) {
+        const now = window.performance?.now?.() || Date.now();
+        const fromZ = this.resolveScaleAnimation(mesh, now);
+        if (Math.abs(fromZ - toZ) < 0.01) {
             mesh.scale.z = toZ;
+            this.animations = this.animations.filter(animation => animation.mesh !== mesh);
             return;
         }
         this.animations = this.animations.filter(animation => animation.mesh !== mesh);
         this.animations.push({
             kind: 'year-scale',
             mesh,
-            start: window.performance?.now?.() || Date.now(),
+            start: now,
             duration,
-            fromZ: mesh.scale.z,
+            fromZ,
             toZ
         });
         this.requestRender();
     },
 
+    resolveScaleAnimation(mesh, now = window.performance?.now?.() || Date.now()) {
+        const animation = this.animations.find(item => item.mesh === mesh);
+        if (!animation) return mesh.scale.z;
+        const progress = this.clamp((now - animation.start) / animation.duration, 0, 1);
+        const eased = animation.kind === 'year-scale'
+            ? this.easeInOutCubic(progress)
+            : this.easeOutCubic(progress);
+        const fromZ = Number.isFinite(animation.fromZ) ? animation.fromZ : mesh.scale.z;
+        const toZ = Number.isFinite(animation.toZ) ? animation.toZ : mesh.scale.z;
+        const currentZ = fromZ + (toZ - fromZ) * eased;
+        mesh.scale.z = currentZ;
+        return currentZ;
+    },
+
     easeOutCubic(value) {
         const t = this.clamp(value, 0, 1);
         return 1 - Math.pow(1 - t, 3);
+    },
+
+    easeInOutCubic(value) {
+        const t = this.clamp(value, 0, 1);
+        return t < 0.5
+            ? 4 * t * t * t
+            : 1 - Math.pow(-2 * t + 2, 3) / 2;
     },
 
     updateAnimations() {
@@ -1381,7 +1407,9 @@ const SchoolAge3DMap = {
         this.animations = this.animations.filter(animation => {
             if (!animation.mesh?.parent) return false;
             const progress = this.clamp((now - animation.start) / animation.duration, 0, 1);
-            const eased = this.easeOutCubic(progress);
+            const eased = animation.kind === 'year-scale'
+                ? this.easeInOutCubic(progress)
+                : this.easeOutCubic(progress);
             const fromZ = Number.isFinite(animation.fromZ) ? animation.fromZ : 0.08;
             const toZ = Number.isFinite(animation.toZ) ? animation.toZ : 1;
             animation.mesh.scale.z = fromZ + (toZ - fromZ) * eased;
