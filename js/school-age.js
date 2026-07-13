@@ -137,11 +137,8 @@ const SchoolAge3DMap = {
             const group = event.target.closest('[data-group]')?.dataset.group;
             if (group) this.setGroup(group);
             const action = event.target.closest('[data-map-action]')?.dataset.mapAction;
-            if (action === 'reset') this.resetView();
             if (action === 'top') this.setTopView();
             if (action === 'density') this.toggleDensityMode(event.target.closest('[data-map-action]'));
-            const viewMode = event.target.closest('[data-view-mode]')?.dataset.viewMode;
-            if (viewMode === 'total') this.setGroup('total');
         });
 
         const yearSlider = document.getElementById('yearSlider');
@@ -612,29 +609,6 @@ const SchoolAge3DMap = {
         return this.flatRegionDepth + 0.08 + Math.min(0.78, readableCurve * 0.72 * dongtanLean);
     },
 
-    getFeatureStatColor(feature) {
-        const selected = this.getSelectedGroupIds();
-        if (!selected.length) return this.getRegionColor(feature.properties || {});
-        const props = feature.properties || {};
-        const population = props.groupPopulation || {};
-        const selectedValues = selected.map(groupId => ({
-            id: groupId,
-            value: Math.max(0, Number(population[groupId]) || 0)
-        }));
-        const selectedTotal = selectedValues.reduce((sum, item) => sum + item.value, 0);
-        if (!selectedTotal) return this.getRegionColor(props);
-
-        const color = new THREE.Color(0, 0, 0);
-        selectedValues.forEach(item => {
-            const shareColor = new THREE.Color(this.groupColors[item.id] || this.getRegionColor(props));
-            const ratio = item.value / selectedTotal;
-            color.r += shareColor.r * ratio;
-            color.g += shareColor.g * ratio;
-            color.b += shareColor.b * ratio;
-        });
-        return color.getHex();
-    },
-
     getSelectedGroupTotals(features = this.visibleFeatures) {
         const selected = this.getSelectedGroupIds();
         return selected.map(groupId => ({
@@ -663,70 +637,44 @@ const SchoolAge3DMap = {
 
     createFeatureMeshes(feature) {
         const props = feature.properties || {};
-        const baseColor = this.getRegionColor(props);
-        const statColor = this.getFeatureStatColor(feature);
+        const color = this.getRegionColor(props);
         const borderColor = this.getRegionBorderColor(props);
-        const baseDepth = this.flatRegionDepth;
-        const reliefDepth = this.getFeatureReliefDepth(feature);
-        const reliefOpacity = this.getSelectedGroupIds().length ? 0.76 : 0.18;
+        const depth = this.getFeatureReliefDepth(feature);
         const meshes = [];
 
         this.getPolygons(feature.geometry).forEach(polygon => {
             const shape = this.polygonToShape(polygon);
             if (!shape) return;
-            const baseGeometry = new THREE.ExtrudeGeometry(shape, {
-                depth: baseDepth,
+            const geometry = new THREE.ExtrudeGeometry(shape, {
+                depth,
                 bevelEnabled: true,
-                bevelSize: 0.004,
-                bevelThickness: 0.004,
-                bevelSegments: 1
-            });
-            baseGeometry.computeVertexNormals();
-            const baseMesh = new THREE.Mesh(baseGeometry, new THREE.MeshStandardMaterial({
-                color: baseColor,
-                roughness: 0.72,
-                metalness: 0.03,
-                transparent: true,
-                opacity: 0.62,
-                emissive: new THREE.Color(baseColor).multiplyScalar(0.025)
-            }));
-            baseMesh.userData = { feature, generated: true, baseRegion: true };
-            meshes.push(baseMesh);
-
-            const reliefGeometry = new THREE.ExtrudeGeometry(shape, {
-                depth: reliefDepth,
-                bevelEnabled: true,
-                bevelSize: 0.012,
-                bevelThickness: 0.018,
+                bevelSize: 0.01,
+                bevelThickness: 0.015,
                 bevelSegments: 2
             });
-            reliefGeometry.computeVertexNormals();
-            const reliefMesh = new THREE.Mesh(reliefGeometry, new THREE.MeshStandardMaterial({
-                color: statColor,
+            geometry.computeVertexNormals();
+            const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+                color,
                 roughness: 0.64,
                 metalness: 0.04,
-                transparent: true,
-                opacity: 0,
-                emissive: new THREE.Color(statColor).multiplyScalar(0.04)
+                emissive: new THREE.Color(color).multiplyScalar(0.045)
             }));
-            reliefMesh.userData = {
+            mesh.userData = {
                 feature,
-                baseColor: statColor,
+                baseColor: color,
                 isRegion: true,
                 regionMesh: true,
-                generated: true,
-                reliefMesh: true,
-                targetOpacity: reliefOpacity
+                generated: true
             };
-            meshes.push(reliefMesh);
-            this.pickMeshes.push(reliefMesh);
-            this.animateMeshIntro(reliefMesh, reliefOpacity);
+            meshes.push(mesh);
+            this.pickMeshes.push(mesh);
+            this.animateMeshIntro(mesh);
 
-            const edgeGeometry = new THREE.EdgesGeometry(reliefGeometry, 34);
-            const edge = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: borderColor, transparent: true, opacity: 0.38 }));
-            edge.userData = { feature, isRegion: true, generated: true, edgeFor: reliefMesh, targetOpacity: 0.38 };
+            const edgeGeometry = new THREE.EdgesGeometry(geometry, 34);
+            const edge = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: borderColor, transparent: true, opacity: 0.4 }));
+            edge.userData = { feature, isRegion: true, generated: true, edgeFor: mesh };
             meshes.push(edge);
-            this.animateMeshIntro(edge, 0.38);
+            this.animateMeshIntro(edge);
         });
         return meshes;
     },
@@ -938,21 +886,10 @@ const SchoolAge3DMap = {
             this.selectedGroups = selectable.filter(groupId => current.has(groupId));
         }
         this.renderAgeSelector();
-        document.querySelectorAll('[data-view-mode="total"]').forEach(btn => {
-            btn.classList.toggle('active', this.isAllGroupsSelected());
-        });
         if (this.features.length) {
             this.buildMap();
             this.updatePanel();
         }
-    },
-
-    resetView() {
-        this.mapGroup.rotation.x = -0.18;
-        this.mapGroup.rotation.z = -0.08;
-        this.camera.position.set(0, -5.4, 13.8);
-        this.camera.lookAt(0, 0, 0);
-        this.requestRender();
     },
 
     updatePanel(feature = null) {
@@ -964,6 +901,7 @@ const SchoolAge3DMap = {
         const total = values.reduce((sum, value) => sum + value, 0);
         const selected = feature?.properties || null;
         const selectedGroup = this.getSelectedGroup();
+        const noSelection = selectedGroup.id === 'none';
         const forecast = !!this.populationData?.forecast;
 
         const visibleCount = this.visibleFeatures?.length || this.features.length;
@@ -980,8 +918,15 @@ const SchoolAge3DMap = {
                 : (this.populationData?.message || 'KOSIS API 템플릿이 설정되면 공식 값으로 높이가 갱신됩니다.')
         );
         this.setText('selectedRegionName', selected ? (selected.adm_nm || '행정동') : '화성·오산 전체');
-        this.setText('selectedRegionMeta', selected ? this.getFeatureLabel({ properties: selected }) : `${selectedGroup.label} 구간의 행정동 땅 높이와 선택 구간 색 비율로 학령인구 밀집도를 표시합니다.${this.denseOnly ? ` 현재 상위 밀집동 ${visibleCount}개만 표시 중입니다.` : ''}`);
-        this.setText('totalPopulationLabel', `${selectedGroup.label} 합계${forecast ? ' (예측)' : ''}`);
+        this.setText(
+            'selectedRegionMeta',
+            selected
+                ? this.getFeatureLabel({ properties: selected })
+                : (noSelection
+                    ? `학령군을 선택하면 지역색 블록 높이가 해당 합계로 조절됩니다.${this.denseOnly ? ` 현재 상위 밀집동 ${visibleCount}개만 표시 중입니다.` : ''}`
+                    : `${selectedGroup.label} 구간의 합계로 지역색 블록 높이를 조절합니다.${this.denseOnly ? ` 현재 상위 밀집동 ${visibleCount}개만 표시 중입니다.` : ''}`)
+        );
+        this.setText('totalPopulationLabel', `${noSelection ? '선택 없음' : `${selectedGroup.label} 합계`}${forecast ? ' (예측)' : ''}`);
         this.setText('totalPopulation', values.length ? `${this.format(total)}명` : '-');
         const fill = document.getElementById('rangeBarFill');
         if (fill) {
@@ -1032,8 +977,6 @@ const SchoolAge3DMap = {
             if (!mesh.userData?.regionMesh || !mesh.material?.emissive) return;
             mesh.material.emissive.setHex(mesh.userData.baseColor);
             mesh.material.emissive.multiplyScalar(mesh.userData.feature === feature ? 0.22 : 0.06);
-            const targetOpacity = mesh.userData.targetOpacity ?? 0.76;
-            mesh.material.opacity = mesh.userData.feature === feature ? Math.min(0.94, targetOpacity + 0.14) : targetOpacity;
         });
         this.hoveredFeature = feature;
         this.requestRender();
@@ -1046,7 +989,6 @@ const SchoolAge3DMap = {
             if (!mesh.userData?.regionMesh || !mesh.material?.emissive) return;
             mesh.material.emissive.setHex(mesh.userData.baseColor);
             mesh.material.emissive.multiplyScalar(0.06);
-            mesh.material.opacity = mesh.userData.targetOpacity ?? 0.76;
         });
         this.hoveredFeature = null;
         this.updatePanel();
@@ -1120,12 +1062,10 @@ const SchoolAge3DMap = {
         return Math.round(num).toLocaleString('ko-KR');
     },
 
-    animateMeshIntro(mesh, targetOpacity) {
+    animateMeshIntro(mesh) {
         mesh.scale.z = 0.08;
-        if (mesh.material) mesh.material.opacity = 0;
         this.animations.push({
             mesh,
-            targetOpacity,
             start: window.performance?.now?.() || Date.now(),
             duration: 560
         });
@@ -1145,7 +1085,6 @@ const SchoolAge3DMap = {
             const progress = this.clamp((now - animation.start) / animation.duration, 0, 1);
             const eased = this.easeOutCubic(progress);
             animation.mesh.scale.z = 0.08 + eased * 0.92;
-            if (animation.mesh.material) animation.mesh.material.opacity = animation.targetOpacity * eased;
             this.needsRender = true;
             return progress < 1;
         });
