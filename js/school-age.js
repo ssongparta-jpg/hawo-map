@@ -11,6 +11,14 @@ const SchoolAge3DMap = {
     features: [],
     visibleFeatures: [],
     geojson: null,
+    boundarySource: '',
+    boundaryLevelLabel: '행정동',
+    boundaryCandidates: [
+        'data/hwao_smallest.geojson',
+        'data/hwao_detail.geojson',
+        'data/hwao_legal.geojson',
+        'data/hwao.geojson'
+    ],
     populationData: null,
     selectedGroups: ['elementary', 'middle', 'high', 'university'],
     selectedYear: null,
@@ -328,17 +336,34 @@ const SchoolAge3DMap = {
         }
     },
 
+    async loadBoundaryGeojson() {
+        if (this.geojson) return this.geojson;
+
+        for (const url of this.boundaryCandidates) {
+            try {
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) continue;
+                const geojson = await res.json();
+                if (!Array.isArray(geojson.features) || !geojson.features.length) continue;
+                this.geojson = geojson;
+                this.boundarySource = url;
+                this.boundaryLevelLabel = this.detectBoundaryLevel(geojson);
+                return geojson;
+            } catch (err) {
+                // 세부 경계 파일이 없으면 다음 후보로 넘어갑니다.
+            }
+        }
+
+        throw new Error('geojson failed');
+    },
+
     async loadData() {
         const token = ++this.loadToken;
         try {
             this.setLoadingState(true);
             const yearParam = this.selectedYear ? `&year=${encodeURIComponent(this.selectedYear)}` : '';
             const popPromise = fetch(`/api/school-age-population?${yearParam.replace(/^&/, '')}`, { cache: 'no-store' }).catch(() => null);
-            if (!this.geojson) {
-                const geoRes = await fetch('data/hwao.geojson', { cache: 'no-store' });
-                if (!geoRes.ok) throw new Error('geojson failed');
-                this.geojson = await geoRes.json();
-            }
+            await this.loadBoundaryGeojson();
             const popRes = await popPromise;
             if (token !== this.loadToken) return;
             const geojson = this.geojson;
@@ -349,8 +374,10 @@ const SchoolAge3DMap = {
                 this.renderAgeSelector();
             }
             this.features = (geojson.features || []).filter(feature => {
-                const sgg = feature.properties?.sggnm || '';
-                return sgg.includes('화성시') || sgg.includes('오산시');
+                const props = feature.properties || {};
+                const city = this.getFeatureCityName(props);
+                const name = this.getFeatureName(props);
+                return city.includes('화성시') || city.includes('오산시') || name.includes('화성시') || name.includes('오산시');
             });
             this.attachPopulation();
             this.buildMap();
@@ -470,7 +497,44 @@ const SchoolAge3DMap = {
     },
 
     getFeatureDataKey(props = {}) {
-        return String(props.adm_cd2 || props.adm_cd || props.adm_nm || '');
+        return String(
+            props.featureKey ||
+            props.adm_cd2 ||
+            props.adm_cd ||
+            props.bjd_cd ||
+            props.lawd_cd ||
+            props.emd_cd ||
+            props.EMD_CD ||
+            props.LI_CD ||
+            props.SIG_CD ||
+            this.getFeatureName(props)
+        );
+    },
+
+    getFeatureName(props = {}) {
+        const city = props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '';
+        const emd = props.bjd_nm || props.lawd_nm || props.emd_nm || props.EMD_KOR_NM || '';
+        const li = props.li_nm || props.LI_KOR_NM || '';
+        if (li && emd) return String(`${city ? `${city} ` : ''}${emd} ${li}`).trim();
+        return String(
+            props.adm_nm ||
+            emd ||
+            li ||
+            props.SIG_KOR_NM ||
+            props.name ||
+            ''
+        );
+    },
+
+    getFeatureCityName(props = {}) {
+        return String(props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '');
+    },
+
+    detectBoundaryLevel(geojson) {
+        const keys = new Set((geojson.features || []).flatMap(feature => Object.keys(feature.properties || {})));
+        if (['LI_CD', 'LI_KOR_NM', 'li_cd', 'li_nm'].some(key => keys.has(key))) return '법정리';
+        if (['bjd_cd', 'bjd_nm', 'lawd_cd', 'lawd_nm', 'EMD_CD', 'EMD_KOR_NM'].some(key => keys.has(key))) return '법정동·리';
+        return '행정동';
     },
 
     normalizeGroupPopulation(groupPopulation = {}, totalValue = null, fallbackTotal = 1, props = {}) {
@@ -521,7 +585,7 @@ const SchoolAge3DMap = {
     },
 
     getFallbackGroupRatios(props = {}) {
-        const admNm = props.adm_nm || '';
+        const admNm = this.getFeatureName(props);
         const isNewTown = ['동탄', '새솔', '향남', '봉담', '남양'].some(keyword => admNm.includes(keyword));
         const isRural = ['장안', '양감', '팔탄', '마도', '서신', '송산', '비봉', '매송'].some(keyword => admNm.includes(keyword));
         const raw = {
@@ -604,7 +668,7 @@ const SchoolAge3DMap = {
         const max = Math.max(this.maxFeatureValue || 1, min + 1);
         const normalized = this.clamp((value - min) / (max - min), 0, 1);
         const readableCurve = Math.pow(normalized, 0.74);
-        const admNm = feature.properties?.adm_nm || '';
+        const admNm = this.getFeatureName(feature.properties || {});
         const dongtanLean = admNm.includes('동탄') ? 1.08 : 1;
         return this.flatRegionDepth + 0.08 + Math.min(0.78, readableCurve * 0.72 * dongtanLean);
     },
@@ -778,9 +842,9 @@ const SchoolAge3DMap = {
     },
 
     fallbackValue(props, index) {
-        const seed = Array.from(String(props.adm_nm || props.adm_cd2 || index)).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-        const admNm = props.adm_nm || '';
-        const sggNm = props.sggnm || '';
+        const admNm = this.getFeatureName(props);
+        const seed = Array.from(String(admNm || this.getFeatureDataKey(props) || index)).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+        const sggNm = this.getFeatureCityName(props);
         const base = 900 + (seed % 4200);
         const isOsan = sggNm.includes('오산');
         const isNewTown = ['동탄', '새솔', '향남', '봉담', '남양'].some(keyword => admNm.includes(keyword));
@@ -806,8 +870,8 @@ const SchoolAge3DMap = {
     },
 
     getDistrictKey(props) {
-        const admNm = props.adm_nm || '';
-        const sgg = props.sggnm || '';
+        const admNm = this.getFeatureName(props);
+        const sgg = this.getFeatureCityName(props);
         if (sgg.includes('오산')) return 'osan';
         if (['동탄', '오산동'].some(keyword => admNm.includes(keyword))) return 'dongtan';
         if (['진안', '병점', '반월', '화산', '안녕', '송산동'].some(keyword => admNm.includes(keyword))) return 'byeongjeom';
@@ -822,7 +886,7 @@ const SchoolAge3DMap = {
     },
 
     getRegionBorderColor(props) {
-        const sgg = props.sggnm || '';
+        const sgg = this.getFeatureCityName(props);
         const key = sgg.includes('오산') ? 'osan' : (sgg.includes('화성') ? 'hwaseong' : 'default');
         return this.hexToNumber(this.districtBorders[key] || this.districtBorders.default, 0x111317);
     },
@@ -914,10 +978,10 @@ const SchoolAge3DMap = {
         this.setText(
             'populationStatusText',
             live
-                ? `초등·중등·고등·대학 연령대 값을 행정동 단위로 반영했습니다.${forecast ? ' 현재 연도 이후라 예측값으로 표시됩니다.' : ''}`
+                ? `초등·중등·고등·대학 연령대 값을 ${this.boundaryLevelLabel} 단위로 반영했습니다.${forecast ? ' 현재 연도 이후라 예측값으로 표시됩니다.' : ''}`
                 : (this.populationData?.message || 'KOSIS API 템플릿이 설정되면 공식 값으로 높이가 갱신됩니다.')
         );
-        this.setText('selectedRegionName', selected ? (selected.adm_nm || '행정동') : '화성·오산 전체');
+        this.setText('selectedRegionName', selected ? (this.getFeatureName(selected) || this.boundaryLevelLabel) : '화성·오산 전체');
         this.setText(
             'selectedRegionMeta',
             selected
@@ -1001,7 +1065,7 @@ const SchoolAge3DMap = {
         card.hidden = false;
         card.style.left = `${event.clientX - this.container.getBoundingClientRect().left}px`;
         card.style.top = `${event.clientY - this.container.getBoundingClientRect().top}px`;
-        this.setText('hoverRegion', feature.properties?.adm_nm || '행정동');
+        this.setText('hoverRegion', this.getFeatureName(feature.properties || {}) || this.boundaryLevelLabel);
         this.setText('hoverValue', this.getFeatureLabel(feature));
         this.renderHoverBreakdown(feature);
     },

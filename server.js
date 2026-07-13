@@ -19,7 +19,14 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
 
 // 색상 설정 저장 파일 경로 설정
 const COLORS_FILE = path.join(__dirname, 'server', 'colors.json');
-const HWAO_GEOJSON_FILE = path.join(__dirname, 'data', 'hwao.geojson');
+const HWAO_DEFAULT_GEOJSON_FILE = path.join(__dirname, 'data', 'hwao.geojson');
+const HWAO_DETAIL_GEOJSON_FILES = [
+    process.env.HWAO_GEOJSON_FILE,
+    path.join(__dirname, 'data', 'hwao_smallest.geojson'),
+    path.join(__dirname, 'data', 'hwao_detail.geojson'),
+    path.join(__dirname, 'data', 'hwao_legal.geojson'),
+    HWAO_DEFAULT_GEOJSON_FILE
+].filter(Boolean);
 const SCHOOL_AGE_FROM = process.env.SCHOOL_AGE_FROM || '6';
 const SCHOOL_AGE_TO = process.env.SCHOOL_AGE_TO || '21';
 const SCHOOL_AGE_FIRST_YEAR = Number.parseInt(process.env.KOSIS_STATS_START_YEAR || '2000', 10);
@@ -229,6 +236,56 @@ function resolveStatsYear(value) {
     return String(Math.min(range.max, Math.max(range.min, parsed)));
 }
 
+function resolveProjectPath(filePath) {
+    return path.isAbsolute(filePath) ? filePath : path.join(__dirname, filePath);
+}
+
+function getHwaoGeojsonFile() {
+    return HWAO_DETAIL_GEOJSON_FILES
+        .map(resolveProjectPath)
+        .find(filePath => fs.existsSync(filePath)) || HWAO_DEFAULT_GEOJSON_FILE;
+}
+
+function getFeatureName(props = {}) {
+    const city = props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '';
+    const emd = props.bjd_nm || props.lawd_nm || props.emd_nm || props.EMD_KOR_NM || '';
+    const li = props.li_nm || props.LI_KOR_NM || '';
+    if (li && emd) return String(`${city ? `${city} ` : ''}${emd} ${li}`).trim();
+    return String(
+        props.adm_nm ||
+        emd ||
+        li ||
+        props.SIG_KOR_NM ||
+        props.name ||
+        ''
+    );
+}
+
+function getFeatureCityName(props = {}) {
+    return String(props.sggnm || props.sgg_nm || props.sig_kor_nm || props.SIG_KOR_NM || '');
+}
+
+function getFeatureDataKey(props = {}) {
+    return String(
+        props.adm_cd2 ||
+        props.adm_cd ||
+        props.bjd_cd ||
+        props.lawd_cd ||
+        props.emd_cd ||
+        props.EMD_CD ||
+        props.LI_CD ||
+        props.SIG_CD ||
+        getFeatureName(props)
+    );
+}
+
+function isHwaoFeature(feature) {
+    const props = feature.properties || {};
+    const city = getFeatureCityName(props);
+    const name = getFeatureName(props);
+    return city.includes('화성시') || city.includes('오산시') || name.includes('화성시') || name.includes('오산시');
+}
+
 function isSchoolAgeForecastYear(year) {
     return Number(year) > new Date().getFullYear();
 }
@@ -243,9 +300,12 @@ function buildSchoolAgeRequestUrl(feature, year, group) {
         .replaceAll('{year}', encodeURIComponent(year))
         .replaceAll('{admCd}', encodeURIComponent(props.adm_cd || ''))
         .replaceAll('{admCd2}', encodeURIComponent(props.adm_cd2 || ''))
+        .replaceAll('{lawdCd}', encodeURIComponent(props.lawd_cd || props.bjd_cd || props.emd_cd || props.EMD_CD || ''))
+        .replaceAll('{featureCd}', encodeURIComponent(getFeatureDataKey(props)))
         .replaceAll('{sgg}', encodeURIComponent(props.sgg || ''))
-        .replaceAll('{sggNm}', encodeURIComponent(props.sggnm || ''))
-        .replaceAll('{admNm}', encodeURIComponent(props.adm_nm || ''))
+        .replaceAll('{sggNm}', encodeURIComponent(getFeatureCityName(props)))
+        .replaceAll('{admNm}', encodeURIComponent(props.adm_nm || getFeatureName(props)))
+        .replaceAll('{featureNm}', encodeURIComponent(getFeatureName(props)))
         .replaceAll('{group}', encodeURIComponent(group.id))
         .replaceAll('{ageFrom}', encodeURIComponent(group.from))
         .replaceAll('{ageTo}', encodeURIComponent(group.to));
@@ -349,9 +409,9 @@ function getSchoolAgeSeed(text) {
 
 function getSchoolAgeModelValues(feature, year) {
     const props = feature.properties || {};
-    const admNm = props.adm_nm || '';
-    const sggNm = props.sggnm || '';
-    const seed = getSchoolAgeSeed(`${props.adm_cd2 || ''}${admNm}`);
+    const admNm = getFeatureName(props);
+    const sggNm = getFeatureCityName(props);
+    const seed = getSchoolAgeSeed(`${getFeatureDataKey(props)}${admNm}`);
     const base = 900 + (seed % 4200);
     const isOsan = sggNm.includes('오산');
     const isNewTown = ['동탄', '새솔', '향남', '봉담', '남양'].some(keyword => admNm.includes(keyword));
@@ -398,7 +458,7 @@ async function fetchLiveSchoolAgeValues(features, year) {
         });
         groupPopulation.total = Object.values(groupPopulation).reduce((sum, value) => sum + value, 0);
         return [
-            feature.properties.adm_cd2,
+            getFeatureDataKey(feature.properties),
             {
                 schoolAgePopulation: groupPopulation.total || null,
                 groupPopulation,
@@ -408,8 +468,8 @@ async function fetchLiveSchoolAgeValues(features, year) {
     });
 
     const valueMap = {};
-    pairs.forEach(([admCd2, value]) => {
-        if (value && Number.isFinite(value.schoolAgePopulation)) valueMap[admCd2] = value;
+    pairs.forEach(([featureKey, value]) => {
+        if (value && Number.isFinite(value.schoolAgePopulation)) valueMap[featureKey] = value;
     });
     return Object.keys(valueMap).length ? { source: 'kosis-live', values: valueMap } : null;
 }
@@ -680,20 +740,19 @@ app.get('/api/school-age-population', async (req, res) => {
     const ageTo = Number(SCHOOL_AGE_TO);
     const minAge = Math.min(ageFrom, ageTo);
     const maxAge = Math.max(ageFrom, ageTo);
-    const cacheKey = `school-age-groups:${year}:${minAge}-${maxAge}`;
+    const geojsonFile = getHwaoGeojsonFile();
+    const geojsonStat = fs.statSync(geojsonFile);
+    const cacheKey = `school-age-groups:${year}:${minAge}-${maxAge}:${path.basename(geojsonFile)}:${geojsonStat.mtimeMs}`;
     if (req.query.refresh !== '1' && schoolAgeCache.key === cacheKey && schoolAgeCache.expires > Date.now()) {
         return res.json(schoolAgeCache.data);
     }
 
     try {
-        const geojson = JSON.parse(fs.readFileSync(HWAO_GEOJSON_FILE, 'utf8'));
-        const features = (geojson.features || []).filter(feature => {
-            const sgg = feature.properties?.sggnm || '';
-            return sgg.includes('화성시') || sgg.includes('오산시');
-        });
+        const geojson = JSON.parse(fs.readFileSync(geojsonFile, 'utf8'));
+        const features = (geojson.features || []).filter(isHwaoFeature);
 
         let source = 'kosis-model';
-        let message = 'KOSIS 인구상황판의 학령 구간 기준으로 화성시·오산시 행정동만 표시합니다. 공식 연령별 API URL 템플릿이 설정되면 실제 통계값으로 대체됩니다.';
+        let message = 'KOSIS 인구상황판의 학령 구간 기준으로 화성시·오산시의 설정된 경계 단위를 표시합니다. 공식 연령별 API URL 템플릿이 설정되면 실제 통계값으로 대체됩니다.';
         let values = null;
         lastSchoolAgeSyncError = null;
 
@@ -712,7 +771,7 @@ app.get('/api/school-age-population', async (req, res) => {
 
         if (!values) {
             values = Object.fromEntries(features.map(feature => [
-                feature.properties.adm_cd2,
+                getFeatureDataKey(feature.properties),
                 getSchoolAgeModelValues(feature, year)
             ]));
         }
@@ -737,18 +796,25 @@ app.get('/api/school-age-population', async (req, res) => {
             diagnostics: {
                 hasKosisApiKey: !!(process.env.KOSIS_API_KEY || process.env.KOSTAT_API_KEY),
                 hasUrlTemplate: !!(process.env.KOSIS_SCHOOL_AGE_URL_TEMPLATE || process.env.KOSTAT_SCHOOL_AGE_URL_TEMPLATE),
-                lastError: lastSchoolAgeSyncError
+                lastError: lastSchoolAgeSyncError,
+                boundaryFile: path.basename(geojsonFile),
+                boundaryFeatureCount: features.length
             },
-            features: features.map(feature => ({
-                type: 'Feature',
-                properties: {
-                    ...feature.properties,
-                    schoolAgePopulation: values ? values[feature.properties.adm_cd2]?.schoolAgePopulation ?? null : null,
-                    groupPopulation: values ? values[feature.properties.adm_cd2]?.groupPopulation ?? {} : {},
-                    agePopulation: values ? values[feature.properties.adm_cd2]?.byAge ?? {} : {}
-                },
-                geometry: feature.geometry
-            }))
+            features: features.map(feature => {
+                const key = getFeatureDataKey(feature.properties);
+                const value = values?.[key] || null;
+                return {
+                    type: 'Feature',
+                    properties: {
+                        ...feature.properties,
+                        featureKey: key,
+                        schoolAgePopulation: value?.schoolAgePopulation ?? null,
+                        groupPopulation: value?.groupPopulation ?? {},
+                        agePopulation: value?.byAge ?? {}
+                    },
+                    geometry: feature.geometry
+                };
+            })
         };
 
         schoolAgeCache = {
