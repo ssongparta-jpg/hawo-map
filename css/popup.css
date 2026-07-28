@@ -33,8 +33,8 @@
 .popup-school-stat .label { font-weight: 800; color: #475569; }
 .popup-school-stat .value { color: #0f172a; }
 .popup-school-stat .value strong { font-size: 12px; }
-.popup-special-class-label { color: #dc2626; font-size: 9.5px; font-weight: 900; }
-.popup-special-class-count { display: inline-block; margin-left: 2px; color: #dc2626; font-size: 10px; font-weight: 800; }
+.popup-special-class-label { color: #0f172a; font-size: 9.5px; font-weight: 900; }
+.popup-special-class-count { display: inline-block; margin-left: 2px; color: #0f172a; font-size: 10px; font-weight: 800; }
 .popup-link-top { font-size: 11px; color: #1d5fbf; text-decoration: none; font-weight: 800; padding: 4px 9px; background: #eef5ff; border-radius: 8px; white-space: nowrap; transition: background var(--motion-fast, 0.18s ease), transform var(--motion-fast, 0.18s ease); }
 .popup-link-top:hover { background: #dbeafe; transform: translateY(-1px); }
 .popup-link-none { font-size: 11px; color: #94a3b8; padding: 4px 9px; background: #f1f5f9; border-radius: 8px; white-space: nowrap; }
