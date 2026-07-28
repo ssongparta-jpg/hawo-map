@@ -31,9 +31,16 @@ const App = {
                 return parseFloat(String(val).replace(/,/g, '')) || 0;
             };
 
-            const getCellValue = (cell) => cell?.v || cell?.f || '';
+            const getCellValue = (cell) => {
+                if (cell?.v !== undefined && cell?.v !== null && cell?.v !== '') return cell.v;
+                return cell?.f ?? '';
+            };
             const isColorValue = (value) => /^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(String(value || '').trim());
             const isUrlValue = (value) => /^(https?:\/\/|www\.)/i.test(String(value || '').trim());
+            const isNumericValue = (value) => {
+                const text = String(value ?? '').replace(/,/g, '').trim();
+                return text !== '' && Number.isFinite(Number(text));
+            };
 
             pRows.forEach((row) => {
                 const c = row.c;
@@ -43,12 +50,19 @@ const App = {
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
                 
                 const type = c[3]?.v || '';
-                const compactStatsSchema = isColorValue(getCellValue(c[9])) ||
+                const newStatsSchema = isNumericValue(getCellValue(c[8])) ||
+                    isColorValue(getCellValue(c[10])) ||
+                    isUrlValue(getCellValue(c[12]));
+                const compactStatsSchema = !newStatsSchema && (
+                    isColorValue(getCellValue(c[9])) ||
                     isUrlValue(getCellValue(c[11])) ||
-                    (!Number.isFinite(parseFloat(getCellValue(c[8]))) && !!getCellValue(c[8]));
-                const col = compactStatsSchema
-                    ? { teacher: 7, shape: 8, color: 9, url: 11, classCount: 12, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
-                    : { teacher: 8, shape: 10, color: 11, url: 13, classCount: 14, establish: 15, principal: 16, vice: 17, admin: 18, special: 19 };
+                    (!Number.isFinite(parseFloat(getCellValue(c[8]))) && !!getCellValue(c[8]))
+                );
+                const col = newStatsSchema
+                    ? { teacher: 7, classCount: 8, shape: 9, color: 10, url: 12, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
+                    : compactStatsSchema
+                        ? { teacher: 7, classCount: 12, shape: 8, color: 9, url: 11, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
+                        : { teacher: 8, classCount: 14, shape: 10, color: 11, url: 13, establish: 15, principal: 16, vice: 17, admin: 18, special: 19 };
                 const rowColor = getCellValue(c[col.color]) || '#333';
                 const p = {
                     type,
