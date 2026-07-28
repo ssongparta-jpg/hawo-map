@@ -29,10 +29,7 @@
 .popup-info-list li { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #444; margin-bottom: 3px; }
 .popup-content.compact-mode .grid-list { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 15px; row-gap: 4px; padding-left: 0; }
 .popup-school-stats-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
-.popup-info-list .popup-school-stat { flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 0; padding: 6px 7px; border-radius: 8px; border: 1px solid rgba(191,219,254,0.72); background: linear-gradient(135deg, rgba(239,246,255,0.98), rgba(248,250,252,0.98)); color: #1e3a5f; font-size: 10.5px; line-height: 1.2; }
-.popup-school-stat.stat-students { border-color: rgba(125,211,252,0.75); background: linear-gradient(135deg, #ecfeff, #f8fafc); }
-.popup-school-stat.stat-teachers { border-color: rgba(167,139,250,0.62); background: linear-gradient(135deg, #f5f3ff, #f8fafc); }
-.popup-school-stat.stat-classes { border-color: rgba(134,239,172,0.65); background: linear-gradient(135deg, #f0fdf4, #f8fafc); }
+.popup-info-list .popup-school-stat { flex-direction: column; justify-content: center; align-items: center; gap: 2px; margin-bottom: 0; padding: 6px 7px; border-radius: 8px; border: 1px solid rgba(226,232,240,0.9); background: rgba(248,250,252,0.9); color: #475569; font-size: 10.5px; line-height: 1.2; text-align: center; }
 .popup-school-stat .label { font-weight: 800; color: #475569; }
 .popup-school-stat .value { color: #0f172a; }
 .popup-school-stat .value strong { font-size: 12px; }
