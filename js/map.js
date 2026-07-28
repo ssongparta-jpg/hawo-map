@@ -671,16 +671,16 @@ const MapManager = {
             <div class="stat-popup-card">
                 <div class="stat-popup-header" style="border-bottom-color: ${this.safeCssColor(config.color, '#4A90E2')};">
                     <span class="stat-popup-title">${this.escapeHtml(config.fullName)}</span>
-                    <span class="stat-popup-badge" style="background:${this.safeCssColor(config.color, '#4A90E2')};">총 ${fmt(totalSchools)}개교</span>
+                    <span class="stat-popup-badge" style="background:${this.safeCssColor(config.color, '#4A90E2')};">${fmt(totalSchools)}개교</span>
                 </div>
                 
                 <div class="stat-popup-body">
                     <div class="stat-row">
-                        <span class="stat-label">총 학생 수</span>
+                        <span class="stat-label">학생 수</span>
                         <span class="stat-value">${fmt(totalStudents)}<span class="stat-unit">명</span></span>
                     </div>
                     <div class="stat-row">
-                        <span class="stat-label">총 교원 수</span>
+                        <span class="stat-label">교원 수</span>
                         <span class="stat-value">${fmt(totalTeachers)}<span class="stat-unit">명</span></span>
                     </div>
                 </div>
