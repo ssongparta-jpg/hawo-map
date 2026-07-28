@@ -404,6 +404,19 @@ const MapManager = {
         return fallback;
     },
 
+    isEducationOffice(p = {}) {
+        const type = String(p.type || '');
+        const name = String(p.name || '');
+        return type.includes('교육') || name.includes('교육지원청');
+    },
+
+    isStatSchool(p = {}) {
+        if (this.isEducationOffice(p)) return false;
+        const name = String(p.name || '').trim();
+        const type = String(p.type || '').trim();
+        return !!name && !!type;
+    },
+
     getSchoolDomId(schoolName) {
         return encodeURIComponent(String(schoolName || '')).replace(/%/g, '_');
     },
@@ -486,7 +499,7 @@ const MapManager = {
     },
 
     makePopupHtml(p) {
-        const isEduOffice = (p.type && p.type.includes('교육')) || p.name.includes('교육지원청');
+        const isEduOffice = this.isEducationOffice(p);
         let principalName = p.principal;
         if (!principalName || principalName === 'No Data' || principalName.trim() === '') principalName = '정보 없음'; 
 
@@ -521,12 +534,10 @@ const MapManager = {
                     <span>교감(원감) <strong>${this.escapeHtml(vicePrincipal)}</strong></span><span class="divider">|</span>
                     <span>행정실장 <strong>${this.escapeHtml(chiefAdmin)}</strong></span>
                 </div>
-                <ul class="popup-info-list grid-list">
-                    <li><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
-                    <li><span class="label">교사 수</span> <span class="value"><strong>${p.tchr_cnt || 0}</strong>명</span></li>
-                    <li><span class="label">학급 수</span> <span class="value"><strong>${p.class_cnt || 0}</strong>개</span></li>
-                    <li><span class="label">학급당 학생 수</span> <span class="value"><strong>${p.stdnt_per_cl || 0}</strong>명</span></li>
-                    <li><span class="label">교사 1인당 학생 수</span> <span class="value"><strong>${p.stdnt_per_tchr || 0}</strong>명</span></li>
+                <ul class="popup-info-list popup-school-stats-list">
+                    <li class="popup-school-stat stat-students"><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
+                    <li class="popup-school-stat stat-teachers"><span class="label">교원 수</span> <span class="value"><strong>${Number(p.tchr_cnt || 0).toLocaleString()}</strong>명</span></li>
+                    <li class="popup-school-stat stat-classes"><span class="label">학급 수</span> <span class="value"><strong>${Number(p.class_cnt || 0).toLocaleString()}</strong>개</span></li>
                 </ul>`;
         }
 
@@ -635,6 +646,7 @@ const MapManager = {
         
         const regionMarkers = this.markers.filter(m => {
             const p = m.properties || {};
+            if (!this.isStatSchool(p)) return false;
             let adrs = String(p.adrs || p.address || p['주소'] || p['학교주소'] || "");
             if (!adrs.trim()) adrs = Object.values(p).join(" ");
             
@@ -663,16 +675,12 @@ const MapManager = {
                 </div>
                 
                 <div class="stat-popup-body">
-                    <div class="stat-row border-orange">
-                        <span class="stat-label">학교 수</span>
-                        <span class="stat-value">${fmt(totalSchools)}<span class="stat-unit">개교</span></span>
-                    </div>
-                    <div class="stat-row border-green">
+                    <div class="stat-row">
                         <span class="stat-label">총 학생 수</span>
                         <span class="stat-value">${fmt(totalStudents)}<span class="stat-unit">명</span></span>
                     </div>
-                    <div class="stat-row border-blue">
-                        <span class="stat-label">총 교사 수</span>
+                    <div class="stat-row">
+                        <span class="stat-label">총 교원 수</span>
                         <span class="stat-value">${fmt(totalTeachers)}<span class="stat-unit">명</span></span>
                     </div>
                 </div>

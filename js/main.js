@@ -32,32 +32,39 @@ const App = {
             };
 
             const getCellValue = (cell) => cell?.v || cell?.f || '';
+            const isColorValue = (value) => /^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(String(value || '').trim());
+            const isUrlValue = (value) => /^(https?:\/\/|www\.)/i.test(String(value || '').trim());
 
             pRows.forEach((row) => {
                 const c = row.c;
                 if (!c || !c[1] || !c[2]) return;
                 const lat = parseFloat(c[1]?.v || 0);
                 const lng = parseFloat(c[2]?.v || 0);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
                 
                 const type = c[3]?.v || '';
-                const rowColor = c[11]?.v || '#333';
+                const compactStatsSchema = isColorValue(getCellValue(c[9])) ||
+                    isUrlValue(getCellValue(c[11])) ||
+                    (!Number.isFinite(parseFloat(getCellValue(c[8]))) && !!getCellValue(c[8]));
+                const col = compactStatsSchema
+                    ? { teacher: 7, shape: 8, color: 9, url: 11, classCount: 12, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
+                    : { teacher: 8, shape: 10, color: 11, url: 13, classCount: 14, establish: 15, principal: 16, vice: 17, admin: 18, special: 19 };
+                const rowColor = getCellValue(c[col.color]) || '#333';
                 const p = {
                     type,
                     name: c[4]?.v || '이름 없음', 
                     adrs: c[5]?.v || '',
-                    establish: (c[15]?.v || '').trim(),
+                    establish: String(getCellValue(c[col.establish])).trim(),
                     stdnt_cnt: parseNum(c[6]?.v), 
-                    stdnt_per_cl: parseNum(c[7]?.v), 
-                    tchr_cnt: parseNum(c[8]?.v), 
-                    stdnt_per_tchr: parseNum(c[9]?.v),
-                    class_cnt: parseNum(c[14]?.v),
-                    shape: c[10]?.v || '●', 
+                    tchr_cnt: parseNum(getCellValue(c[col.teacher])),
+                    class_cnt: parseNum(getCellValue(c[col.classCount])),
+                    shape: getCellValue(c[col.shape]) || '●',
                     color: this.resolveSchoolColor(type, rowColor),
-                    url: c[13]?.v,
-                    principal: getCellValue(c[16]),                 
-                    vice_principal: getCellValue(c[17]),            
-                    chief_of_administration: getCellValue(c[18]),
-                    special_bs: String(getCellValue(c[19])).trim()
+                    url: getCellValue(c[col.url]),
+                    principal: getCellValue(c[col.principal]),
+                    vice_principal: getCellValue(c[col.vice]),
+                    chief_of_administration: getCellValue(c[col.admin]),
+                    special_bs: String(getCellValue(c[col.special])).trim()
                 };
                 
                 const locKey = lat.toFixed(5) + "," + lng.toFixed(5);

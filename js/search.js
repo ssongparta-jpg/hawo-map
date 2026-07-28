@@ -87,7 +87,7 @@ const FilterManager = {
         this.selectedEst.clear(); 
         document.querySelectorAll('.filter-tag, .dist-tag, .est-tag').forEach(tag => tag.classList.remove('active'));
         document.getElementById('adv-name-input').value = '';
-        ['min-s', 'max-s', 'min-c', 'max-c', 'min-t', 'max-t', 'min-sc', 'max-sc', 'min-st', 'max-st'].forEach(id => {
+        ['min-s', 'max-s', 'min-c', 'max-c', 'min-t', 'max-t'].forEach(id => {
             const el = document.getElementById(id); if(el) el.value = '';
         });
     },
@@ -96,20 +96,18 @@ const FilterManager = {
         const nameQuery = document.getElementById('adv-name-input').value.trim();
         const getVal = (id, def) => {
             const val = document.getElementById(id)?.value;
-            return (val === '' || val === null) ? def : Number(val);
+            return (val === '' || val == null) ? def : Number(val);
         };
         
         const ranges = {
             s: [getVal('min-s', 0), getVal('max-s', Infinity)],      
             c: [getVal('min-c', 0), getVal('max-c', Infinity)],      
-            t: [getVal('min-t', 0), getVal('max-t', Infinity)],      
-            sc: [getVal('min-sc', 0), getVal('max-sc', Infinity)],   
-            st: [getVal('min-st', 0), getVal('max-st', Infinity)]    
+            t: [getVal('min-t', 0), getVal('max-t', Infinity)]
         };
 
         const filtered = MapManager.markers.filter(m => {
             const p = m.properties;
-            if (p.type.includes('교육') || p.name.includes('교육지원청')) return false;
+            if (MapManager.isEducationOffice(p)) return false;
             
             const matchName = !nameQuery || p.name.includes(nameQuery);
             const matchType = this.selectedTypes.size === 0 || this.selectedTypes.has(p.type);
@@ -124,15 +122,11 @@ const FilterManager = {
             const sVal = parseFloat(p.stdnt_cnt) || 0;
             const cVal = parseFloat(p.class_cnt) || 0;
             const tVal = parseFloat(p.tchr_cnt) || 0;
-            const scVal = parseFloat(p.stdnt_per_cl) || 0;
-            const stVal = parseFloat(p.stdnt_per_tchr) || 0;
 
             return matchName && matchType && matchDist && matchEst &&
                    (sVal >= ranges.s[0] && sVal <= ranges.s[1]) &&
                    (cVal >= ranges.c[0] && cVal <= ranges.c[1]) &&
-                   (tVal >= ranges.t[0] && tVal <= ranges.t[1]) &&
-                   (scVal >= ranges.sc[0] && scVal <= ranges.sc[1]) &&
-                   (stVal >= ranges.st[0] && stVal <= ranges.st[1]);
+                   (tVal >= ranges.t[0] && tVal <= ranges.t[1]);
         });
 
         this.close();
