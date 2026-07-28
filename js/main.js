@@ -66,7 +66,7 @@ const App = {
                     (!Number.isFinite(parseFloat(getCellValue(c[8]))) && !!getCellValue(c[8]))
                 );
                 const col = sdcStatsSchema
-                    ? { teacher: 7, classCount: 8, specialClassCount: 9, shape: 10, color: 11, url: 13, establish: 14, principal: 15, vice: 16, admin: 17, special: 18 }
+                    ? { teacher: 7, classCount: 8, specialClassCount: 9, shape: 10, color: 11, url: 13, establish: 15, principal: 16, vice: 17, admin: 18, special: 19 }
                     : newStatsSchema
                     ? { teacher: 7, classCount: 8, specialClassCount: null, shape: 9, color: 10, url: 12, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
                     : compactStatsSchema
