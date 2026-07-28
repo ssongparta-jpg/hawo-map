@@ -536,7 +536,13 @@ const MapManager = {
             const chiefAdmin = p.chief_of_administration || '-';
             const classCount = Number(p.class_cnt || 0);
             const isSpecialSchool = String(p.type || '').includes('특수') || String(p.name || '').includes('특수학교');
-            const specialClassCount = isSpecialSchool ? classCount : Number(p.special_class_cnt || 0);
+            const specialClassCount = Number(p.special_class_cnt || 0);
+            const classLabelHtml = isSpecialSchool
+                ? '학급 수'
+                : '학급 수 <span class="popup-special-class-label">(특수)</span>';
+            const specialClassHtml = isSpecialSchool
+                ? ''
+                : `<span class="popup-special-class-count">(${specialClassCount.toLocaleString()}학급)</span>`;
             bodyContent = `
                 <div class="popup-admin-row">
                     <span>교장(원장) <strong>${this.escapeHtml(principalName)}</strong></span><span class="divider">|</span>
@@ -545,7 +551,7 @@ const MapManager = {
                 </div>
                 <ul class="popup-info-list popup-school-stats-list">
                     <li class="popup-school-stat stat-students"><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
-                    <li class="popup-school-stat stat-classes"><span class="label">학급 수 <span class="popup-special-class-label">(특수)</span></span> <span class="value"><strong>${classCount.toLocaleString()}</strong>학급<span class="popup-special-class-count">(${specialClassCount.toLocaleString()}학급)</span></span></li>
+                    <li class="popup-school-stat stat-classes"><span class="label">${classLabelHtml}</span> <span class="value"><strong>${classCount.toLocaleString()}</strong>학급${specialClassHtml}</span></li>
                     <li class="popup-school-stat stat-teachers"><span class="label">교원 수</span> <span class="value"><strong>${Number(p.tchr_cnt || 0).toLocaleString()}</strong>명</span></li>
                 </ul>`;
         }
