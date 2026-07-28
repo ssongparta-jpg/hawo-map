@@ -545,7 +545,7 @@ const MapManager = {
                 </div>
                 <ul class="popup-info-list popup-school-stats-list">
                     <li class="popup-school-stat stat-students"><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
-                    <li class="popup-school-stat stat-classes"><span class="label">학급 수</span> <span class="value"><strong>${classCount.toLocaleString()}</strong>학급<span class="popup-special-class-count">(${specialClassCount.toLocaleString()}학급)</span></span></li>
+                    <li class="popup-school-stat stat-classes"><span class="label">학급 수 <span class="popup-special-class-label">(특수)</span></span> <span class="value"><strong>${classCount.toLocaleString()}</strong>학급<span class="popup-special-class-count">(${specialClassCount.toLocaleString()}학급)</span></span></li>
                     <li class="popup-school-stat stat-teachers"><span class="label">교원 수</span> <span class="value"><strong>${Number(p.tchr_cnt || 0).toLocaleString()}</strong>명</span></li>
                 </ul>`;
         }
