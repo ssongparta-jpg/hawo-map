@@ -50,20 +50,33 @@ const App = {
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
                 
                 const type = c[3]?.v || '';
-                const newStatsSchema = isNumericValue(getCellValue(c[8])) ||
+                const sdcStatsSchema = (isNumericValue(getCellValue(c[8])) && getCellValue(c[9]) === '') ||
+                    isNumericValue(getCellValue(c[9])) ||
+                    isColorValue(getCellValue(c[11])) ||
+                    isUrlValue(getCellValue(c[13])) ||
+                    !!getCellValue(c[14]);
+                const newStatsSchema = !sdcStatsSchema && (
+                    isNumericValue(getCellValue(c[8])) ||
                     isColorValue(getCellValue(c[10])) ||
-                    isUrlValue(getCellValue(c[12]));
-                const compactStatsSchema = !newStatsSchema && (
+                    isUrlValue(getCellValue(c[12]))
+                );
+                const compactStatsSchema = !sdcStatsSchema && !newStatsSchema && (
                     isColorValue(getCellValue(c[9])) ||
                     isUrlValue(getCellValue(c[11])) ||
                     (!Number.isFinite(parseFloat(getCellValue(c[8]))) && !!getCellValue(c[8]))
                 );
-                const col = newStatsSchema
-                    ? { teacher: 7, classCount: 8, shape: 9, color: 10, url: 12, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
+                const col = sdcStatsSchema
+                    ? { teacher: 7, classCount: 8, specialClassCount: 9, shape: 10, color: 11, url: 13, establish: 14, principal: 15, vice: 16, admin: 17, special: 18 }
+                    : newStatsSchema
+                    ? { teacher: 7, classCount: 8, specialClassCount: null, shape: 9, color: 10, url: 12, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
                     : compactStatsSchema
-                        ? { teacher: 7, classCount: 12, shape: 8, color: 9, url: 11, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
-                        : { teacher: 8, classCount: 14, shape: 10, color: 11, url: 13, establish: 15, principal: 16, vice: 17, admin: 18, special: 19 };
+                        ? { teacher: 7, classCount: 12, specialClassCount: null, shape: 8, color: 9, url: 11, establish: 13, principal: 14, vice: 15, admin: 16, special: 17 }
+                        : { teacher: 8, classCount: 14, specialClassCount: null, shape: 10, color: 11, url: 13, establish: 15, principal: 16, vice: 17, admin: 18, special: 19 };
                 const rowColor = getCellValue(c[col.color]) || '#333';
+                const classCount = parseNum(getCellValue(c[col.classCount]));
+                const specialClassCount = String(type).includes('특수')
+                    ? classCount
+                    : parseNum(col.specialClassCount === null ? 0 : getCellValue(c[col.specialClassCount]));
                 const p = {
                     type,
                     name: c[4]?.v || '이름 없음', 
@@ -71,7 +84,8 @@ const App = {
                     establish: String(getCellValue(c[col.establish])).trim(),
                     stdnt_cnt: parseNum(c[6]?.v), 
                     tchr_cnt: parseNum(getCellValue(c[col.teacher])),
-                    class_cnt: parseNum(getCellValue(c[col.classCount])),
+                    class_cnt: classCount,
+                    special_class_cnt: specialClassCount,
                     shape: getCellValue(c[col.shape]) || '●',
                     color: this.resolveSchoolColor(type, rowColor),
                     url: getCellValue(c[col.url]),

@@ -33,6 +33,7 @@
 .popup-school-stat .label { font-weight: 800; color: #475569; }
 .popup-school-stat .value { color: #0f172a; }
 .popup-school-stat .value strong { font-size: 12px; }
+.popup-special-class-count { display: inline-block; margin-left: 2px; color: #dc2626; font-size: 10px; font-weight: 800; }
 .popup-link-top { font-size: 11px; color: #1d5fbf; text-decoration: none; font-weight: 800; padding: 4px 9px; background: #eef5ff; border-radius: 8px; white-space: nowrap; transition: background var(--motion-fast, 0.18s ease), transform var(--motion-fast, 0.18s ease); }
 .popup-link-top:hover { background: #dbeafe; transform: translateY(-1px); }
 .popup-link-none { font-size: 11px; color: #94a3b8; padding: 4px 9px; background: #f1f5f9; border-radius: 8px; white-space: nowrap; }
@@ -119,8 +120,7 @@
 .stat-popup-card { min-width:230px; padding:4px; }
 .stat-popup-header { border-bottom: 2px solid; padding-bottom:7px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
 .stat-popup-title { font-size:14px; font-weight:900; color:#333; }
-.stat-popup-badge { color:white; padding:3px 8px; border-radius:12px; font-size:10.5px; font-weight:bold; }
-.stat-popup-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.stat-popup-body { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .stat-row { display:flex; flex-direction: column; justify-content:center; align-items:flex-start; gap:2px; background:#f8f9fa; padding:7px 9px; border-radius:6px; border: 1px solid #eef2f7; }
 .stat-label { font-size:10.5px; font-weight:bold; color:#666; }
 .stat-value { font-size:13px; font-weight:900; color:#333; }

@@ -389,8 +389,11 @@ const MapManager = {
     },
 
     safeUrl(value) {
+        const rawValue = String(value || '').trim();
+        if (!/^(https?:\/\/|www\.)/i.test(rawValue)) return '';
         try {
-            const url = new URL(String(value || ''), window.location.origin);
+            const normalizedUrl = rawValue.startsWith('www.') ? `https://${rawValue}` : rawValue;
+            const url = new URL(normalizedUrl);
             return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
         } catch(e) {
             return '';
@@ -508,7 +511,10 @@ const MapManager = {
             ? `<a href="${this.escapeAttr(safeUrl)}" target="_blank" rel="noopener noreferrer" class="popup-link-top" title="새 창으로 열기">🏠 홈페이지 이동 ↗</a>`
             : '<span class="popup-link-none">❌ 홈페이지 없음</span>';
             
-        const estBadge = p.establish ? `<span class="badge-est">${this.escapeHtml(p.establish)}</span>` : '';
+        const establishText = String(p.establish || '').trim();
+        const estBadge = establishText && !this.safeUrl(establishText)
+            ? `<span class="badge-est">${this.escapeHtml(establishText)}</span>`
+            : '';
         const specialBusinessHtml = this.makeSpecialBusinessHtml(p.special_bs);
         const safeName = this.escapeHtml(p.name || '');
         const safeType = this.escapeHtml(p.type || '교육기관');
@@ -528,6 +534,9 @@ const MapManager = {
         } else {
             const vicePrincipal = p.vice_principal || '-';
             const chiefAdmin = p.chief_of_administration || '-';
+            const classCount = Number(p.class_cnt || 0);
+            const isSpecialSchool = String(p.type || '').includes('특수') || String(p.name || '').includes('특수학교');
+            const specialClassCount = isSpecialSchool ? classCount : Number(p.special_class_cnt || 0);
             bodyContent = `
                 <div class="popup-admin-row">
                     <span>교장(원장) <strong>${this.escapeHtml(principalName)}</strong></span><span class="divider">|</span>
@@ -536,8 +545,8 @@ const MapManager = {
                 </div>
                 <ul class="popup-info-list popup-school-stats-list">
                     <li class="popup-school-stat stat-students"><span class="label">학생 수</span> <span class="value"><strong>${Number(p.stdnt_cnt || 0).toLocaleString()}</strong>명</span></li>
+                    <li class="popup-school-stat stat-classes"><span class="label">학급 수</span> <span class="value"><strong>${classCount.toLocaleString()}</strong>학급<span class="popup-special-class-count">(${specialClassCount.toLocaleString()}학급)</span></span></li>
                     <li class="popup-school-stat stat-teachers"><span class="label">교원 수</span> <span class="value"><strong>${Number(p.tchr_cnt || 0).toLocaleString()}</strong>명</span></li>
-                    <li class="popup-school-stat stat-classes"><span class="label">학급 수</span> <span class="value"><strong>${Number(p.class_cnt || 0).toLocaleString()}</strong>개</span></li>
                 </ul>`;
         }
 
@@ -671,10 +680,13 @@ const MapManager = {
             <div class="stat-popup-card">
                 <div class="stat-popup-header" style="border-bottom-color: ${this.safeCssColor(config.color, '#4A90E2')};">
                     <span class="stat-popup-title">${this.escapeHtml(config.fullName)}</span>
-                    <span class="stat-popup-badge" style="background:${this.safeCssColor(config.color, '#4A90E2')};">${fmt(totalSchools)}개교</span>
                 </div>
                 
                 <div class="stat-popup-body">
+                    <div class="stat-row">
+                        <span class="stat-label">학교 수</span>
+                        <span class="stat-value">${fmt(totalSchools)}<span class="stat-unit">개교</span></span>
+                    </div>
                     <div class="stat-row">
                         <span class="stat-label">학생 수</span>
                         <span class="stat-value">${fmt(totalStudents)}<span class="stat-unit">명</span></span>
